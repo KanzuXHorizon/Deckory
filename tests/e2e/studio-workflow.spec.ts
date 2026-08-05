@@ -217,6 +217,58 @@ test.describe("Deckory Studio production workflow", () => {
     await page.screenshot({ path: join(screenshotRoot, "studio-agent-control-layer.png"), animations: "disabled" });
   });
 
+  test("inserts typed recipes and customizes a guarded visual style", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/studio?deck=deckory-story");
+    await waitForReady(page);
+
+    const slideItems = page.locator(".slide-rail-item");
+    await expect(slideItems).toHaveCount(12);
+
+    await page.keyboard.press("Control+K");
+    const commandPalette = page.getByRole("dialog", { name: /Đi đến đúng thao tác/ });
+    await commandPalette.getByRole("textbox", { name: "Tìm lệnh hoặc slide" }).fill("mau");
+    await commandPalette.getByRole("option", { name: /Mẫu & phong cách/ }).click();
+
+    const panel = page.getByRole("dialog", { name: /Chọn cấu trúc trước khi trang trí/ });
+    await expect(panel).toBeVisible();
+    const recipeSearch = panel.getByRole("textbox", { name: "Tìm công thức slide" });
+    await expect(recipeSearch).toBeFocused();
+    await recipeSearch.fill("xu huong");
+
+    const trendRecipe = panel.locator(".studio-recipe-card").filter({ hasText: "Trend Over Time" });
+    await expect(trendRecipe).toBeVisible();
+    await expect(trendRecipe).toContainText("Nguồn bắt buộc");
+    await trendRecipe.getByRole("button", { name: "Thêm sau slide hiện tại" }).click();
+
+    await expect(panel).toHaveCount(0);
+    await expect(slideItems).toHaveCount(13);
+    await expect(page.locator(".slide-rail-item.is-active")).toContainText("Trend Over Time");
+    await expect(page.locator('.studio-stage [data-slide-id="trend-over-time"]')).toBeVisible();
+
+    const templateTrigger = page.getByRole("button", { name: "Mở mẫu và phong cách" });
+    await templateTrigger.click();
+    const reopenedPanel = page.getByRole("dialog", { name: /Chọn cấu trúc trước khi trang trí/ });
+    await reopenedPanel.getByRole("tab", { name: /Phong cách trực quan/ }).click();
+
+    const technicalStyle = reopenedPanel.locator(".studio-style-card").filter({ hasText: "Technical Precision" });
+    await expect(technicalStyle).toContainText("Độ chặt bằng chứng");
+    await technicalStyle.getByRole("button", { name: "Áp dụng phong cách" }).click();
+    await expect(page.locator(".studio-shell")).toHaveClass(/theme--technical-clean/);
+    await expect(page.locator(".studio-shell")).toHaveClass(/accent--teal/);
+
+    await reopenedPanel.getByRole("radio", { name: /Amber/ }).click();
+    await expect(page.locator(".studio-shell")).toHaveClass(/accent--amber/);
+    await page.screenshot({ path: join(screenshotRoot, "studio-template-theme-intelligence.png"), animations: "disabled" });
+
+    await page.keyboard.press("Escape");
+    await expect(reopenedPanel).toHaveCount(0);
+    await expect(templateTrigger).toBeFocused();
+
+    await page.getByRole("button", { name: "Hoàn tác" }).click();
+    await expect(page.locator(".studio-shell")).toHaveClass(/accent--teal/);
+  });
+
   test("supports the complete keyboard pattern for Inspector tabs", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 900 });
     await page.goto("/studio?deck=deckory-story");

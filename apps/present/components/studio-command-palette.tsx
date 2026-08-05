@@ -4,6 +4,7 @@ import {
   Command,
   FileDown,
   Layers3,
+  LayoutTemplate,
   Play,
   Plus,
   Presentation,
@@ -39,6 +40,7 @@ const COMMAND_ICONS: Record<StudioCommandId, LucideIcon> = {
   export: FileDown,
   "add-slide": Plus,
   "add-component": Layers3,
+  "open-templates": LayoutTemplate,
   "motion-replay": Sparkles,
   "reset-draft": RotateCcw
 };

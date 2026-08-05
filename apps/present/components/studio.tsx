@@ -14,6 +14,7 @@ import {
   FileDown,
   History,
   Layers3,
+  LayoutTemplate,
   Play,
   Plus,
   Redo2,
@@ -30,9 +31,11 @@ import {
 import {
   validateDeck,
   type DeckDocument,
+  type DeckTheme,
   type Slide,
   type SlideComponent
 } from "@deckory/schema";
+import { slideRecipes, visualStyles, type SlideRecipe, type VisualStylePreset } from "@deckory/templates";
 import { cloneDeckDocument as cloneDeck, getSlideTitle as slideTitle } from "../lib/deck-document";
 import {
   canRedoDocumentHistory,
@@ -57,6 +60,11 @@ import {
   type StudioCommandId
 } from "../lib/studio-command-catalog";
 import {
+  applyVisualStyle,
+  createSlideFromRecipe,
+  customizeDeckTheme
+} from "../lib/studio-template-intelligence";
+import {
   componentLabel,
   componentOptions,
   easingOptions,
@@ -70,6 +78,7 @@ import { ComponentInspector } from "./component-inspector";
 import { StudioCommandPalette } from "./studio-command-palette";
 import { StudioConfirmDialog } from "./studio-confirm-dialog";
 import { CommandGrid, IconChoiceGroup, StudioPopover } from "./studio-controls";
+import { StudioTemplatePanel } from "./studio-template-panel";
 import { DeckThumbnail, ScaledSlidePreview } from "./deck-thumbnail";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
@@ -103,6 +112,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const [compactStudio, setCompactStudio] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [templatePanelOpen, setTemplatePanelOpen] = useState(false);
   const [slideQuery, setSlideQuery] = useState("");
   const [canvasZoom, setCanvasZoom] = useState<CanvasZoom>("fit");
   const [replayToken, setReplayToken] = useState(0);
@@ -110,10 +120,12 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const [pendingDestructiveAction, setPendingDestructiveAction] = useState<DestructiveAction | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement>(null);
   const commandTriggerRef = useRef<HTMLButtonElement>(null);
+  const templateTriggerRef = useRef<HTMLButtonElement>(null);
   const snapshotInputRef = useRef<HTMLInputElement>(null);
   const destructiveReturnFocusRef = useRef<HTMLElement | null>(null);
   const replayTimersRef = useRef<number[]>([]);
   const previousPaletteOpenRef = useRef(false);
+  const previousTemplateOpenRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -174,6 +186,12 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const hasAuthoredMotion = (selectedSlide.transition?.type !== undefined && selectedSlide.transition.type !== "none")
     || selectedSlide.components.some((component) => component.sequence !== undefined || (component.effect?.type !== undefined && component.effect.type !== "none"));
   const replayActive = replaySequenceStep !== null;
+  const currentTheme: DeckTheme = deck.theme ?? {
+    preset: "editorial-light",
+    accent: "cobalt",
+    typography: "editorial",
+    density: "comfortable"
+  };
 
   useEffect(() => {
     if (!selectedSlide.components.some((component) => component.id === selectedComponentId)) {
@@ -201,11 +219,18 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   }, []);
 
   useEffect(() => {
-    if (previousPaletteOpenRef.current && !commandPaletteOpen) {
+    if (previousPaletteOpenRef.current && !commandPaletteOpen && !templatePanelOpen) {
       requestAnimationFrame(() => commandTriggerRef.current?.focus());
     }
     previousPaletteOpenRef.current = commandPaletteOpen;
-  }, [commandPaletteOpen]);
+  }, [commandPaletteOpen, templatePanelOpen]);
+
+  useEffect(() => {
+    if (previousTemplateOpenRef.current && !templatePanelOpen) {
+      requestAnimationFrame(() => templateTriggerRef.current?.focus());
+    }
+    previousTemplateOpenRef.current = templatePanelOpen;
+  }, [templatePanelOpen]);
 
   useEffect(() => {
     replayTimersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -429,6 +454,31 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     setSlideMenuOpen(false);
   };
 
+  const insertRecipe = (recipe: SlideRecipe) => {
+    const slide = createSlideFromRecipe(recipe, deck.slides.map((candidate) => candidate.id));
+    updateDeck((current) => {
+      const anchorIndex = Math.max(0, current.slides.findIndex((candidate) => candidate.id === selectedSlide.id));
+      const slides = [...current.slides];
+      slides.splice(anchorIndex + 1, 0, slide);
+      return { ...current, slides };
+    });
+    setSelectedSlideId(slide.id);
+    setSelectedComponentId(slide.components[0]!.id);
+    setSlideQuery("");
+    setTemplatePanelOpen(false);
+    setStorageMessage(`Đã thêm công thức “${recipe.name}” sau slide hiện tại.`);
+  };
+
+  const applyStyle = (style: VisualStylePreset) => {
+    updateDeck((current) => applyVisualStyle(current, style));
+    setStorageMessage(`Đã áp dụng phong cách “${style.name}”.`);
+  };
+
+  const customizeTheme = (theme: DeckTheme) => {
+    updateDeck((current) => customizeDeckTheme(current, theme));
+    setStorageMessage("Đã cập nhật theme bằng token an toàn.");
+  };
+
   const duplicateSlide = () => {
     const id = nextStableId(`${selectedSlide.id}-copy`, deck.slides.map((slide) => slide.id));
     const duplicate = cloneDeck({ ...deck, slides: [{ ...selectedSlide, id }] }).slides[0]!;
@@ -514,6 +564,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     { id: "preview", label: "Xem trước", description: "Kiểm tra deck ở chế độ khán giả.", keywords: ["preview", "review"] },
     { id: "present", label: "Trình chiếu", description: "Mở chế độ trình chiếu từ trang hiện tại.", keywords: ["presentation", "thuyet trinh"] },
     { id: "export", label: "Xuất deck", description: "Mở công cụ xuất PNG hoặc PDF.", keywords: ["export", "pdf", "png"] },
+    { id: "open-templates", label: "Mẫu & phong cách", description: "Mở công thức slide và visual style có kiểm soát.", keywords: ["template", "recipe", "mau", "phong cach"] },
     { id: "add-slide", label: "Thêm slide", description: "Chọn một bố cục cho slide mới.", keywords: ["new slide", "layout"] },
     { id: "add-component", label: "Thêm thành phần", description: "Chọn visual phù hợp với bố cục hiện tại.", keywords: ["component", "visual"] },
     { id: "motion-replay", label: "Phát lại chuyển động", description: "Xem lại reveal của slide hiện tại.", keywords: ["motion", "animation", "chuyen dong"], disabled: !hasAuthoredMotion || reducedMotion, disabledReason: reducedMotion ? "Đang bật giảm chuyển động trên hệ thống." : "Slide chưa có chuyển động được thiết lập." },
@@ -527,6 +578,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     else if (commandId === "preview") window.location.assign(`/preview?deck=${deck.id}&slide=${selectedSlide.id}`);
     else if (commandId === "present") window.location.assign(`/present?deck=${deck.id}&slide=${selectedSlide.id}`);
     else if (commandId === "export") window.location.assign(`/export?deck=${deck.id}`);
+    else if (commandId === "open-templates") setTemplatePanelOpen(true);
     else if (commandId === "add-slide") setSlideMenuOpen(true);
     else if (commandId === "add-component") setComponentMenuOpen(true);
     else if (commandId === "motion-replay") replayMotion();
@@ -573,6 +625,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
             <button type="button" className="toolbar-button studio-action--history" aria-label="Làm lại" title="Làm lại (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo}><Redo2 size={16} aria-hidden="true" /></button>
           </div>
           <button ref={commandTriggerRef} type="button" className="toolbar-button studio-action--command" aria-label="Mở bảng lệnh" title="Mở bảng lệnh (Ctrl+K)" onClick={() => setCommandPaletteOpen(true)}><Command size={16} aria-hidden="true" /><span>Lệnh</span></button>
+          <button ref={templateTriggerRef} type="button" className="toolbar-button studio-action--templates" aria-label="Mở mẫu và phong cách" title="Mở công thức slide và phong cách trực quan" onClick={() => setTemplatePanelOpen(true)}><LayoutTemplate size={16} aria-hidden="true" /><span>Mẫu & phong cách</span></button>
           <StudioPopover
             open={snapshotMenuOpen}
             onOpenChange={setSnapshotMenuOpen}
@@ -642,7 +695,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
               </div>
             </div>
           </StudioPopover>
-          <button className="toolbar-button studio-action--reset" onClick={(event) => requestDestructiveAction("reset-draft", event.currentTarget)}><RotateCcw size={16} /> Khôi phục</button>
+          <button className="toolbar-button studio-action--reset" onClick={(event) => { setSnapshotMenuOpen(false); requestDestructiveAction("reset-draft", event.currentTarget); }}><RotateCcw size={16} /> Khôi phục</button>
           <button className="toolbar-button studio-action--save" onClick={saveDraft} data-state={saveState} aria-label="Lưu ngay"><Save size={16} /><span>Lưu ngay</span></button>
           <Link className="toolbar-button studio-action--preview" href={`/preview?deck=${deck.id}&slide=${selectedSlide.id}`} aria-label="Xem trước"><Eye size={16} /><span>Xem trước</span></Link>
           <Link className="toolbar-button studio-action--export" href={`/export?deck=${deck.id}`} aria-label="Xuất deck"><FileDown size={16} /><span>Xuất</span></Link>
@@ -868,6 +921,18 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
           const slide = deck.slides.find((candidate) => candidate.id === slideId);
           if (slide) selectSlide(slide);
         }}
+      />
+
+      <StudioTemplatePanel
+        open={templatePanelOpen}
+        recipes={slideRecipes}
+        styles={visualStyles}
+        currentThemeId={deck.themeId}
+        currentTheme={currentTheme}
+        onClose={() => setTemplatePanelOpen(false)}
+        onInsertRecipe={insertRecipe}
+        onApplyStyle={applyStyle}
+        onCustomizeTheme={customizeTheme}
       />
 
       {destructiveCopy && (

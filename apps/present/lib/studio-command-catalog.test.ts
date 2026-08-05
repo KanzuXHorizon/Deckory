@@ -25,6 +25,12 @@ const commands: StudioCommand[] = [
     label: "Phát lại chuyển động",
     description: "Xem lại transition và reveal của slide.",
     keywords: ["animation", "motion", "chuyen dong"]
+  },
+  {
+    id: "open-templates",
+    label: "Mẫu & phong cách",
+    description: "Mở công thức slide và visual style có kiểm soát.",
+    keywords: ["template", "recipe", "mau", "phong cach"]
   }
 ];
 
@@ -55,6 +61,8 @@ describe("studio command catalog", () => {
     expect(filterStudioCommands(commands, "trinh chieu")[0]?.id).toBe("present");
     expect(filterStudioCommands(commands, "audience")[0]?.id).toBe("preview");
     expect(filterStudioCommands(commands, "animation")[0]?.id).toBe("motion-replay");
+    expect(filterStudioCommands(commands, "mau")[0]?.id).toBe("open-templates");
+    expect(filterStudioCommands(commands, "template")[0]?.id).toBe("open-templates");
   });
 
   it("ranks prefix matches before general substring matches", () => {

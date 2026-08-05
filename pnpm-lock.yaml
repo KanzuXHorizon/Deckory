@@ -44,6 +44,9 @@ importers:
       '@deckory/template-gallery':
         specifier: workspace:*
         version: link:../../decks/template-gallery
+      '@deckory/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       lucide-react:
         specifier: 1.28.0
         version: 1.28.0(react@19.2.8)

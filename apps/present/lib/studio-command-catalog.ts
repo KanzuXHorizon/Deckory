@@ -9,7 +9,9 @@ export type StudioCommandId =
   | "export"
   | "add-slide"
   | "add-component"
+  | "open-templates"
   | "motion-replay"
+  | "open-templates"
   | "reset-draft";
 
 export type StudioCommand = {
