@@ -170,6 +170,18 @@ const TeamShowcasePropsSchema = z.object({
   if (team.variant === "profile" && team.members.length !== 1) {
     context.addIssue({ code: "custom", path: ["members"], message: "Expected exactly one member for the profile variant" });
   }
+  if (team.variant === "profile" && team.members.length === 1) {
+    const member = team.members[0]!;
+    if ((member.summary?.length ?? 0) > 220) {
+      context.addIssue({ code: "custom", path: ["members", 0, "summary"], message: "Expected a profile summary of at most 220 characters" });
+    }
+    if ((member.contributions?.length ?? 0) > 4) {
+      context.addIssue({ code: "custom", path: ["members", 0, "contributions"], message: "Expected at most four profile contributions" });
+    }
+    if ((member.links?.length ?? 0) > 3) {
+      context.addIssue({ code: "custom", path: ["members", 0, "links"], message: "Expected at most three profile links" });
+    }
+  }
 });
 
 const VisualizerItemSchema = z.object({

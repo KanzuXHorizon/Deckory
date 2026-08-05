@@ -33,6 +33,22 @@ describe("slide motion registry", () => {
     expect(getSlideMotion({ type: "none" }, 1, false).transition).toMatchObject({ duration: 0 });
   });
 
+  it("keeps every transition preset distinct and composited", () => {
+    const types = ["none", "fade", "slide", "push", "wipe", "zoom", "morph"] as const;
+    const motions = types.map((type) => getSlideMotion({ type }, 1, false));
+    const signatures = motions.map((motion) => JSON.stringify(motion));
+    const layoutProperties = new Set(["width", "height", "top", "right", "bottom", "left", "margin", "padding"]);
+
+    expect(new Set(signatures).size).toBe(types.length);
+    for (const motion of motions) {
+      expect(motion.transition.duration).toBeGreaterThanOrEqual(0);
+      expect(motion.transition.duration).toBeLessThanOrEqual(0.8);
+      for (const state of [motion.initial, motion.animate, motion.exit]) {
+        expect(Object.keys(state).some((property) => layoutProperties.has(property))).toBe(false);
+      }
+    }
+  });
+
   it("removes spatial, blur, wipe, and morph movement for reduced motion", () => {
     const slide = getSlideMotion({ type: "morph", duration: 0.9 }, 1, true);
     const element = getElementMotion({ type: "blur", delay: 0.4 }, true, true);
@@ -54,12 +70,42 @@ describe("element motion registry", () => {
   it("uses rise as the default reveal and hides unrevealed elements safely", () => {
     expect(getElementMotion(undefined, false, false)).toMatchObject({
       animate: { opacity: 0, y: 12 },
-      transition: { duration: 0.3 }
+      transition: { duration: 0.195 }
     });
     expect(getElementMotion({ type: "rise", duration: 0.44, delay: 0.2 }, true, false)).toMatchObject({
       animate: { opacity: 1, y: 0 },
       transition: { duration: 0.44, delay: 0.2 }
     });
+  });
+
+  it("uses a faster interruption-safe exit without carrying the entrance delay", () => {
+    const entrance = getElementMotion({ type: "blur", duration: 0.6, delay: 0.3 }, true, false);
+    const exit = getElementMotion({ type: "blur", duration: 0.6, delay: 0.3 }, false, false);
+
+    expect(exit.transition.delay).toBe(0);
+    expect(exit.transition.duration).toBeLessThan(entrance.transition.duration);
+    expect(exit.transition.duration).toBe(0.2);
+  });
+
+  it("shows the none preset immediately even when stale timing metadata exists", () => {
+    expect(getElementMotion({ type: "none", duration: 1.2, delay: 1.5 }, true, false)).toMatchObject({
+      animate: { opacity: 1 },
+      transition: { duration: 0, delay: 0 }
+    });
+  });
+
+  it("keeps every element preset distinct and within the interaction budget", () => {
+    const types = ["none", "fade", "rise", "scale", "wipe", "blur", "pop"] as const;
+    const motions = types.map((type) => getElementMotion({ type }, true, false));
+    const signatures = motions.map((motion) => JSON.stringify(motion));
+    const layoutProperties = new Set(["width", "height", "top", "right", "bottom", "left", "margin", "padding"]);
+
+    expect(new Set(signatures).size).toBe(types.length);
+    for (const motion of motions) {
+      expect(motion.transition.duration).toBeGreaterThanOrEqual(0);
+      expect(motion.transition.duration).toBeLessThanOrEqual(0.5);
+      expect(Object.keys(motion.animate).some((property) => layoutProperties.has(property))).toBe(false);
+    }
   });
 
   it("namespaces shared-element IDs by deck", () => {

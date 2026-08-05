@@ -498,6 +498,48 @@ describe("Deck document contract", () => {
     });
   });
 
+  it("rejects profile content that cannot fit the professional slide budget", () => {
+    const result = validateDeck({
+      id: "dense-member-profile",
+      version: 1,
+      title: "Hồ sơ quá dày",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "member-profile",
+        layout: "data",
+        components: [{
+          id: "member",
+          type: "team-showcase",
+          props: {
+            variant: "profile",
+            members: [{
+              id: "dense-member",
+              name: "Thành viên có quá nhiều nội dung",
+              summary: "Nội dung mô tả quá dài ".repeat(14),
+              contributions: ["Một", "Hai", "Ba", "Bốn", "Năm"],
+              links: [
+                { label: "Một", href: "https://example.com/1" },
+                { label: "Hai", href: "https://example.com/2" },
+                { label: "Ba", href: "https://example.com/3" },
+                { label: "Bốn", href: "https://example.com/4" }
+              ]
+            }]
+          }
+        }]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.members.0.summary" }),
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.members.0.contributions" }),
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.members.0.links" })
+      ])
+    });
+  });
+
   it("accepts semantic visualizers and rejects invalid parent references", () => {
     const valid = validateDeck({
       id: "growth-story",

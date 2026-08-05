@@ -124,7 +124,7 @@ export const deckoryStory = defineDeck({
             title: "Mức độ sẵn sàng của một deck",
             unit: "điểm chất lượng / 100",
             values: [
-              { label: "Nội dung có cấu trúc", value: 92, highlight: true },
+              { label: "Nội dung có cấu trúc", value: 92 },
               { label: "Khả năng đọc", value: 88 },
               { label: "Khả năng tiếp cận", value: 96, highlight: true },
               { label: "Fidelity khi xuất", value: 84 }
@@ -285,6 +285,17 @@ export const deckoryStory = defineDeck({
                 id: "research-member",
                 name: "Thành viên 04",
                 skills: ["Research", "Evidence"],
+                accent: "neutral"
+              },
+              {
+                id: "quality-member",
+                name: "Thành viên 05",
+                role: "Quality & Accessibility",
+                accent: "teal"
+              },
+              {
+                id: "content-member",
+                name: "Thành viên 06",
                 accent: "neutral"
               }
             ]

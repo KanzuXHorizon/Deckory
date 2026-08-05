@@ -109,12 +109,14 @@ export function getElementMotion(
   const type = effect?.type ?? "rise";
   const shown = elementState(type, true);
   const hidden = elementState(type, false);
+  const entranceDuration = type === "none" ? 0 : effect?.duration ?? defaultElementDuration(type);
+  const exitDuration = type === "none" ? 0 : Math.min(entranceDuration * 0.65, 0.2);
 
   return {
     animate: visible ? shown : hidden,
     transition: {
-      duration: type === "none" ? 0 : effect?.duration ?? defaultElementDuration(type),
-      delay: visible ? effect?.delay ?? 0 : 0,
+      duration: visible ? entranceDuration : exitDuration,
+      delay: type === "none" ? 0 : visible ? effect?.delay ?? 0 : 0,
       ease: EASINGS[effect?.easing ?? "standard"]
     }
   };

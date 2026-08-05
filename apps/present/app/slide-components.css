@@ -794,12 +794,30 @@
   transform: translateY(-18px);
 }
 
-.visualizer[data-animation="pulse"] .visualizer-node.is-featured {
-  animation: deckory-visualizer-pulse 2.4s ease-in-out infinite;
+.semantic-visualizer[data-animation="pulse"][data-active="true"][data-motion-off="false"] .visual-node.is-pulse-target {
+  animation: deckory-visualizer-pulse 1.25s ease-in-out 2;
+}
+
+.semantic-visualizer--orbit[data-animation="orbit"][data-active="true"][data-motion-off="false"] .visual-canvas::before {
+  animation: deckory-visualizer-orbit-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.semantic-visualizer--orbit[data-animation="orbit"][data-active="true"][data-motion-off="false"] .visual-canvas::after {
+  animation: deckory-visualizer-orbit-in-reverse 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes deckory-visualizer-pulse {
-  50% { box-shadow: 0 14px 34px color-mix(in srgb, var(--node-tone) 24%, transparent); }
+  50% { box-shadow: 0 17px 38px color-mix(in srgb, var(--node-tone) 25%, transparent); }
+}
+
+@keyframes deckory-visualizer-orbit-in {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(-14deg) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+}
+
+@keyframes deckory-visualizer-orbit-in-reverse {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(12deg) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
 }
 
 .slide--technical .team-member,
@@ -824,8 +842,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .visualizer[data-animation="pulse"] .visualizer-node.is-featured {
-    animation: none;
+  .semantic-visualizer .visual-node,
+  .semantic-visualizer .visual-canvas::before,
+  .semantic-visualizer .visual-canvas::after {
+    animation: none !important;
   }
 }
 
@@ -1404,10 +1424,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .team-showcase *,
-  .semantic-visualizer * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .team-showcase[data-motion-off="true"] *,
+  .semantic-visualizer[data-motion-off="true"] * {
+    animation: none !important;
   }
 }

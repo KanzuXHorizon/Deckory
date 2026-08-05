@@ -179,6 +179,32 @@ describe("SlideFrame", () => {
     expect(html).toContain("Deckory");
   });
 
+  it("marks six-member rosters for a compact two-column layout", () => {
+    const rosterSlide: Slide = {
+      id: "six-member-team",
+      layout: "data",
+      components: [{
+        id: "team",
+        type: "team-showcase",
+        props: {
+          variant: "editorial",
+          members: Array.from({ length: 6 }, (_, index) => ({
+            id: `member-${index + 1}`,
+            name: `Thành viên ${index + 1}`,
+            role: index === 0 ? "Project Lead" : undefined
+          }))
+        }
+      }]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={rosterSlide} deckId="deckory-story" sequenceStep={0} reducedMotion />
+    );
+
+    expect(html).toContain('data-member-count="6"');
+    expect(html.match(/class="team-member /g)).toHaveLength(6);
+  });
+
   it("renders a dedicated single-member profile without a roster control", () => {
     const profileSlide: Slide = {
       id: "member-profile",
@@ -220,6 +246,43 @@ describe("SlideFrame", () => {
     expect(html).toContain('alt="Chân dung Nguyễn Thái Vân"');
     expect(html).toContain("Product thesis");
     expect(html).not.toContain("Danh sách thành viên");
+  });
+
+  it("keeps sequenced semantic interactions inert until their reveal step", () => {
+    const slide: Slide = {
+      id: "semantic-sequence",
+      layout: "process",
+      components: [{
+        id: "visualizer",
+        type: "visualizer",
+        sequence: 1,
+        props: {
+          variant: "growth-tree",
+          interaction: "inspect",
+          animation: "pulse",
+          items: [
+            { id: "idea", label: "Ý tưởng", featured: true },
+            { id: "quality", label: "Quality gates", parentId: "idea" }
+          ]
+        }
+      }]
+    };
+
+    const hiddenHtml = renderToStaticMarkup(
+      <SlideFrame slide={slide} deckId="deckory-story" sequenceStep={0} reducedMotion={false} />
+    );
+    const visibleHtml = renderToStaticMarkup(
+      <SlideFrame slide={slide} deckId="deckory-story" sequenceStep={1} reducedMotion={false} />
+    );
+
+    expect(hiddenHtml).toContain('data-active="false"');
+    expect(hiddenHtml).not.toContain('role="button"');
+    expect(hiddenHtml).not.toContain('aria-pressed=');
+    expect(hiddenHtml).not.toContain("is-pulse-target");
+    expect(visibleHtml).toContain('data-active="true"');
+    expect(visibleHtml).toContain('role="button"');
+    expect(visibleHtml).toContain('aria-pressed="true"');
+    expect(visibleHtml).toContain("is-pulse-target");
   });
 
   it("preserves reveal state when motion is disabled or reduced", () => {

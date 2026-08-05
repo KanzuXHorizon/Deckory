@@ -19,6 +19,11 @@ import {
 } from "lucide-react";
 import { motion, type MotionStyle } from "motion/react";
 import type { SlideComponent } from "@deckory/schema";
+import {
+  getVisualizerMotion,
+  resolveSemanticMotion,
+  shouldPulseVisualizerNode
+} from "./semantic-motion";
 
 type TeamShowcaseProps = Extract<SlideComponent, { type: "team-showcase" }> ["props"];
 type TeamMember = TeamShowcaseProps["members"][number];
@@ -29,6 +34,7 @@ type Point = { x: number; y: number };
 type VisualMotionContext = {
   reducedMotion: boolean;
   motionDisabled: boolean;
+  active: boolean;
 };
 
 export function TeamShowcase({
@@ -38,14 +44,24 @@ export function TeamShowcase({
   variant = "editorial",
   members,
   reducedMotion,
-  motionDisabled
+  motionDisabled,
+  active
 }: TeamShowcaseProps & VisualMotionContext) {
   const detailId = useId();
   const initialMember = members.find((member) => member.featured) ?? members[0]!;
   const [selectedId, setSelectedId] = useState(initialMember.id);
   const selectedMember = members.find((member) => member.id === selectedId) ?? initialMember;
   const motionOff = reducedMotion || motionDisabled;
+  const interactive = active && !motionDisabled;
   const summary = members.map((member) => [member.name, member.role, member.studentId].filter(Boolean).join(", ")).join("; ");
+  const detailMotion = resolveSemanticMotion({
+    active,
+    motionOff,
+    hidden: { opacity: 0, x: 18, filter: "blur(6px)" },
+    shown: { opacity: 1, x: 0, filter: "blur(0px)" },
+    duration: 0.32,
+    delay: 0.08
+  });
 
   if (variant === "profile") {
     return (
@@ -56,6 +72,7 @@ export function TeamShowcase({
         member={selectedMember}
         motionOff={motionOff}
         motionDisabled={motionDisabled}
+        active={active}
         summary={summary}
       />
     );
@@ -67,8 +84,9 @@ export function TeamShowcase({
       data-deck-interactive
       data-motion-off={motionOff ? "true" : "false"}
       data-static={motionDisabled ? "true" : "false"}
+      data-active={active ? "true" : "false"}
       aria-label={`${title ?? "Đội ngũ"}. ${summary}`}
-      onKeyDown={(event) => handleInteractiveKeyDown(event, () => setSelectedId(initialMember.id))}
+      onKeyDown={interactive ? (event) => handleInteractiveKeyDown(event, () => setSelectedId(initialMember.id)) : undefined}
     >
       {(title || subtitle || project) && (
         <header className="team-showcase-heading">
@@ -81,28 +99,36 @@ export function TeamShowcase({
       )}
 
       <div className="team-showcase-layout">
-        <div className="team-member-list" role="group" aria-label="Danh sách thành viên">
+        <div className="team-member-list" data-member-count={members.length} role="group" aria-label="Danh sách thành viên">
           {members.map((member, index) => {
             const selected = member.id === selectedMember.id;
+            const memberMotion = resolveSemanticMotion({
+              active,
+              motionOff,
+              hidden: { opacity: 0, y: 18, clipPath: "inset(0 0 100% 0)" },
+              shown: { opacity: 1, y: 0, clipPath: "inset(0 0 0% 0)" },
+              duration: 0.42,
+              delay: Math.min(index * 0.07, 0.28)
+            });
             return (
               <motion.div
-                role={motionDisabled ? undefined : "button"}
+                role={interactive ? "button" : undefined}
                 className={`team-member team-member--${member.accent ?? "neutral"} ${selected ? "is-selected" : ""}`}
                 key={member.id}
-                aria-pressed={motionDisabled ? undefined : selected}
-                aria-controls={motionDisabled ? undefined : detailId}
+                aria-pressed={interactive ? selected : undefined}
+                aria-controls={interactive ? detailId : undefined}
                 aria-label={`Xem thông tin ${member.name}${member.role ? `, ${member.role}` : ""}`}
-                tabIndex={motionDisabled ? -1 : 0}
-                onClick={motionDisabled ? undefined : () => setSelectedId(member.id)}
-                onKeyDown={motionDisabled ? undefined : (event) => {
+                tabIndex={interactive ? 0 : -1}
+                onClick={interactive ? () => setSelectedId(member.id) : undefined}
+                onKeyDown={interactive ? (event) => {
                   if (event.key !== "Enter" && event.key !== " ") return;
                   event.preventDefault();
                   event.stopPropagation();
                   setSelectedId(member.id);
-                }}
-                initial={motionOff ? false : { opacity: 0, y: 18, clipPath: "inset(0 0 100% 0)" }}
-                animate={{ opacity: 1, y: 0, clipPath: "inset(0 0 0% 0)" }}
-                transition={{ duration: 0.42, delay: motionOff ? 0 : Math.min(index * 0.07, 0.28), ease: [0.16, 1, 0.3, 1] }}
+                } : undefined}
+                initial={memberMotion.initial}
+                animate={memberMotion.animate}
+                transition={memberMotion.transition}
               >
                 <MemberAvatar member={member} decorative={false} />
                 <span className="team-member-copy">
@@ -121,9 +147,9 @@ export function TeamShowcase({
           id={detailId}
           key={selectedMember.id}
           aria-live="polite"
-          initial={motionOff ? false : { opacity: 0, x: 18, filter: "blur(6px)" }}
-          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+          initial={detailMotion.initial}
+          animate={detailMotion.animate}
+          transition={detailMotion.transition}
         >
           <div className="team-member-detail-identity">
             <MemberAvatar member={selectedMember} decorative />
@@ -148,7 +174,7 @@ export function TeamShowcase({
             <div className="team-member-links" aria-label={`Liên kết của ${selectedMember.name}`}>
               {selectedMember.links.map((link) => {
                 const LinkIcon = resolveLinkIcon(link.label, link.href);
-                if (motionDisabled) {
+                if (!interactive) {
                   return (
                     <span key={`${link.label}-${link.href}`}>
                       <LinkIcon size={14} aria-hidden="true" />
@@ -179,6 +205,7 @@ function TeamProfileShowcase({
   member,
   motionOff,
   motionDisabled,
+  active,
   summary
 }: {
   title?: string;
@@ -187,14 +214,32 @@ function TeamProfileShowcase({
   member: TeamMember;
   motionOff: boolean;
   motionDisabled: boolean;
+  active: boolean;
   summary: string;
 }) {
+  const interactive = active && !motionDisabled;
+  const mediaMotion = resolveSemanticMotion({
+    active,
+    motionOff,
+    hidden: { opacity: 0, x: -18, clipPath: "inset(0 100% 0 0)" },
+    shown: { opacity: 1, x: 0, clipPath: "inset(0 0% 0 0)" },
+    duration: 0.46
+  });
+  const contentMotion = resolveSemanticMotion({
+    active,
+    motionOff,
+    hidden: { opacity: 0, x: 20, filter: "blur(6px)" },
+    shown: { opacity: 1, x: 0, filter: "blur(0px)" },
+    duration: 0.38,
+    delay: 0.08
+  });
   return (
     <section
       className="team-showcase team-showcase--profile"
       data-deck-interactive
       data-motion-off={motionOff ? "true" : "false"}
       data-static={motionDisabled ? "true" : "false"}
+      data-active={active ? "true" : "false"}
       data-has-heading={title || subtitle ? "true" : "false"}
       aria-label={`${title ?? "Hồ sơ thành viên"}. ${summary}`}
     >
@@ -210,9 +255,9 @@ function TeamProfileShowcase({
       <div className="team-profile-layout">
         <motion.div
           className={`team-profile-media team-profile-media--${member.accent ?? "neutral"}`}
-          initial={motionOff ? false : { opacity: 0, x: -18, clipPath: "inset(0 100% 0 0)" }}
-          animate={{ opacity: 1, x: 0, clipPath: "inset(0 0% 0 0)" }}
-          transition={{ duration: 0.46, ease: [0.16, 1, 0.3, 1] }}
+          initial={mediaMotion.initial}
+          animate={mediaMotion.animate}
+          transition={mediaMotion.transition}
         >
           <MemberAvatar member={member} decorative={false} />
           <div className="team-profile-media-caption">
@@ -222,9 +267,9 @@ function TeamProfileShowcase({
         </motion.div>
         <motion.article
           className={`team-profile-content team-profile-content--${member.accent ?? "neutral"}`}
-          initial={motionOff ? false : { opacity: 0, x: 20, filter: "blur(6px)" }}
-          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.38, delay: motionOff ? 0 : 0.08, ease: [0.16, 1, 0.3, 1] }}
+          initial={contentMotion.initial}
+          animate={contentMotion.animate}
+          transition={contentMotion.transition}
         >
           <div className="team-profile-identity">
             <span>{member.role ?? "Thành viên dự án"}</span>
@@ -246,7 +291,7 @@ function TeamProfileShowcase({
             <div className="team-member-links" aria-label={`Liên kết của ${member.name}`}>
               {member.links.map((link) => {
                 const LinkIcon = resolveLinkIcon(link.label, link.href);
-                if (motionDisabled) {
+                if (!interactive) {
                   return <span key={`${link.label}-${link.href}`}><LinkIcon size={14} aria-hidden="true" /><span>{link.label}</span></span>;
                 }
                 return <a key={`${link.label}-${link.href}`} href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noreferrer" : undefined}><LinkIcon size={14} aria-hidden="true" /><span>{link.label}</span></a>;
@@ -285,7 +330,8 @@ export function SemanticVisualizer({
   animation = "draw",
   items,
   reducedMotion,
-  motionDisabled
+  motionDisabled,
+  active
 }: VisualizerProps & VisualMotionContext) {
   const detailId = useId();
   const positions = useMemo(() => createPositions(variant, items.length), [items.length, variant]);
@@ -294,9 +340,12 @@ export function SemanticVisualizer({
   const selectedIndex = Math.max(0, items.findIndex((item) => item.id === selectedId));
   const selectedItem = items[selectedIndex] ?? items[0]!;
   const motionOff = reducedMotion || motionDisabled || animation === "none";
-  const interactive = !motionDisabled && interaction !== "none";
+  const interactive = active && !motionDisabled && interaction !== "none";
   const accessibleSummary = items.map((item) => `${item.label}${item.value ? `: ${item.value}` : ""}${item.description ? `. ${item.description}` : ""}`).join("; ");
   const edges = createEdges(items, positions, variant);
+  const trunkMotion = getVisualizerMotion(animation, "path", { active, motionOff, trunk: true });
+  const centerMotion = getVisualizerMotion(animation, "center", { active, motionOff });
+  const detailMotion = getVisualizerMotion(animation, "detail", { active, motionOff });
 
   const selectStep = (nextIndex: number) => {
     const normalized = (nextIndex + items.length) % items.length;
@@ -311,8 +360,9 @@ export function SemanticVisualizer({
       data-interaction={interaction}
       data-motion-off={motionOff ? "true" : "false"}
       data-static={motionDisabled ? "true" : "false"}
+      data-active={active ? "true" : "false"}
       aria-label={`${title ?? "Visual hóa"}. ${accessibleSummary}`}
-      onKeyDown={(event) => {
+      onKeyDown={interactive ? (event) => {
         const key = event.key;
         if (interaction === "step" && (key === "ArrowRight" || key === "ArrowDown")) {
           event.preventDefault();
@@ -325,7 +375,7 @@ export function SemanticVisualizer({
         } else {
           handleInteractiveKeyDown(event, () => setSelectedId(items[initialIndex]?.id ?? items[0]!.id));
         }
-      }}
+      } : undefined}
     >
       {(title || summary) && (
         <header className="semantic-visualizer-heading">
@@ -341,29 +391,32 @@ export function SemanticVisualizer({
               <motion.path
                 className="visual-trunk"
                 d="M50 98 C50 82 48 71 50 58 C52 44 50 30 50 12"
-                initial={motionOff ? false : { pathLength: 0, opacity: 0.25 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                initial={trunkMotion.initial}
+                animate={trunkMotion.animate}
+                transition={trunkMotion.transition}
               />
             )}
-            {edges.map((edge, index) => (
-              <motion.path
-                className="visual-edge"
-                key={edge.id}
-                d={edge.path}
-                initial={motionOff ? false : { pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 0.55, delay: motionOff ? 0 : Math.min(index * 0.08 + 0.12, 0.6), ease: [0.16, 1, 0.3, 1] }}
-              />
-            ))}
+            {edges.map((edge, index) => {
+              const edgeMotion = getVisualizerMotion(animation, "path", { active, motionOff, index });
+              return (
+                <motion.path
+                  className="visual-edge"
+                  key={edge.id}
+                  d={edge.path}
+                  initial={edgeMotion.initial}
+                  animate={edgeMotion.animate}
+                  transition={edgeMotion.transition}
+                />
+              );
+            })}
           </svg>
 
           {center && (
             <motion.div
               className="visual-center"
-              initial={motionOff ? false : { opacity: 0, scale: 0.84 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              initial={centerMotion.initial}
+              animate={centerMotion.animate}
+              transition={centerMotion.transition}
             >
               {variant === "orbit" ? <Orbit size={20} /> : variant === "network" ? <Network size={20} /> : <Leaf size={20} />}
               <span>{center}</span>
@@ -375,10 +428,12 @@ export function SemanticVisualizer({
             const selected = item.id === selectedItem.id;
             const ItemIcon = visualIcons[item.icon ?? defaultIconForVariant(variant)];
             const style = { "--visual-x": `${position.x}%`, "--visual-y": `${position.y}%` } as MotionStyle;
+            const nodeMotion = getVisualizerMotion(animation, "node", { active, motionOff, index });
+            const pulse = shouldPulseVisualizerNode(animation, active, motionOff, selected);
             return (
               <motion.div
                 role={interactive ? "button" : undefined}
-                className={`visual-node visualizer-node visual-node--${item.tone ?? "neutral"} ${selected ? "is-selected" : ""}`}
+                className={`visual-node visualizer-node visual-node--${item.tone ?? "neutral"} ${selected ? "is-selected" : ""} ${pulse ? "is-pulse-target" : ""}`}
                 key={item.id}
                 data-parent-id={item.parentId}
                 style={style}
@@ -393,9 +448,9 @@ export function SemanticVisualizer({
                   event.stopPropagation();
                   setSelectedId(item.id);
                 } : undefined}
-                initial={motionOff ? false : { opacity: 0, filter: "blur(5px)" }}
-                animate={{ opacity: 1, filter: "blur(0px)" }}
-                transition={{ duration: 0.4, delay: motionOff ? 0 : Math.min(index * 0.08 + 0.18, 0.72), ease: [0.16, 1, 0.3, 1] }}
+                initial={nodeMotion.initial}
+                animate={nodeMotion.animate}
+                transition={nodeMotion.transition}
               >
                 <span><ItemIcon size={17} aria-hidden="true" /></span>
                 <strong>{item.label}</strong>
@@ -410,15 +465,15 @@ export function SemanticVisualizer({
           id={detailId}
           key={selectedItem.id}
           aria-live="polite"
-          initial={motionOff ? false : { opacity: 0, x: 14, clipPath: "inset(0 0 0 18%)" }}
-          animate={{ opacity: 1, x: 0, clipPath: "inset(0 0 0 0%)" }}
-          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+          initial={detailMotion.initial}
+          animate={detailMotion.animate}
+          transition={detailMotion.transition}
         >
           <span>{String(selectedIndex + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}</span>
           {selectedItem.value && <strong>{selectedItem.value}</strong>}
           <h3>{selectedItem.label}</h3>
           {selectedItem.description && <p>{selectedItem.description}</p>}
-          {interaction === "step" && !motionDisabled && (
+          {interaction === "step" && interactive && (
             <div className="visual-step-controls" aria-label="Điều hướng các bước">
               <button type="button" onClick={() => selectStep(selectedIndex - 1)} aria-label="Bước trước"><ArrowLeft size={16} /></button>
               <button type="button" onClick={() => selectStep(selectedIndex + 1)} aria-label="Bước tiếp theo"><ArrowRight size={16} /></button>

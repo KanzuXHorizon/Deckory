@@ -78,18 +78,21 @@ function SlideContent({
 }) {
   return (
     <>
-      {components.map((component) => (
-        <Reveal
-          key={component.id}
-          component={component}
-          sequenceStep={sequenceStep}
-          reducedMotion={reducedMotion}
-          deckId={deckId}
-          motionDisabled={motionDisabled}
-        >
-          <Component component={component} reducedMotion={reducedMotion} motionDisabled={motionDisabled} />
-        </Reveal>
-      ))}
+      {components.map((component) => {
+        const active = component.sequence === undefined || sequenceStep >= component.sequence;
+        return (
+          <Reveal
+            key={component.id}
+            component={component}
+            sequenceStep={sequenceStep}
+            reducedMotion={reducedMotion}
+            deckId={deckId}
+            motionDisabled={motionDisabled}
+          >
+            <Component component={component} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />
+          </Reveal>
+        );
+      })}
     </>
   );
 }
@@ -138,11 +141,13 @@ function Reveal({
 function Component({
   component,
   reducedMotion,
-  motionDisabled
+  motionDisabled,
+  active
 }: {
   component: SlideComponent;
   reducedMotion: boolean;
   motionDisabled: boolean;
+  active: boolean;
 }) {
   switch (component.type) {
     case "heading":
@@ -166,9 +171,9 @@ function Component({
     case "insight":
       return <Insight {...component.props} />;
     case "team-showcase":
-      return <SemanticTeamShowcase {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} />;
+      return <SemanticTeamShowcase {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />;
     case "visualizer":
-      return <SemanticVisualizer {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} />;
+      return <SemanticVisualizer {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />;
     case "evidence-footer":
       return <EvidenceFooter {...component.props} />;
   }
