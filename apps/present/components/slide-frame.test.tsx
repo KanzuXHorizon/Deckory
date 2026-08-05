@@ -107,6 +107,78 @@ describe("SlideFrame", () => {
     expect(html).toContain('aria-label="Chặn document lỗi. Ngôn ngữ typescript. 2 dòng."');
   });
 
+  it("renders professional team showcases and semantic visualizers", () => {
+    const storySlide: Slide = {
+      id: "people-and-growth",
+      layout: "data",
+      components: [
+        {
+          id: "team",
+          type: "team-showcase",
+          props: {
+            title: "Đội ngũ biến cấu trúc thành trải nghiệm",
+            subtitle: "Ba vai trò, một source of truth.",
+            project: "Deckory",
+            variant: "editorial",
+            members: [
+              {
+                id: "thai-van",
+                name: "Nguyễn Thái Vân",
+                role: "Product Lead",
+                studentId: "PS00001",
+                summary: "Định hướng sản phẩm và visual quality.",
+                skills: ["Product", "Presentation"],
+                image: { src: "/team/thai-van.webp", alt: "Chân dung Nguyễn Thái Vân", position: "top" },
+                accent: "cobalt",
+                featured: true
+              },
+              {
+                id: "minh-anh",
+                name: "Minh Anh",
+                role: "Visual Systems",
+                contributions: ["Motion grammar", "Data visualization"],
+                accent: "teal"
+              }
+            ]
+          }
+        },
+        {
+          id: "growth",
+          type: "visualizer",
+          props: {
+            title: "Mỗi vòng review làm hệ thống trưởng thành hơn",
+            summary: "Từ ý tưởng đến sản phẩm có thể kiểm chứng.",
+            center: "Deckory",
+            variant: "growth-tree",
+            interaction: "inspect",
+            animation: "grow",
+            items: [
+              { id: "seed", label: "Ý tưởng", icon: "seed" },
+              { id: "prototype", label: "Nguyên mẫu", parentId: "seed", icon: "code", tone: "teal" },
+              { id: "product", label: "Sản phẩm", parentId: "prototype", icon: "sparkle", featured: true }
+            ]
+          }
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={storySlide} deckId="deckory-story" sequenceStep={0} reducedMotion />
+    );
+
+    expect(html).toContain("component-slot--team-showcase");
+    expect(html).toContain("team-showcase--editorial");
+    expect(html).toContain("Nguyễn Thái Vân");
+    expect(html).toContain('src="/team/thai-van.webp"');
+    expect(html).toContain('alt="Chân dung Nguyễn Thái Vân"');
+    expect(html).toContain("MA");
+    expect(html).toContain("component-slot--visualizer");
+    expect(html).toContain("visualizer--growth-tree");
+    expect(html).toContain('data-parent-id="seed"');
+    expect(html).toContain("Mỗi vòng review làm hệ thống trưởng thành hơn");
+    expect(html).toContain("Deckory");
+  });
+
   it("keeps unrevealed sequence content inaccessible and disables motion for thumbnails", () => {
     const slide: Slide = {
       id: "sequence-slide",

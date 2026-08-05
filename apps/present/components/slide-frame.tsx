@@ -14,6 +14,7 @@ import {
 import { motion } from "motion/react";
 import type { Slide, SlideComponent } from "@deckory/schema";
 import { getElementMotion, getMorphLayoutId } from "./motion-system";
+import { SemanticVisualizer, TeamShowcase as SemanticTeamShowcase } from "./semantic-visuals";
 
 type ComponentOf<Type extends SlideComponent["type"]> = Extract<SlideComponent, { type: Type }>;
 type HeadingProps = ComponentOf<"heading">["props"];
@@ -26,6 +27,8 @@ type ComparisonProps = ComponentOf<"comparison">["props"];
 type ProcessProps = ComponentOf<"process">["props"];
 type ArchitectureProps = ComponentOf<"architecture">["props"];
 type InsightProps = ComponentOf<"insight">["props"];
+type TeamShowcaseProps = ComponentOf<"team-showcase">["props"];
+type VisualizerProps = ComponentOf<"visualizer">["props"];
 type EvidenceProps = ComponentOf<"evidence-footer">["props"];
 
 export function SlideFrame({
@@ -84,7 +87,7 @@ function SlideContent({
           deckId={deckId}
           motionDisabled={motionDisabled}
         >
-          <Component component={component} />
+          <Component component={component} reducedMotion={reducedMotion} motionDisabled={motionDisabled} />
         </Reveal>
       ))}
     </>
@@ -132,7 +135,15 @@ function Reveal({
   );
 }
 
-function Component({ component }: { component: SlideComponent }) {
+function Component({
+  component,
+  reducedMotion,
+  motionDisabled
+}: {
+  component: SlideComponent;
+  reducedMotion: boolean;
+  motionDisabled: boolean;
+}) {
   switch (component.type) {
     case "heading":
       return <Heading {...component.props} />;
@@ -154,6 +165,10 @@ function Component({ component }: { component: SlideComponent }) {
       return <Architecture {...component.props} />;
     case "insight":
       return <Insight {...component.props} />;
+    case "team-showcase":
+      return <SemanticTeamShowcase {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} />;
+    case "visualizer":
+      return <SemanticVisualizer {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} />;
     case "evidence-footer":
       return <EvidenceFooter {...component.props} />;
   }

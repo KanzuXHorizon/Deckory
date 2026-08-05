@@ -114,12 +114,84 @@ const visualLab = defineDeck({
       ]
     },
     {
+      id: "table-evidence",
+      layout: "data",
+      variant: "technical",
+      notes: "Table phù hợp khi người xem cần đối chiếu chính xác nhiều thuộc tính cùng lúc.",
+      components: [
+        { id: "heading", type: "heading", props: { eyebrow: "BẰNG CHỨNG CÓ CẤU TRÚC", title: "Table giữ độ chính xác khi chart không đủ chi tiết." } },
+        { id: "table", type: "table", props: { title: "Phạm vi visual system", columns: ["Thành phần", "Trạng thái", "Mục đích"], rows: [
+          { cells: ["Chart", "Hoàn thiện", "So sánh và xu hướng"], highlight: true },
+          { cells: ["Table", "Hoàn thiện", "Đối chiếu chính xác"] },
+          { cells: ["Code", "Hoàn thiện", "Bằng chứng kỹ thuật"] },
+          { cells: ["Insight", "Hoàn thiện", "Kết luận hành động"] }
+        ], note: "Fixture minh hoạ cho visual QA." }, sequence: 1 },
+        { id: "footer", type: "evidence-footer", props: { page: "07", source: "Deckory component inventory" } }
+      ]
+    },
+    {
+      id: "code-evidence",
+      layout: "architecture",
+      variant: "technical",
+      notes: "Code block dùng cho đoạn bằng chứng ngắn; không biến slide thành màn hình IDE.",
+      components: [
+        { id: "heading", type: "heading", props: { eyebrow: "TECHNICAL PROOF", title: "Code block trình bày cơ chế có thể kiểm chứng." } },
+        { id: "code", type: "code", props: { title: "Validation trước khi present", language: "typescript", code: "const result = validateDeck(draft);\nif (!result.ok) {\n  return showDiagnostics(result.diagnostics);\n}\nopenPreview(result.deck);", caption: "Chỉ document hợp lệ mới được coi là sẵn sàng preview.", showLineNumbers: true, highlightLines: [1, 2, 5] }, sequence: 1 },
+        { id: "footer", type: "evidence-footer", props: { page: "08", source: "Deckory validation flow" } }
+      ]
+    },
+    {
+      id: "team-showcase",
+      layout: "process",
+      variant: "quiet",
+      notes: "Team showcase cần làm rõ trách nhiệm và đóng góp, không chỉ đặt ảnh chân dung cạnh nhau.",
+      components: [
+        { id: "heading", type: "heading", props: { eyebrow: "PEOPLE & OWNERSHIP", title: "Một đội ngũ chuyên nghiệp được hiểu qua trách nhiệm rõ ràng." } },
+        { id: "team", type: "team-showcase", props: {
+          project: "DECKORY PRODUCT TEAM",
+          title: "Vai trò khác nhau. Một tiêu chuẩn chất lượng.",
+          subtitle: "Fixture minh hoạ cách trình bày thành viên, năng lực và đóng góp trong cùng một visual grammar.",
+          variant: "editorial",
+          members: [
+            { id: "narrative-lead", name: "Narrative Lead", role: "Product & Story", summary: "Chuyển dữ liệu thô thành mạch kể có kết luận rõ.", skills: ["Narrative", "UX Writing"], contributions: ["Định hình story arc", "Review chất lượng nội dung"], accent: "cobalt", featured: true },
+            { id: "visual-lead", name: "Visual Lead", role: "Design System", summary: "Giữ hierarchy, typography và khả năng đọc nhất quán.", skills: ["Visual Design", "Accessibility"], contributions: ["Xây visual grammar", "Audit responsive"], accent: "teal" },
+            { id: "engine-lead", name: "Engine Lead", role: "Presentation Engineering", summary: "Đảm bảo schema, renderer và runtime cùng một source of truth.", skills: ["TypeScript", "Testing"], contributions: ["Typed renderer", "Validation và browser QA"], accent: "amber" }
+          ]
+        }, sequence: 1 },
+        { id: "footer", type: "evidence-footer", props: { page: "09", source: "Fixture team showcase" } }
+      ]
+    },
+    {
+      id: "growth-visualizer",
+      layout: "data",
+      variant: "spotlight",
+      notes: "Visualizer dùng khi quan hệ giữa các nút là nội dung chính, không phải trang trí nền.",
+      components: [
+        { id: "heading", type: "heading", props: { eyebrow: "RELATIONSHIP VISUAL", title: "Một visualizer tốt cho thấy điều gì dẫn đến điều gì." } },
+        { id: "visualizer", type: "visualizer", props: {
+          title: "Từ source of truth đến trải nghiệm",
+          summary: "Cây tăng trưởng minh hoạ quan hệ cha–con giữa document model, quality engine và các bề mặt sản phẩm.",
+          center: "Deckory AST",
+          variant: "growth-tree",
+          interaction: "inspect",
+          animation: "grow",
+          items: [
+            { id: "schema", label: "Schema", value: "Typed", description: "Contract dữ liệu ổn định", icon: "seed", tone: "cobalt" },
+            { id: "quality", label: "Quality engine", value: "Validated", description: "Chặn lỗi trước khi trình chiếu", icon: "sparkle", tone: "teal", parentId: "schema" },
+            { id: "studio", label: "Studio", description: "Chỉnh nội dung có guardrail", icon: "system", tone: "amber", parentId: "quality" },
+            { id: "presenter", label: "Presenter", description: "Trình chiếu ổn định và accessible", icon: "people", tone: "teal", parentId: "quality", featured: true }
+          ]
+        }, sequence: 1 },
+        { id: "footer", type: "evidence-footer", props: { page: "10", source: "Fixture relationship visual" } }
+      ]
+    },
+    {
       id: "closing",
       layout: "closing",
       notes: "Kết thúc visual lab bằng nguyên tắc chọn hình thức trước khi trang trí.",
       components: [
         { id: "heading", type: "heading", props: { eyebrow: "VISUAL GRAMMAR", title: "Chọn visual theo quan hệ cần giải thích.", emphasis: "Không theo hiệu ứng đang có.", description: "Deckory giữ chart, layout và narrative cùng trong một contract có thể kiểm tra." } },
-        { id: "footer", type: "evidence-footer", props: { page: "07", source: "Deckory visual system" } }
+        { id: "footer", type: "evidence-footer", props: { page: "11", source: "Deckory visual system" } }
       ]
     }
   ]
@@ -174,7 +246,7 @@ export function slideTitle(slide: Slide): string {
 
 export const visualCoverage = [
   { label: "Layouts", value: "9", note: "cover đến closing" },
-  { label: "Components", value: "9", note: "semantic và typed" },
+  { label: "Components", value: "13", note: "semantic và typed" },
   { label: "Charts", value: "4", note: "bar, line, area, donut" },
   { label: "Themes", value: "3", note: "editorial và technical" }
 ] as const;

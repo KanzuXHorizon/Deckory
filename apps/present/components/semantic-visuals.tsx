@@ -1,0 +1,438 @@
+"use client";
+
+import type { KeyboardEvent } from "react";
+import { useId, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Code2,
+  Database,
+  ExternalLink,
+  Layers3,
+  Leaf,
+  Mail,
+  Network,
+  Orbit,
+  Sparkles,
+  Sprout,
+  UsersRound
+} from "lucide-react";
+import { motion, type MotionStyle } from "motion/react";
+import type { SlideComponent } from "@deckory/schema";
+
+type TeamShowcaseProps = Extract<SlideComponent, { type: "team-showcase" }> ["props"];
+type TeamMember = TeamShowcaseProps["members"][number];
+type VisualizerProps = Extract<SlideComponent, { type: "visualizer" }> ["props"];
+type VisualizerItem = VisualizerProps["items"][number];
+type Point = { x: number; y: number };
+
+type VisualMotionContext = {
+  reducedMotion: boolean;
+  motionDisabled: boolean;
+};
+
+export function TeamShowcase({
+  title,
+  subtitle,
+  project,
+  variant = "editorial",
+  members,
+  reducedMotion,
+  motionDisabled
+}: TeamShowcaseProps & VisualMotionContext) {
+  const detailId = useId();
+  const initialMember = members.find((member) => member.featured) ?? members[0]!;
+  const [selectedId, setSelectedId] = useState(initialMember.id);
+  const selectedMember = members.find((member) => member.id === selectedId) ?? initialMember;
+  const motionOff = reducedMotion || motionDisabled;
+  const summary = members.map((member) => [member.name, member.role, member.studentId].filter(Boolean).join(", ")).join("; ");
+
+  return (
+    <section
+      className={`team-showcase team-showcase--${variant}`}
+      data-deck-interactive
+      data-motion-off={motionOff ? "true" : "false"}
+      data-static={motionDisabled ? "true" : "false"}
+      aria-label={`${title ?? "Đội ngũ"}. ${summary}`}
+      onKeyDown={(event) => handleInteractiveKeyDown(event, () => setSelectedId(initialMember.id))}
+    >
+      {(title || subtitle || project) && (
+        <header className="team-showcase-heading">
+          <div>
+            {project && <span>{project}</span>}
+            {title && <h2>{title}</h2>}
+          </div>
+          {subtitle && <p>{subtitle}</p>}
+        </header>
+      )}
+
+      <div className="team-showcase-layout">
+        <div className="team-member-list" role="list" aria-label="Danh sách thành viên">
+          {members.map((member, index) => {
+            const selected = member.id === selectedMember.id;
+            return (
+              <motion.div
+                role={motionDisabled ? undefined : "button"}
+                className={`team-member team-member--${member.accent ?? "neutral"} ${selected ? "is-selected" : ""}`}
+                key={member.id}
+                aria-pressed={motionDisabled ? undefined : selected}
+                aria-controls={motionDisabled ? undefined : detailId}
+                aria-label={`Xem thông tin ${member.name}${member.role ? `, ${member.role}` : ""}`}
+                tabIndex={motionDisabled ? -1 : 0}
+                onClick={motionDisabled ? undefined : () => setSelectedId(member.id)}
+                onKeyDown={motionDisabled ? undefined : (event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSelectedId(member.id);
+                }}
+                initial={motionOff ? false : { opacity: 0, y: 18, clipPath: "inset(0 0 100% 0)" }}
+                animate={{ opacity: 1, y: 0, clipPath: "inset(0 0 0% 0)" }}
+                transition={{ duration: 0.42, delay: motionOff ? 0 : Math.min(index * 0.07, 0.28), ease: [0.16, 1, 0.3, 1] }}
+              >
+                <MemberAvatar member={member} decorative={false} />
+                <span className="team-member-copy">
+                  <strong>{member.name}</strong>
+                  {member.role && <span>{member.role}</span>}
+                  {member.studentId && <small>{member.studentId}</small>}
+                </span>
+                {member.featured && <i>Lead</i>}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <motion.aside
+          className={`team-member-detail team-member-detail--${selectedMember.accent ?? "neutral"}`}
+          id={detailId}
+          key={selectedMember.id}
+          aria-live="polite"
+          initial={motionOff ? false : { opacity: 0, x: 18, filter: "blur(6px)" }}
+          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="team-member-detail-identity">
+            <MemberAvatar member={selectedMember} decorative />
+            <div>
+              <span>{selectedMember.role ?? "Thành viên dự án"}</span>
+              <h3>{selectedMember.name}</h3>
+              {selectedMember.studentId && <small>MSSV · {selectedMember.studentId}</small>}
+            </div>
+          </div>
+          {selectedMember.summary && <p className="team-member-summary">{selectedMember.summary}</p>}
+          {selectedMember.skills && selectedMember.skills.length > 0 && (
+            <div className="team-member-skills" aria-label="Kỹ năng">
+              {selectedMember.skills.map((skill) => <span key={skill}>{skill}</span>)}
+            </div>
+          )}
+          {selectedMember.contributions && selectedMember.contributions.length > 0 && (
+            <ul className="team-member-contributions">
+              {selectedMember.contributions.map((contribution) => <li key={contribution}>{contribution}</li>)}
+            </ul>
+          )}
+          {selectedMember.links && selectedMember.links.length > 0 && (
+            <div className="team-member-links" aria-label={`Liên kết của ${selectedMember.name}`}>
+              {selectedMember.links.map((link) => {
+                const LinkIcon = resolveLinkIcon(link.label, link.href);
+                if (motionDisabled) {
+                  return (
+                    <span key={`${link.label}-${link.href}`}>
+                      <LinkIcon size={14} aria-hidden="true" />
+                      <span>{link.label}</span>
+                    </span>
+                  );
+                }
+                return (
+                  <a key={`${link.label}-${link.href}`} href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noreferrer" : undefined}>
+                    <LinkIcon size={14} aria-hidden="true" />
+                    <span>{link.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </motion.aside>
+      </div>
+      <span className="sr-only">{summary}</span>
+    </section>
+  );
+}
+
+function MemberAvatar({ member, decorative }: { member: TeamMember; decorative: boolean }) {
+  if (member.image) {
+    return (
+      <span className="team-member-avatar" data-image-position={member.image.position ?? "center"}>
+        <img src={member.image.src} alt={decorative ? "" : member.image.alt} aria-hidden={decorative || undefined} />
+      </span>
+    );
+  }
+
+  return (
+    <span className="team-member-avatar team-member-avatar--monogram" aria-hidden={decorative || undefined}>
+      {initials(member.name)}
+    </span>
+  );
+}
+
+export function SemanticVisualizer({
+  title,
+  summary,
+  center,
+  variant,
+  interaction = "inspect",
+  animation = "draw",
+  items,
+  reducedMotion,
+  motionDisabled
+}: VisualizerProps & VisualMotionContext) {
+  const detailId = useId();
+  const positions = useMemo(() => createPositions(variant, items.length), [items.length, variant]);
+  const initialIndex = Math.max(0, items.findIndex((item) => item.featured));
+  const [selectedId, setSelectedId] = useState(items[initialIndex]?.id ?? items[0]!.id);
+  const selectedIndex = Math.max(0, items.findIndex((item) => item.id === selectedId));
+  const selectedItem = items[selectedIndex] ?? items[0]!;
+  const motionOff = reducedMotion || motionDisabled || animation === "none";
+  const interactive = !motionDisabled && interaction !== "none";
+  const accessibleSummary = items.map((item) => `${item.label}${item.value ? `: ${item.value}` : ""}${item.description ? `. ${item.description}` : ""}`).join("; ");
+  const edges = createEdges(items, positions, variant);
+
+  const selectStep = (nextIndex: number) => {
+    const normalized = (nextIndex + items.length) % items.length;
+    setSelectedId(items[normalized]!.id);
+  };
+
+  return (
+    <section
+      className={`visualizer visualizer--${variant} semantic-visualizer semantic-visualizer--${variant}`}
+      data-deck-interactive
+      data-animation={animation}
+      data-interaction={interaction}
+      data-motion-off={motionOff ? "true" : "false"}
+      data-static={motionDisabled ? "true" : "false"}
+      aria-label={`${title ?? "Visual hóa"}. ${accessibleSummary}`}
+      onKeyDown={(event) => {
+        const key = event.key;
+        if (interaction === "step" && (key === "ArrowRight" || key === "ArrowDown")) {
+          event.preventDefault();
+          event.stopPropagation();
+          selectStep(selectedIndex + 1);
+        } else if (interaction === "step" && (key === "ArrowLeft" || key === "ArrowUp")) {
+          event.preventDefault();
+          event.stopPropagation();
+          selectStep(selectedIndex - 1);
+        } else {
+          handleInteractiveKeyDown(event, () => setSelectedId(items[initialIndex]?.id ?? items[0]!.id));
+        }
+      }}
+    >
+      {(title || summary) && (
+        <header className="semantic-visualizer-heading">
+          {title && <h2>{title}</h2>}
+          {summary && <p>{summary}</p>}
+        </header>
+      )}
+
+      <div className="semantic-visualizer-layout">
+        <div className="visual-canvas" aria-hidden="true">
+          <svg className="visual-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {variant === "growth-tree" && (
+              <motion.path
+                className="visual-trunk"
+                d="M50 98 C50 82 48 71 50 58 C52 44 50 30 50 12"
+                initial={motionOff ? false : { pathLength: 0, opacity: 0.25 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              />
+            )}
+            {edges.map((edge, index) => (
+              <motion.path
+                className="visual-edge"
+                key={edge.id}
+                d={edge.path}
+                initial={motionOff ? false : { pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.55, delay: motionOff ? 0 : Math.min(index * 0.08 + 0.12, 0.6), ease: [0.16, 1, 0.3, 1] }}
+              />
+            ))}
+          </svg>
+
+          {center && (
+            <motion.div
+              className="visual-center"
+              initial={motionOff ? false : { opacity: 0, scale: 0.84 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {variant === "orbit" ? <Orbit size={20} /> : variant === "network" ? <Network size={20} /> : <Leaf size={20} />}
+              <span>{center}</span>
+            </motion.div>
+          )}
+
+          {items.map((item, index) => {
+            const position = positions[index]!;
+            const selected = item.id === selectedItem.id;
+            const ItemIcon = visualIcons[item.icon ?? defaultIconForVariant(variant)];
+            const style = { "--visual-x": `${position.x}%`, "--visual-y": `${position.y}%` } as MotionStyle;
+            return (
+              <motion.div
+                role={interactive ? "button" : undefined}
+                className={`visual-node visualizer-node visual-node--${item.tone ?? "neutral"} ${selected ? "is-selected" : ""}`}
+                key={item.id}
+                data-parent-id={item.parentId}
+                style={style}
+                aria-pressed={interactive ? selected : undefined}
+                aria-controls={interactive ? detailId : undefined}
+                aria-label={`Xem ${item.label}${item.value ? `, ${item.value}` : ""}`}
+                tabIndex={interactive ? 0 : -1}
+                onClick={interactive ? () => setSelectedId(item.id) : undefined}
+                onKeyDown={interactive ? (event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSelectedId(item.id);
+                } : undefined}
+                initial={motionOff ? false : { opacity: 0, scale: 0.72, filter: "blur(5px)" }}
+                animate={{ opacity: 1, scale: selected ? 1.08 : 1, filter: "blur(0px)" }}
+                transition={{ duration: 0.4, delay: motionOff ? 0 : Math.min(index * 0.08 + 0.18, 0.72), ease: [0.16, 1, 0.3, 1] }}
+              >
+                <span><ItemIcon size={17} aria-hidden="true" /></span>
+                <strong>{item.label}</strong>
+                {item.value && <small>{item.value}</small>}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <motion.aside
+          className={`visual-detail visual-detail--${selectedItem.tone ?? "neutral"}`}
+          id={detailId}
+          key={selectedItem.id}
+          aria-live="polite"
+          initial={motionOff ? false : { opacity: 0, x: 14, clipPath: "inset(0 0 0 18%)" }}
+          animate={{ opacity: 1, x: 0, clipPath: "inset(0 0 0 0%)" }}
+          transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <span>{String(selectedIndex + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}</span>
+          {selectedItem.value && <strong>{selectedItem.value}</strong>}
+          <h3>{selectedItem.label}</h3>
+          {selectedItem.description && <p>{selectedItem.description}</p>}
+          {interaction === "step" && !motionDisabled && (
+            <div className="visual-step-controls" aria-label="Điều hướng các bước">
+              <button type="button" onClick={() => selectStep(selectedIndex - 1)} aria-label="Bước trước"><ArrowLeft size={16} /></button>
+              <button type="button" onClick={() => selectStep(selectedIndex + 1)} aria-label="Bước tiếp theo"><ArrowRight size={16} /></button>
+            </div>
+          )}
+        </motion.aside>
+      </div>
+      <span className="sr-only">{accessibleSummary}</span>
+    </section>
+  );
+}
+
+function handleInteractiveKeyDown(event: KeyboardEvent<HTMLElement>, reset: () => void) {
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " "].includes(event.key)) {
+    event.stopPropagation();
+  }
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    reset();
+  }
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
+}
+
+function resolveLinkIcon(label: string, href: string) {
+  const normalized = `${label} ${href}`.toLowerCase();
+  if (normalized.includes("github")) return Code2;
+  if (normalized.includes("linkedin")) return UsersRound;
+  if (href.startsWith("mailto:")) return Mail;
+  return ExternalLink;
+}
+
+const visualIcons = {
+  seed: Sprout,
+  leaf: Leaf,
+  data: Database,
+  system: Layers3,
+  people: UsersRound,
+  sparkle: Sparkles,
+  code: Code2
+} as const;
+
+function defaultIconForVariant(variant: VisualizerProps["variant"]): keyof typeof visualIcons {
+  if (variant === "growth-tree") return "leaf";
+  if (variant === "network") return "system";
+  if (variant === "orbit") return "sparkle";
+  return "data";
+}
+
+function createPositions(variant: VisualizerProps["variant"], count: number): Point[] {
+  if (variant === "growth-tree") {
+    const positions: Point[] = [
+      { x: 50, y: 84 },
+      { x: 34, y: 67 },
+      { x: 66, y: 65 },
+      { x: 22, y: 46 },
+      { x: 43, y: 43 },
+      { x: 60, y: 38 },
+      { x: 78, y: 47 },
+      { x: 50, y: 20 }
+    ];
+    return positions.slice(0, count);
+  }
+
+  if (variant === "timeline-path") {
+    return Array.from({ length: count }, (_, index) => ({
+      x: count === 1 ? 50 : 10 + (index / (count - 1)) * 80,
+      y: index % 2 === 0 ? 42 : 61
+    }));
+  }
+
+  if (variant === "orbit") {
+    return Array.from({ length: count }, (_, index) => {
+      const angle = (-Math.PI / 2) + (index / count) * Math.PI * 2;
+      return { x: 50 + Math.cos(angle) * 36, y: 50 + Math.sin(angle) * 32 };
+    });
+  }
+
+  const networkPositions: Point[] = [
+    { x: 18, y: 28 },
+    { x: 48, y: 18 },
+    { x: 78, y: 30 },
+    { x: 30, y: 55 },
+    { x: 66, y: 56 },
+    { x: 16, y: 78 },
+    { x: 50, y: 82 },
+    { x: 82, y: 76 }
+  ];
+  return networkPositions.slice(0, count);
+}
+
+function createEdges(items: VisualizerItem[], positions: Point[], variant: VisualizerProps["variant"]): Array<{ id: string; path: string }> {
+  const byId = new Map(items.map((item, index) => [item.id, positions[index]!]));
+  const edges: Array<{ id: string; path: string }> = [];
+
+  items.forEach((item, index) => {
+    const to = positions[index]!;
+    let from: Point | undefined;
+
+    if (item.parentId) from = byId.get(item.parentId);
+    else if (variant === "orbit") from = { x: 50, y: 50 };
+    else if (index > 0) from = positions[index - 1];
+    else if (variant === "growth-tree") from = { x: 50, y: 98 };
+
+    if (!from) return;
+    const curveX = (from.x + to.x) / 2;
+    const path = variant === "timeline-path"
+      ? `M ${from.x} ${from.y} C ${curveX} ${from.y}, ${curveX} ${to.y}, ${to.x} ${to.y}`
+      : `M ${from.x} ${from.y} C ${from.x} ${(from.y + to.y) / 2}, ${to.x} ${(from.y + to.y) / 2}, ${to.x} ${to.y}`;
+    edges.push({ id: `${item.id}-${index}`, path });
+  });
+
+  return edges;
+}
