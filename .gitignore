@@ -27,6 +27,8 @@ screenshots/tmp/
 .env.*
 !.env.example
 *.local
+StartDev.ps1
+nul
 
 # Logs
 *.log

@@ -112,7 +112,12 @@ export function formatElapsedTime(totalSeconds: number): string {
   return hours > 0 ? `${hours}:${clock}` : clock;
 }
 
+export function shouldPrepareOfflineCache(environment: string | undefined): boolean {
+  return environment === "production";
+}
+
 export async function prepareOfflineCache(timeoutMs = 8_000): Promise<OfflineStatus> {
+  if (!shouldPrepareOfflineCache(process.env.NODE_ENV)) return "online-only";
   if (!("serviceWorker" in navigator)) return "unsupported";
 
   try {

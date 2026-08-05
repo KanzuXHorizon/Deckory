@@ -1,0 +1,34 @@
+{
+  "source": "https://github.com/Leonxlnx/taste-skill",
+  "retrievedAt": "2026-08-05",
+  "license": "MIT",
+  "strategy": "presentation-specific adapted subset",
+  "primarySkill": ".agents/skills/deckory-slide-director/SKILL.md",
+  "skills": [
+    {
+      "upstreamInstallName": "gpt-taste",
+      "localPath": ".agents/skills/gpt-taste/SKILL.md",
+      "mode": "adapted",
+      "reason": "Retains anti-default layout, typography, density, and motion guidance while removing landing-page-only requirements."
+    },
+    {
+      "upstreamInstallName": "brandkit",
+      "localPath": ".agents/skills/brandkit/SKILL.md",
+      "mode": "adapted",
+      "reason": "Keeps identity-board generation as an optional agent skill and explicitly prevents it from being mistaken for a Deckory product feature."
+    },
+    {
+      "upstreamInstallName": "full-output-enforcement",
+      "localPath": ".agents/skills/full-output-enforcement/SKILL.md",
+      "mode": "adapted",
+      "reason": "Applies completeness checks to decks, typed components, verification, and visual evidence."
+    }
+  ],
+  "projectOverrides": [
+    "AGENTS.md",
+    "PRODUCT.md",
+    "DESIGN.md",
+    "packages/schema/src/index.ts"
+  ],
+  "updatePolicy": "Review upstream changes before manually refreshing local adaptations; do not overwrite Deckory-specific presentation constraints with page-only rules."
+}

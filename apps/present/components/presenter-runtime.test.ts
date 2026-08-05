@@ -8,6 +8,7 @@ import {
   isEditableTarget,
   isPresenterSyncMessage,
   resolvePresentationView,
+  shouldPrepareOfflineCache,
   type PerformanceResourceLike
 } from "./presenter-runtime";
 
@@ -27,6 +28,12 @@ describe("presenter runtime helpers", () => {
       "/_next/static/app.js",
       "/_next/static/font.woff2"
     ]);
+  });
+
+  it("does not install a service worker while Next.js development assets are changing", () => {
+    expect(shouldPrepareOfflineCache("development")).toBe(false);
+    expect(shouldPrepareOfflineCache("test")).toBe(false);
+    expect(shouldPrepareOfflineCache("production")).toBe(true);
   });
 
   it("uses precise readiness copy instead of claiming offline support after registration", () => {

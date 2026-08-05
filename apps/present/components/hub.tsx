@@ -100,7 +100,7 @@ export function Hub() {
                 <article className={`deck-card ${active ? "is-selected" : ""}`} key={item.deck.id}>
                   <button className="deck-card-preview" onClick={() => setActiveDeckId(item.deck.id)} aria-label={`Chọn ${item.deck.title}`}>
                     <DeckThumbnail slide={item.deck.slides[0]!} />
-                    <span className={`status-chip ${hasDraft ? "status-chip--draft" : "status-chip--ready"}`}>
+                    <span className={`hub-status-chip ${hasDraft ? "hub-status-chip--draft" : "hub-status-chip--ready"}`}>
                       {hasDraft ? <Clock3 size={13} /> : <CheckCircle2 size={13} />}
                       {hasDraft ? "Có bản nháp" : "Sẵn sàng"}
                     </span>

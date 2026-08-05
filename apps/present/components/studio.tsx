@@ -379,6 +379,11 @@ function createComponent(type: SlideComponent["type"], id: string): SlideCompone
       { label: "B", value: 58 },
       { label: "C", value: 64 }
     ] } };
+    case "table": return { id, type, props: { title: "Bảng mới", columns: ["Tiêu chí", "Kết quả"], rows: [
+      { cells: ["Mục A", "Đạt"], highlight: true },
+      { cells: ["Mục B", "Đang cải thiện"] }
+    ], note: "Thay dữ liệu minh hoạ bằng nguồn đã kiểm chứng." } };
+    case "code": return { id, type, props: { title: "Đoạn mã mới", language: "typescript", code: "const insight = createStory(data);", caption: "Giải thích ngắn ý nghĩa của đoạn mã.", showLineNumbers: true } };
     case "insight": return { id, type, props: { label: "KẾT LUẬN", title: "Insight chính", description: "Diễn giải vì sao insight này quan trọng.", metric: "+12", tone: "cobalt" } };
     case "evidence-footer": return { id, type, props: { source: "Nguồn cần bổ sung" } };
   }

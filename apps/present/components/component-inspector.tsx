@@ -64,6 +64,33 @@ export function ComponentInspector({
           ))}
         </InspectorSection>
       );
+    case "table":
+      return (
+        <InspectorSection title="Table" description="Bảng dùng cho dữ liệu cần đối chiếu chính xác theo hàng và cột.">
+          <TextField label="Tiêu đề" value={component.props.title} onChange={(value) => update({ title: value })} />
+          <TextField label="Tên cột (phân cách bằng |)" value={component.props.columns.join(" | ")} onChange={(value) => update({ columns: splitCells(value) })} />
+          {component.props.rows.map((row, index) => (
+            <FieldGroup key={`${row.cells.join("-")}-${index}`} label={`Hàng ${index + 1}`}>
+              <TextField label="Ô dữ liệu (phân cách bằng |)" value={row.cells.join(" | ")} onChange={(value) => updateTableRow(component, index, { cells: splitCells(value) }, onChange)} />
+              <SelectField label="Nhấn mạnh" value={row.highlight ? "yes" : "no"} options={["no", "yes"]} labels={{ yes: "Có", no: "Không" }} onChange={(value) => updateTableRow(component, index, { highlight: value === "yes" }, onChange)} />
+            </FieldGroup>
+          ))}
+          <TextAreaField label="Ghi chú" value={component.props.note ?? ""} onChange={(value) => update({ note: optional(value) })} rows={2} />
+        </InspectorSection>
+      );
+    case "code":
+      return (
+        <InspectorSection title="Code" description="Code block dành cho bằng chứng kỹ thuật ngắn, có dòng cần chú ý.">
+          <div className="inspector-field-grid inspector-field-grid--two">
+            <TextField label="Tiêu đề" value={component.props.title} onChange={(value) => update({ title: value })} />
+            <TextField label="Ngôn ngữ" value={component.props.language} onChange={(value) => update({ language: value })} />
+          </div>
+          <TextAreaField label="Mã nguồn" value={component.props.code} onChange={(value) => update({ code: value })} rows={9} />
+          <TextField label="Dòng highlight (1, 2, 4)" value={(component.props.highlightLines ?? []).join(", ")} onChange={(value) => update({ highlightLines: parseLineNumbers(value) })} />
+          <SelectField label="Hiện số dòng" value={component.props.showLineNumbers === false ? "no" : "yes"} options={["yes", "no"]} labels={{ yes: "Có", no: "Không" }} onChange={(value) => update({ showLineNumbers: value === "yes" })} />
+          <TextAreaField label="Caption" value={component.props.caption ?? ""} onChange={(value) => update({ caption: optional(value) })} rows={2} />
+        </InspectorSection>
+      );
     case "comparison":
       return (
         <InspectorSection title="Comparison" description="Hai phía phải dùng cùng tiêu chí để so sánh công bằng.">
@@ -134,6 +161,14 @@ function optional(value: string): string | undefined {
   return value.trim() ? value : undefined;
 }
 
+function splitCells(value: string): string[] {
+  return value.split("|").map((cell) => cell.trim());
+}
+
+function parseLineNumbers(value: string): number[] {
+  return value.split(",").map((item) => Number.parseInt(item.trim(), 10)).filter((item) => Number.isInteger(item) && item > 0);
+}
+
 function InspectorSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return <section className="inspector-section"><header><h3>{title}</h3><p>{description}</p></header>{children}</section>;
 }
@@ -178,6 +213,11 @@ function updateMetric(component: Extract<SlideComponent, { type: "metric-grid" }
 function updateChartValue(component: Extract<SlideComponent, { type: "chart" }>, index: number, patch: Partial<(typeof component.props.values)[number]>, onChange: (component: SlideComponent) => void) {
   const values = component.props.values.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
   onChange({ ...component, props: { ...component.props, values } });
+}
+
+function updateTableRow(component: Extract<SlideComponent, { type: "table" }>, index: number, patch: Partial<(typeof component.props.rows)[number]>, onChange: (component: SlideComponent) => void) {
+  const rows = component.props.rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row);
+  onChange({ ...component, props: { ...component.props, rows } });
 }
 
 function updateComparison(component: Extract<SlideComponent, { type: "comparison" }>, side: "left" | "right", patch: Partial<typeof component.props.left>, onChange: (component: SlideComponent) => void) {

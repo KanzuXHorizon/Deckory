@@ -179,6 +179,99 @@ describe("Deck document contract", () => {
     });
   });
 
+  it("accepts typed table and code components for data-heavy technical slides", () => {
+    const result = validateDeck({
+      id: "technical-evidence",
+      version: 1,
+      title: "Bằng chứng kỹ thuật",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "implementation-proof",
+        layout: "data",
+        variant: "technical",
+        components: [
+          {
+            id: "comparison-table",
+            type: "table",
+            props: {
+              title: "So sánh renderer",
+              columns: ["Tiêu chí", "Trước", "Sau"],
+              rows: [
+                { cells: ["Component có type", "Không", "Có"], highlight: true },
+                { cells: ["Accessible summary", "Thiếu", "Đầy đủ"] }
+              ],
+              note: "Dữ liệu minh hoạ"
+            }
+          },
+          {
+            id: "validation-code",
+            type: "code",
+            props: {
+              title: "Validation trước khi trình chiếu",
+              language: "typescript",
+              code: "const result = validateDeck(deck);\nif (!result.ok) throw new Error('Invalid deck');",
+              caption: "Chặn document lỗi trước khi vào Presenter.",
+              showLineNumbers: true,
+              highlightLines: [1]
+            }
+          }
+        ]
+      }]
+    });
+
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it("rejects malformed table rows and code highlights outside the snippet", () => {
+    const result = validateDeck({
+      id: "invalid-technical-evidence",
+      version: 1,
+      title: "Bằng chứng kỹ thuật lỗi",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "invalid-components",
+        layout: "data",
+        components: [
+          {
+            id: "broken-table",
+            type: "table",
+            props: {
+              title: "Bảng lỗi",
+              columns: ["A", "B", "C"],
+              rows: [{ cells: ["1", "2"] }]
+            }
+          },
+          {
+            id: "broken-code",
+            type: "code",
+            props: {
+              title: "Code lỗi",
+              language: "typescript",
+              code: "const deck = defineDeck(input);",
+              highlightLines: [2]
+            }
+          }
+        ]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({
+          componentId: "broken-table",
+          propertyPath: "slides.0.components.0.props.rows.0.cells"
+        }),
+        expect.objectContaining({
+          componentId: "broken-code",
+          propertyPath: "slides.0.components.1.props.highlightLines.0"
+        })
+      ])
+    });
+  });
+
   it("accepts typed slide transitions, element effects, and shared morph IDs", () => {
     const result = validateDeck({
       id: "motion-story",

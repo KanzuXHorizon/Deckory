@@ -4,9 +4,11 @@ import {
   Check,
   Code2,
   Database,
+  FileCode2,
   Layers3,
   Lightbulb,
   Sparkles,
+  Table2,
   UsersRound
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -18,6 +20,8 @@ type HeadingProps = ComponentOf<"heading">["props"];
 type StatementProps = ComponentOf<"statement">["props"];
 type MetricGridProps = ComponentOf<"metric-grid">["props"];
 type ChartProps = ComponentOf<"chart">["props"];
+type TableProps = ComponentOf<"table">["props"];
+type CodeProps = ComponentOf<"code">["props"];
 type ComparisonProps = ComponentOf<"comparison">["props"];
 type ProcessProps = ComponentOf<"process">["props"];
 type ArchitectureProps = ComponentOf<"architecture">["props"];
@@ -138,6 +142,10 @@ function Component({ component }: { component: SlideComponent }) {
       return <MetricGrid {...component.props} />;
     case "chart":
       return <Chart {...component.props} />;
+    case "table":
+      return <DataTable {...component.props} />;
+    case "code":
+      return <CodeSnippet {...component.props} />;
     case "comparison":
       return <Comparison {...component.props} />;
     case "process":
@@ -193,7 +201,7 @@ function Chart({ title, unit, values, variant = "bar", showValues = true }: Char
 
   return (
     <section
-      className={`chart chart--${variant}`}
+      className={`bar-chart chart chart--${variant}`}
       data-chart-variant={variant}
       role="img"
       aria-label={`${title}. ${summary}. ${unit}`}
@@ -273,7 +281,7 @@ function CartesianChart({
           </g>
         ))}
       </svg>
-      <div className="chart-axis-labels">
+      <div className="chart-axis-labels" style={{ "--chart-columns": values.length } as CSSProperties}>
         {values.map((item) => <span key={item.label}>{item.label}</span>)}
       </div>
     </div>
@@ -282,7 +290,7 @@ function CartesianChart({
 
 function DonutChart({ values, showValues }: { values: ChartProps["values"]; showValues: boolean }) {
   const total = Math.max(1, values.reduce((sum, item) => sum + item.value, 0));
-  const palette = ["var(--cobalt)", "var(--teal)", "var(--amber)", "#8c87ee", "#77b7b8", "#d6a557", "#4a4e55", "#b9bcc1"];
+  const palette = ["var(--accent)", "var(--teal)", "var(--amber)", "#8c87ee", "#77b7b8", "#d6a557", "#4a4e55", "#b9bcc1"];
   let cursor = 0;
   const stops = values.map((item, index) => {
     const start = cursor;
@@ -306,6 +314,74 @@ function DonutChart({ values, showValues }: { values: ChartProps["values"]; show
         ))}
       </div>
     </div>
+  );
+}
+
+function DataTable({ title, columns, rows, note }: TableProps) {
+  const summary = rows.map((row) => row.cells.join(": ")).join("; ");
+
+  return (
+    <section className="data-table" aria-label={title}>
+      <header className="data-table-heading">
+        <div><Table2 size={18} aria-hidden="true" /><span>{title}</span></div>
+        <small>{rows.length} hàng · {columns.length} cột</small>
+      </header>
+      <div className="data-table-viewport">
+        <table>
+          <caption className="sr-only">{title}. {summary}{note ? `. ${note}` : ""}</caption>
+          <thead>
+            <tr>{columns.map((column) => <th scope="col" key={column}>{column}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr className={`data-table-row ${row.highlight ? "is-highlighted" : ""}`} key={`${row.cells.join("-")}-${rowIndex}`}>
+                {row.cells.map((cell, cellIndex) => cellIndex === 0
+                  ? <th scope="row" key={`${cell}-${cellIndex}`}>{cell}</th>
+                  : <td key={`${cell}-${cellIndex}`}>{cell}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {note && <p className="data-table-note">{note}</p>}
+    </section>
+  );
+}
+
+function CodeSnippet({
+  title,
+  language,
+  code,
+  caption,
+  showLineNumbers = true,
+  highlightLines = []
+}: CodeProps) {
+  const lines = code.split(/\r?\n/);
+  const highlighted = new Set(highlightLines);
+
+  return (
+    <section
+      className="code-snippet"
+      data-language={language}
+      data-line-numbers={showLineNumbers ? "true" : "false"}
+      aria-label={`${title}. Ngôn ngữ ${language}. ${lines.length} dòng.`}
+    >
+      <header className="code-snippet-heading">
+        <div><FileCode2 size={18} aria-hidden="true" /><span>{title}</span></div>
+        <small>{language}</small>
+      </header>
+      <pre tabIndex={0}><code>{lines.map((line, index) => {
+        const lineNumber = index + 1;
+        const isHighlighted = highlighted.has(lineNumber);
+        return (
+          <span className="code-line" data-highlighted={isHighlighted ? "true" : "false"} key={`${lineNumber}-${line}`}>
+            {showLineNumbers && <i aria-hidden="true">{String(lineNumber).padStart(2, "0")}</i>}
+            <b>{line || " "}</b>
+          </span>
+        );
+      })}</code></pre>
+      {caption && <p className="code-snippet-caption">{caption}</p>}
+    </section>
   );
 }
 

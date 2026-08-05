@@ -8,6 +8,8 @@ export const SUPPORTED_COMPONENT_TYPES = [
   "process",
   "architecture",
   "chart",
+  "table",
+  "code",
   "insight",
   "evidence-footer"
 ] as const;
@@ -73,6 +75,44 @@ const ChartPropsSchema = z.object({
     highlight: z.boolean().optional()
   }).strict()).min(1).max(8)
 }).strict();
+const TablePropsSchema = z.object({
+  title: nonEmptyText.max(120),
+  columns: z.array(nonEmptyText.max(48)).min(2).max(6),
+  rows: z.array(z.object({
+    cells: z.array(nonEmptyText.max(120)).min(2).max(6),
+    highlight: z.boolean().optional()
+  }).strict()).min(1).max(8),
+  note: z.string().trim().min(1, "Expected non-empty text").max(320).optional()
+}).strict().superRefine((table, context) => {
+  table.rows.forEach((row, rowIndex) => {
+    if (row.cells.length !== table.columns.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["rows", rowIndex, "cells"],
+        message: `Expected exactly ${table.columns.length} cells to match the table columns`
+      });
+    }
+  });
+});
+const CodePropsSchema = z.object({
+  title: nonEmptyText.max(120),
+  language: nonEmptyText.max(24),
+  code: nonEmptyText.max(4_000),
+  caption: z.string().trim().min(1, "Expected non-empty text").max(320).optional(),
+  showLineNumbers: z.boolean().optional(),
+  highlightLines: z.array(z.number().int().positive()).max(12).optional()
+}).strict().superRefine((snippet, context) => {
+  const lineCount = snippet.code.split(/\r?\n/).length;
+  snippet.highlightLines?.forEach((line, lineIndex) => {
+    if (line > lineCount) {
+      context.addIssue({
+        code: "custom",
+        path: ["highlightLines", lineIndex],
+        message: `Expected a highlighted line between 1 and ${lineCount}`
+      });
+    }
+  });
+});
 const InsightPropsSchema = z.object({
   label: nonEmptyText,
   title: nonEmptyText,
@@ -123,6 +163,8 @@ export const SlideComponentSchema = z.discriminatedUnion("type", [
   componentSchema("process", ProcessPropsSchema),
   componentSchema("architecture", ArchitecturePropsSchema),
   componentSchema("chart", ChartPropsSchema),
+  componentSchema("table", TablePropsSchema),
+  componentSchema("code", CodePropsSchema),
   componentSchema("insight", InsightPropsSchema),
   componentSchema("evidence-footer", EvidenceFooterPropsSchema)
 ]);
@@ -178,12 +220,12 @@ export function defineDeck(deck: DeckDocument): DeckDocument {
 const LAYOUT_COMPONENTS: Partial<Record<Slide["layout"], ReadonlySet<SlideComponent["type"]>>> = {
   cover: new Set(["heading", "evidence-footer"]),
   statement: new Set(["statement", "heading", "evidence-footer"]),
-  comparison: new Set(["heading", "comparison", "evidence-footer"]),
+  comparison: new Set(["heading", "comparison", "table", "evidence-footer"]),
   process: new Set(["heading", "process", "evidence-footer"]),
-  architecture: new Set(["heading", "architecture", "insight", "evidence-footer"]),
-  data: new Set(["heading", "chart", "metric-grid", "insight", "evidence-footer"]),
-  split: new Set(["heading", "metric-grid", "insight", "evidence-footer"]),
-  dashboard: new Set(["heading", "metric-grid", "chart", "insight", "evidence-footer"]),
+  architecture: new Set(["heading", "architecture", "code", "insight", "evidence-footer"]),
+  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "evidence-footer"]),
+  split: new Set(["heading", "metric-grid", "code", "insight", "evidence-footer"]),
+  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "evidence-footer"]),
   closing: new Set(["heading", "statement", "evidence-footer"])
 };
 

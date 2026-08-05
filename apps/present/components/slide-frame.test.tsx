@@ -57,6 +57,56 @@ describe("SlideFrame", () => {
     expect(html).toContain('data-morph-id="deckory-story--quality-title"');
   });
 
+  it("renders accessible tables and code snippets with presentation highlights", () => {
+    const technicalSlide: Slide = {
+      id: "technical-proof",
+      layout: "data",
+      variant: "technical",
+      components: [
+        {
+          id: "comparison-table",
+          type: "table",
+          props: {
+            title: "So sánh contract",
+            columns: ["Tiêu chí", "Trước", "Sau"],
+            rows: [
+              { cells: ["Schema", "Record tự do", "Discriminated union"], highlight: true },
+              { cells: ["Validation", "Muộn", "Trước Presenter"] }
+            ],
+            note: "Dữ liệu minh hoạ"
+          }
+        },
+        {
+          id: "validation-code",
+          type: "code",
+          props: {
+            title: "Chặn document lỗi",
+            language: "typescript",
+            code: "const result = validateDeck(deck);\nif (!result.ok) throw new Error('<invalid>');",
+            caption: "Validation là ranh giới trước khi trình chiếu.",
+            showLineNumbers: true,
+            highlightLines: [2]
+          }
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={technicalSlide} deckId="deckory-story" sequenceStep={0} reducedMotion />
+    );
+
+    expect(html).toContain("component-slot--table");
+    expect(html).toContain("component-slot--code");
+    expect(html).toContain("<table");
+    expect(html).toContain("So sánh contract");
+    expect(html).toContain('class="data-table-row is-highlighted"');
+    expect(html).toContain("<pre");
+    expect(html).toContain('data-language="typescript"');
+    expect(html).toContain('data-highlighted="true"');
+    expect(html).toContain("&lt;invalid&gt;");
+    expect(html).toContain('aria-label="Chặn document lỗi. Ngôn ngữ typescript. 2 dòng."');
+  });
+
   it("keeps unrevealed sequence content inaccessible and disables motion for thumbnails", () => {
     const slide: Slide = {
       id: "sequence-slide",
