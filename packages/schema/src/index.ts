@@ -152,7 +152,7 @@ const TeamShowcasePropsSchema = z.object({
   title: optionalText,
   subtitle: optionalText,
   project: optionalText,
-  variant: z.enum(["editorial", "cards", "constellation", "spotlight"]).optional(),
+  variant: z.enum(["editorial", "cards", "constellation", "spotlight", "profile"]).optional(),
   members: z.array(TeamMemberSchema).min(1).max(6)
 }).strict().superRefine((team, context) => {
   const memberIds = new Set<string>();
@@ -166,6 +166,9 @@ const TeamShowcasePropsSchema = z.object({
   });
   if (featuredCount > 1) {
     context.addIssue({ code: "custom", path: ["members"], message: "Expected at most one featured team member" });
+  }
+  if (team.variant === "profile" && team.members.length !== 1) {
+    context.addIssue({ code: "custom", path: ["members"], message: "Expected exactly one member for the profile variant" });
   }
 });
 

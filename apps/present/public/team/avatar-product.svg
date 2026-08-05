@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" role="img" aria-labelledby="title desc">
+  <title id="title">Chân dung minh hoạ trưởng nhóm sản phẩm</title>
+  <desc id="desc">Minh hoạ chân dung biên tập với nền cobalt, áo tối màu và ánh sáng mềm.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d9d7ff"/><stop offset="1" stop-color="#5147e8"/></linearGradient>
+    <linearGradient id="shirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#242735"/><stop offset="1" stop-color="#111319"/></linearGradient>
+  </defs>
+  <rect width="320" height="400" fill="url(#bg)"/>
+  <circle cx="262" cy="74" r="76" fill="#ffffff" opacity=".13"/>
+  <path d="M57 400c8-89 46-133 105-133 62 0 99 44 105 133z" fill="url(#shirt)"/>
+  <path d="M119 246h83v72c-20 18-61 18-83 0z" fill="#d99a78"/>
+  <ellipse cx="160" cy="180" rx="68" ry="86" fill="#e7ae88"/>
+  <path d="M93 176c-4-70 23-112 72-112 47 0 75 29 69 94-18-13-37-20-58-22-25-2-48 11-83 40z" fill="#20232e"/>
+  <path d="M99 146c6-58 36-89 79-82-24 8-43 29-54 62z" fill="#15171d" opacity=".9"/>
+  <ellipse cx="132" cy="182" rx="5" ry="7" fill="#2d3036"/>
+  <ellipse cx="188" cy="182" rx="5" ry="7" fill="#2d3036"/>
+  <path d="M141 221c12 9 27 9 39 0" fill="none" stroke="#9d5f50" stroke-width="4" stroke-linecap="round"/>
+  <path d="M154 187c-2 12-5 24-8 31 7 4 14 5 21 1" fill="none" stroke="#c98368" stroke-width="3" stroke-linecap="round"/>
+  <path d="M91 169c8 37 4 72-2 99 15-12 25-32 28-59zM230 163c-4 42 2 77 11 101-17-12-27-31-31-55z" fill="#20232e"/>
+  <rect x="24" y="24" width="74" height="26" rx="13" fill="#ffffff" opacity=".88"/>
+  <text x="61" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#3730a6">PRODUCT</text>
+</svg>

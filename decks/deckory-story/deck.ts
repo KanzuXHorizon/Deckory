@@ -228,6 +228,169 @@ export const deckoryStory = defineDeck({
       ]
     },
     {
+      id: "team-showcase",
+      layout: "data",
+      transition: { type: "wipe", duration: 0.5, easing: "emphasized" },
+      notes: "Chuyển từ quy trình sang con người vận hành quy trình. Nhấn rằng tên là trường bắt buộc duy nhất; ảnh, vai trò, MSSV, kỹ năng và đóng góp xuất hiện khi có dữ liệu thật. Hồ sơ trên slide là dữ liệu minh hoạ, không phải danh sách thành viên thực tế.",
+      components: [
+        {
+          id: "heading",
+          type: "heading",
+          props: {
+            eyebrow: "CON NGƯỜI TẠO NÊN CHẤT LƯỢNG",
+            title: "Mỗi thành viên có một vai trò rõ ràng.",
+            description: "Một component thích ứng với hồ sơ đầy đủ, dữ liệu tối giản hoặc đội ngũ có quy mô khác nhau."
+          }
+        },
+        {
+          id: "team",
+          type: "team-showcase",
+          sequence: 1,
+          effect: { type: "rise", duration: 0.46 },
+          props: {
+            project: "HỒ SƠ ĐỘI NGŨ MINH HOẠ",
+            subtitle: "Chọn từng thành viên để xem trách nhiệm, kỹ năng và đóng góp khi trình chiếu.",
+            variant: "editorial",
+            members: [
+              {
+                id: "product-lead",
+                name: "Nguyễn Thái Vân",
+                role: "Product & Presentation Lead",
+                summary: "Định hướng sản phẩm, mạch kể và tiêu chuẩn chất lượng cho toàn bộ trải nghiệm Deckory.",
+                skills: ["Product", "Storytelling", "UX Direction"],
+                contributions: ["Xác lập product thesis", "Review narrative và visual quality"],
+                image: { src: "/team/avatar-product.svg", alt: "Chân dung minh hoạ trưởng nhóm sản phẩm", position: "top" },
+                accent: "cobalt",
+                featured: true
+              },
+              {
+                id: "visual-designer",
+                name: "Thành viên 02",
+                role: "Visual Systems Designer",
+                studentId: "PS00002 · minh hoạ",
+                summary: "Chuẩn hoá composition, motion grammar và cách dữ liệu trở thành visual có ý nghĩa.",
+                skills: ["Visual Design", "Motion"],
+                image: { src: "/team/avatar-design.svg", alt: "Chân dung minh hoạ thành viên thiết kế", position: "center" },
+                accent: "teal"
+              },
+              {
+                id: "frontend-engineer",
+                name: "Thành viên 03",
+                role: "Frontend Engineer",
+                contributions: ["Renderer dùng chung", "Keyboard và reduced motion", "Automated quality gates"],
+                image: { src: "/team/avatar-engineering.svg", alt: "Chân dung minh hoạ thành viên kỹ thuật", position: "top" },
+                accent: "amber"
+              },
+              {
+                id: "research-member",
+                name: "Thành viên 04",
+                skills: ["Research", "Evidence"],
+                accent: "neutral"
+              }
+            ]
+          }
+        },
+        {
+          id: "footer",
+          type: "evidence-footer",
+          props: { page: "07", source: "Dữ liệu thành viên và chân dung minh hoạ; thay bằng hồ sơ dự án thực tế" }
+        }
+      ]
+    },
+    {
+      id: "team-member-profile",
+      layout: "data",
+      transition: { type: "morph", duration: 0.52, easing: "emphasized" },
+      notes: "Đây là ví dụ cho chế độ mỗi thành viên một slide. Ảnh và hồ sơ đều là dữ liệu minh hoạ; layout vẫn hoạt động khi bỏ ảnh, MSSV, kỹ năng hoặc liên kết.",
+      components: [
+        {
+          id: "heading",
+          type: "heading",
+          morphId: "team-member-title",
+          props: {
+            eyebrow: "HỒ SƠ THÀNH VIÊN MINH HOẠ",
+            title: "Thành viên 02",
+            description: "Visual Systems Designer"
+          }
+        },
+        {
+          id: "profile",
+          type: "team-showcase",
+          sequence: 1,
+          effect: { type: "wipe", duration: 0.44 },
+          props: {
+            project: "DECKORY / TEAM PROFILE",
+            variant: "profile",
+            members: [{
+              id: "visual-designer-profile",
+              name: "Thành viên 02",
+              role: "Visual Systems Designer",
+              studentId: "PS00002 · minh hoạ",
+              summary: "Chuyển dữ liệu thô thành bố cục có hierarchy, xây motion grammar có mục đích và bảo đảm visual giữ được ý nghĩa ở cả full slide lẫn thumbnail.",
+              skills: ["Visual Design", "Motion", "Data Storytelling", "Design QA"],
+              contributions: [
+                "Thiết kế composition system",
+                "Chuẩn hoá motion và reduced motion",
+                "Review overflow, contrast và typography",
+                "Xây visual preset tái sử dụng"
+              ],
+              links: [
+                { label: "Portfolio minh hoạ", href: "https://example.com/portfolio" }
+              ],
+              image: { src: "/team/avatar-design.svg", alt: "Chân dung minh hoạ thành viên thiết kế", position: "center" },
+              accent: "teal"
+            }]
+          }
+        },
+        {
+          id: "footer",
+          type: "evidence-footer",
+          props: { page: "08", source: "Hồ sơ và liên kết minh hoạ; thay bằng dữ liệu thành viên thực tế" }
+        }
+      ]
+    },
+    {
+      id: "semantic-growth",
+      layout: "process",
+      transition: { type: "morph", duration: 0.58, easing: "emphasized" },
+      notes: "Cây không chỉ trang trí: đường thân thể hiện tính liên tục, nhánh thể hiện quan hệ phụ thuộc và từng nút mở phần giải thích. Thử click hoặc dùng bàn phím; với reduced motion, cây xuất hiện ngay ở trạng thái hoàn chỉnh.",
+      components: [
+        {
+          id: "heading",
+          type: "heading",
+          props: {
+            eyebrow: "MOTION CÓ NGỮ NGHĨA",
+            title: "Sản phẩm trưởng thành từ những lớp năng lực nối tiếp.",
+            description: "SVG path drawing giải thích tiến trình; tương tác cho phép khán giả khám phá từng cột mốc mà không rời slide."
+          }
+        },
+        {
+          id: "growth-tree",
+          type: "visualizer",
+          sequence: 1,
+          effect: { type: "wipe", duration: 0.48 },
+          props: {
+            center: "Sẵn sàng trình bày",
+            variant: "growth-tree",
+            interaction: "inspect",
+            animation: "grow",
+            items: [
+              { id: "idea", label: "Ý tưởng", description: "Xác định vấn đề, khán giả và kết quả cần tạo ra.", value: "01", icon: "seed", tone: "amber" },
+              { id: "structure", label: "Cấu trúc", description: "Biến nội dung thành document model có type và có thể kiểm tra.", value: "02", icon: "data", parentId: "idea", tone: "cobalt" },
+              { id: "visual-system", label: "Visual system", description: "Dùng layout, component và motion grammar nhất quán.", value: "03", icon: "sparkle", parentId: "structure", tone: "cobalt" },
+              { id: "interaction", label: "Tương tác", description: "Cho phép inspect, step và focus bằng bàn phím ngay trong slide.", value: "04", icon: "people", parentId: "visual-system", tone: "teal" },
+              { id: "quality-gates", label: "Quality gates", description: "Validation, reduced motion, screenshot review và build bảo vệ đầu ra.", value: "05", icon: "system", parentId: "interaction", tone: "teal", featured: true }
+            ]
+          }
+        },
+        {
+          id: "footer",
+          type: "evidence-footer",
+          props: { page: "09", source: "Mô hình phát triển minh hoạ / Deckory semantic visualizer" }
+        }
+      ]
+    },
+    {
       id: "architecture",
       layout: "architecture",
       variant: "technical",
@@ -259,7 +422,7 @@ export const deckoryStory = defineDeck({
         {
           id: "footer",
           type: "evidence-footer",
-          props: { page: "07", source: "Core architecture / current MVP boundary" }
+          props: { page: "10", source: "Core architecture / current MVP boundary" }
         }
       ]
     },
@@ -296,7 +459,7 @@ export const deckoryStory = defineDeck({
         {
           id: "footer",
           type: "evidence-footer",
-          props: { page: "08", source: "Automated structural and browser audit" }
+          props: { page: "11", source: "Automated structural and browser audit" }
         }
       ]
     },
@@ -322,7 +485,7 @@ export const deckoryStory = defineDeck({
         {
           id: "footer",
           type: "evidence-footer",
-          props: { page: "09", source: "deckory / engine & present" }
+          props: { page: "12", source: "deckory / engine & present" }
         }
       ]
     }

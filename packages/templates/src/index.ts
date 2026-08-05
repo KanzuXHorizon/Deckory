@@ -15,6 +15,7 @@ export {
 } from "./instantiate.js";
 export { recommendTemplate } from "./recommend.js";
 export { searchSlideRecipes } from "./search.js";
+export { createTeamShowcaseSlides } from "./team-showcase.js";
 export { validateTemplateInput } from "./validate-input.js";
 export type {
   BlueprintStep,
@@ -42,3 +43,9 @@ export type {
   TemplateTone,
   VisualStylePreset
 } from "./types.js";
+export type {
+  CreateTeamShowcaseSlidesInput,
+  TeamShowcaseMember,
+  TeamShowcaseRosterVariant,
+  TeamShowcaseSlideMode
+} from "./team-showcase.js";

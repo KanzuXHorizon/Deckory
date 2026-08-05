@@ -109,19 +109,19 @@ function Reveal({
   motionDisabled: boolean;
   children: ReactNode;
 }) {
-  const visible = motionDisabled
-    || reducedMotion
-    || component.sequence === undefined
-    || sequenceStep >= component.sequence;
-  const elementMotion = getElementMotion(component.effect, visible, reducedMotion || motionDisabled);
-  const layoutId = getMorphLayoutId(deckId, component.morphId);
+  const visible = component.sequence === undefined || sequenceStep >= component.sequence;
+  const motionSuppressed = reducedMotion || motionDisabled;
+  const elementMotion = getElementMotion(component.effect, visible, motionSuppressed);
+  const morphDataId = getMorphLayoutId(deckId, component.morphId);
+  const exposedMorphId = motionSuppressed && !visible ? undefined : morphDataId;
+  const layoutId = motionSuppressed ? undefined : morphDataId;
 
   return (
     <motion.div
       className={`component-slot component-slot--${component.type}`}
       data-component-id={component.id}
       data-effect={component.effect?.type ?? "rise"}
-      data-morph-id={layoutId}
+      data-morph-id={exposedMorphId}
       data-visible={visible ? "true" : "false"}
       {...(layoutId ? { layoutId } : {})}
       initial={false}

@@ -444,6 +444,60 @@ describe("Deck document contract", () => {
     });
   });
 
+  it("accepts a single-member profile showcase and rejects hidden extra members", () => {
+    const base = {
+      id: "member-profile",
+      version: 1,
+      title: "Hồ sơ thành viên",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "member-profile",
+        layout: "data",
+        components: [{
+          id: "member",
+          type: "team-showcase",
+          props: {
+            variant: "profile",
+            members: [{
+              id: "thai-van",
+              name: "Nguyễn Thái Vân",
+              role: "Product Lead",
+              summary: "Phụ trách định hướng sản phẩm và chất lượng trình bày.",
+              image: { src: "/team/thai-van.webp", alt: "Chân dung Nguyễn Thái Vân", position: "top" }
+            }]
+          }
+        }]
+      }]
+    } as const;
+    const valid = validateDeck(base);
+    const invalid = validateDeck({
+      ...base,
+      id: "invalid-member-profile",
+      slides: [{
+        ...base.slides[0],
+        components: [{
+          ...base.slides[0].components[0],
+          props: {
+            ...base.slides[0].components[0].props,
+            members: [
+              ...base.slides[0].components[0].props.members,
+              { id: "second-member", name: "Thành viên 02" }
+            ]
+          }
+        }]
+      }]
+    });
+
+    expect(valid).toMatchObject({ ok: true });
+    expect(invalid).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.members" })
+      ])
+    });
+  });
+
   it("accepts semantic visualizers and rejects invalid parent references", () => {
     const valid = validateDeck({
       id: "growth-story",

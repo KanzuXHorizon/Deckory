@@ -124,7 +124,8 @@ export const teamVariantOptions = [
   { value: "editorial", label: "Editorial", description: "Vai trò và câu chuyện rõ", icon: FileText },
   { value: "cards", label: "Thẻ", description: "So sánh thành viên đồng đều", icon: Grid3X3 },
   { value: "constellation", label: "Mạng lưới", description: "Nhấn mạnh quan hệ đội ngũ", icon: Network },
-  { value: "spotlight", label: "Tiêu điểm", description: "Một thành viên dẫn dắt", icon: Focus }
+  { value: "spotlight", label: "Tiêu điểm", description: "Một thành viên dẫn dắt", icon: Focus },
+  { value: "profile", label: "Hồ sơ riêng", description: "Một thành viên trên một slide riêng", icon: UsersRound }
 ] as const;
 
 export const visualizerVariantOptions = [

@@ -44,7 +44,7 @@ const dataSlide: Slide = {
 describe("SlideFrame", () => {
   it("renders semantic component slots and an accessible chart summary", () => {
     const html = renderToStaticMarkup(
-      <SlideFrame slide={dataSlide} deckId="deckory-story" sequenceStep={0} reducedMotion />
+      <SlideFrame slide={dataSlide} deckId="deckory-story" sequenceStep={0} reducedMotion={false} />
     );
 
     expect(html).toContain("slide--data");
@@ -179,7 +179,50 @@ describe("SlideFrame", () => {
     expect(html).toContain("Deckory");
   });
 
-  it("keeps unrevealed sequence content inaccessible and disables motion for thumbnails", () => {
+  it("renders a dedicated single-member profile without a roster control", () => {
+    const profileSlide: Slide = {
+      id: "member-profile",
+      layout: "data",
+      components: [
+        {
+          id: "heading",
+          type: "heading",
+          props: { eyebrow: "ĐỘI NGŨ", title: "Nguyễn Thái Vân", description: "Product Lead" }
+        },
+        {
+          id: "profile",
+          type: "team-showcase",
+          props: {
+            project: "Deckory",
+            variant: "profile",
+            members: [{
+              id: "thai-van",
+              name: "Nguyễn Thái Vân",
+              role: "Product Lead",
+              studentId: "PS00001",
+              summary: "Phụ trách định hướng sản phẩm và chất lượng trình bày.",
+              skills: ["Product", "Storytelling"],
+              contributions: ["Product thesis", "Visual review"],
+              image: { src: "/team/thai-van.webp", alt: "Chân dung Nguyễn Thái Vân", position: "top" },
+              accent: "cobalt"
+            }]
+          }
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={profileSlide} deckId="deckory-story" sequenceStep={0} reducedMotion />
+    );
+
+    expect(html).toContain("team-showcase--profile");
+    expect(html).toContain("team-profile-layout");
+    expect(html).toContain('alt="Chân dung Nguyễn Thái Vân"');
+    expect(html).toContain("Product thesis");
+    expect(html).not.toContain("Danh sách thành viên");
+  });
+
+  it("preserves reveal state when motion is disabled or reduced", () => {
     const slide: Slide = {
       id: "sequence-slide",
       layout: "statement",
@@ -187,22 +230,33 @@ describe("SlideFrame", () => {
         id: "statement",
         type: "statement",
         sequence: 2,
+        morphId: "story-point",
         effect: { type: "blur", delay: 0.2 },
         props: { quote: "Nội dung xuất hiện theo nhịp kể." }
       }]
     };
 
-    const hiddenHtml = renderToStaticMarkup(
+    const animatedHiddenHtml = renderToStaticMarkup(
       <SlideFrame slide={slide} deckId="deckory-story" sequenceStep={1} reducedMotion={false} />
     );
-    const thumbnailHtml = renderToStaticMarkup(
-      <SlideFrame slide={slide} deckId="deckory-story" sequenceStep={0} reducedMotion={false} motionDisabled />
+    const staticHiddenHtml = renderToStaticMarkup(
+      <SlideFrame slide={slide} deckId="deckory-story" sequenceStep={1} reducedMotion={false} motionDisabled />
+    );
+    const reducedHiddenHtml = renderToStaticMarkup(
+      <SlideFrame slide={slide} deckId="deckory-story" sequenceStep={1} reducedMotion />
+    );
+    const staticVisibleHtml = renderToStaticMarkup(
+      <SlideFrame slide={slide} deckId="deckory-story" sequenceStep={2} reducedMotion={false} motionDisabled />
     );
 
-    expect(hiddenHtml).toContain('aria-hidden="true"');
-    expect(hiddenHtml).toContain('data-visible="false"');
-    expect(hiddenHtml).toContain("pointer-events:none");
-    expect(thumbnailHtml).toContain('data-motion-disabled="true"');
-    expect(thumbnailHtml).toContain('data-visible="true"');
+    for (const html of [animatedHiddenHtml, staticHiddenHtml, reducedHiddenHtml]) {
+      expect(html).toContain('aria-hidden="true"');
+      expect(html).toContain('data-visible="false"');
+      expect(html).toContain("pointer-events:none");
+    }
+    expect(staticHiddenHtml).toContain('data-motion-disabled="true"');
+    expect(staticHiddenHtml).not.toContain('data-morph-id="deckory-story--story-point"');
+    expect(reducedHiddenHtml).not.toContain('data-morph-id="deckory-story--story-point"');
+    expect(staticVisibleHtml).toContain('data-visible="true"');
   });
 });

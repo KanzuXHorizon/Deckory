@@ -47,6 +47,20 @@ export function TeamShowcase({
   const motionOff = reducedMotion || motionDisabled;
   const summary = members.map((member) => [member.name, member.role, member.studentId].filter(Boolean).join(", ")).join("; ");
 
+  if (variant === "profile") {
+    return (
+      <TeamProfileShowcase
+        {...(title ? { title } : {})}
+        {...(subtitle ? { subtitle } : {})}
+        {...(project ? { project } : {})}
+        member={selectedMember}
+        motionOff={motionOff}
+        motionDisabled={motionDisabled}
+        summary={summary}
+      />
+    );
+  }
+
   return (
     <section
       className={`team-showcase team-showcase--${variant}`}
@@ -67,7 +81,7 @@ export function TeamShowcase({
       )}
 
       <div className="team-showcase-layout">
-        <div className="team-member-list" role="list" aria-label="Danh sách thành viên">
+        <div className="team-member-list" role="group" aria-label="Danh sách thành viên">
           {members.map((member, index) => {
             const selected = member.id === selectedMember.id;
             return (
@@ -152,6 +166,93 @@ export function TeamShowcase({
             </div>
           )}
         </motion.aside>
+      </div>
+      <span className="sr-only">{summary}</span>
+    </section>
+  );
+}
+
+function TeamProfileShowcase({
+  title,
+  subtitle,
+  project,
+  member,
+  motionOff,
+  motionDisabled,
+  summary
+}: {
+  title?: string;
+  subtitle?: string;
+  project?: string;
+  member: TeamMember;
+  motionOff: boolean;
+  motionDisabled: boolean;
+  summary: string;
+}) {
+  return (
+    <section
+      className="team-showcase team-showcase--profile"
+      data-deck-interactive
+      data-motion-off={motionOff ? "true" : "false"}
+      data-static={motionDisabled ? "true" : "false"}
+      aria-label={`${title ?? "Hồ sơ thành viên"}. ${summary}`}
+    >
+      {(title || subtitle || project) && (
+        <header className="team-showcase-heading">
+          <div>
+            {project && <span>{project}</span>}
+            {title && <h2>{title}</h2>}
+          </div>
+          {subtitle && <p>{subtitle}</p>}
+        </header>
+      )}
+      <div className="team-profile-layout">
+        <motion.div
+          className={`team-profile-media team-profile-media--${member.accent ?? "neutral"}`}
+          initial={motionOff ? false : { opacity: 0, x: -18, clipPath: "inset(0 100% 0 0)" }}
+          animate={{ opacity: 1, x: 0, clipPath: "inset(0 0% 0 0)" }}
+          transition={{ duration: 0.46, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <MemberAvatar member={member} decorative={false} />
+          <div className="team-profile-media-caption">
+            <span>{project ?? "Team profile"}</span>
+            <strong>{member.role ?? "Thành viên dự án"}</strong>
+          </div>
+        </motion.div>
+        <motion.article
+          className={`team-profile-content team-profile-content--${member.accent ?? "neutral"}`}
+          initial={motionOff ? false : { opacity: 0, x: 20, filter: "blur(6px)" }}
+          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.38, delay: motionOff ? 0 : 0.08, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="team-profile-identity">
+            <span>{member.role ?? "Thành viên dự án"}</span>
+            <h3>{member.name}</h3>
+            {member.studentId && <small>MSSV · {member.studentId}</small>}
+          </div>
+          {member.summary && <p className="team-member-summary">{member.summary}</p>}
+          {member.skills && member.skills.length > 0 && (
+            <div className="team-member-skills" aria-label="Kỹ năng">
+              {member.skills.map((skill) => <span key={skill}>{skill}</span>)}
+            </div>
+          )}
+          {member.contributions && member.contributions.length > 0 && (
+            <ul className="team-member-contributions">
+              {member.contributions.map((contribution) => <li key={contribution}>{contribution}</li>)}
+            </ul>
+          )}
+          {member.links && member.links.length > 0 && (
+            <div className="team-member-links" aria-label={`Liên kết của ${member.name}`}>
+              {member.links.map((link) => {
+                const LinkIcon = resolveLinkIcon(link.label, link.href);
+                if (motionDisabled) {
+                  return <span key={`${link.label}-${link.href}`}><LinkIcon size={14} aria-hidden="true" /><span>{link.label}</span></span>;
+                }
+                return <a key={`${link.label}-${link.href}`} href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noreferrer" : undefined}><LinkIcon size={14} aria-hidden="true" /><span>{link.label}</span></a>;
+              })}
+            </div>
+          )}
+        </motion.article>
       </div>
       <span className="sr-only">{summary}</span>
     </section>
@@ -291,8 +392,8 @@ export function SemanticVisualizer({
                   event.stopPropagation();
                   setSelectedId(item.id);
                 } : undefined}
-                initial={motionOff ? false : { opacity: 0, scale: 0.72, filter: "blur(5px)" }}
-                animate={{ opacity: 1, scale: selected ? 1.08 : 1, filter: "blur(0px)" }}
+                initial={motionOff ? false : { opacity: 0, filter: "blur(5px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
                 transition={{ duration: 0.4, delay: motionOff ? 0 : Math.min(index * 0.08 + 0.18, 0.72), ease: [0.16, 1, 0.3, 1] }}
               >
                 <span><ItemIcon size={17} aria-hidden="true" /></span>

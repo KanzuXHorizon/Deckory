@@ -64,6 +64,7 @@ describe("ComponentInspector", () => {
     const html = renderToStaticMarkup(<ComponentInspector component={component} onChange={() => undefined} />);
 
     expect(html).toContain("Đội ngũ");
+    expect(html).toContain("Hồ sơ riêng");
     expect(html).toContain("Mã sinh viên");
     expect(html).toContain("Ảnh thành viên (không bắt buộc)");
     expect(html).toContain("Đường dẫn ảnh cục bộ");

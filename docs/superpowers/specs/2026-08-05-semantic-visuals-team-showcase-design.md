@@ -43,12 +43,15 @@ Each member requires only `name`. Every other field is optional:
 - `cards`: compact professional grid for 2–6 members.
 - `constellation`: team members connected to a central project or shared mission.
 - `spotlight`: one featured member with supporting members in a compact rail.
+- `profile`: one member receives a dedicated slide with a large portrait or monogram, role, optional student ID, summary, skills, contributions and links.
 
-The renderer automatically handles missing fields without empty labels, filler rows or broken spacing. When no image is supplied, it renders a deterministic monogram avatar.
+The renderer automatically handles missing fields without empty labels, filler rows or broken spacing. When no image is supplied, it renders a deterministic monogram avatar. The `profile` variant accepts exactly one member so no hidden team data can be silently omitted.
 
 ### Interaction
 
 Cards and constellation nodes are buttons in interactive presentation modes. Selecting a member reveals the available role, student ID, summary, skills, contributions and links. Keyboard focus and selection are visible. Thumbnail and overview rendering uses a complete static state and disables interaction.
+
+For decks that need one page per member, `createTeamShowcaseSlides()` in `@deckory/templates` can generate roster-only, profile-only, or roster-plus-profile slide sequences from one typed member array. IDs, transitions, headings and optional evidence footers are generated consistently.
 
 ## Component: `visualizer`
 
@@ -87,7 +90,7 @@ All interactive roots use `data-deck-interactive`. Presenter navigation ignores 
 
 ## Layout compatibility
 
-- `team-showcase`: `split`, `dashboard`, `process`, `architecture`, `data`, `closing`.
+- `team-showcase`: `split`, `dashboard`, `process`, `architecture`, `data`, `closing`. Roster and profile variants use the same compatibility rules; the profile preset defaults to `data` for maximum safe canvas.
 - `visualizer`: `split`, `dashboard`, `process`, `architecture`, `data`, `statement`, `closing`.
 
 Cover remains intentionally minimal and does not accept these components.

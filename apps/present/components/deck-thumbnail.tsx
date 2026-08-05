@@ -1,11 +1,17 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Slide } from "@deckory/schema";
 import { SlideFrame } from "./slide-frame";
 
 const PRESENTATION_WIDTH = 1280;
+const PRESENTATION_HEIGHT = 720;
+
+export function calculatePreviewScale(width: number, height: number): number {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return 0;
+  return Math.min(width / PRESENTATION_WIDTH, height / PRESENTATION_HEIGHT);
+}
 
 type ScaledSlidePreviewProps = {
   slide: Slide;
@@ -69,16 +75,21 @@ function ScaledCanvas({
   label?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.2);
+  const [scale, setScale] = useState(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
-    const updateScale = () => setScale(root.clientWidth / PRESENTATION_WIDTH);
+    const updateScale = (width = root.clientWidth, height = root.clientHeight) => {
+      setScale(calculatePreviewScale(width, height));
+    };
     updateScale();
 
-    const observer = new ResizeObserver(updateScale);
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      updateScale(entry.contentRect.width, entry.contentRect.height);
+    });
     observer.observe(root);
     return () => observer.disconnect();
   }, []);
@@ -87,6 +98,7 @@ function ScaledCanvas({
     <div
       ref={rootRef}
       className={className}
+      data-preview-ready={scale > 0 ? "true" : "false"}
       style={{ "--thumbnail-scale": scale } as CSSProperties}
       aria-label={label}
     >

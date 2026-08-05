@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" role="img" aria-labelledby="title desc">
+  <title id="title">Chân dung minh hoạ thành viên kỹ thuật</title>
+  <desc id="desc">Minh hoạ chân dung chuyên nghiệp với nền amber, kính và áo khoác tối màu.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0cf"/><stop offset="1" stop-color="#c77700"/></linearGradient>
+    <linearGradient id="shirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#30343d"/><stop offset="1" stop-color="#17191d"/></linearGradient>
+  </defs>
+  <rect width="320" height="400" fill="url(#bg)"/>
+  <rect x="216" y="28" width="86" height="86" rx="24" fill="#ffffff" opacity=".13" transform="rotate(13 259 71)"/>
+  <path d="M50 400c9-88 49-133 111-133 64 0 103 45 111 133z" fill="url(#shirt)"/>
+  <path d="M119 245h84v72c-20 18-62 18-84 0z" fill="#c98262"/>
+  <ellipse cx="161" cy="178" rx="67" ry="84" fill="#dc9875"/>
+  <path d="M94 161c0-65 29-100 70-100 44 0 72 29 72 86-25-18-53-26-84-22-20 3-39 14-58 36z" fill="#23262c"/>
+  <path d="M102 123c19-51 56-71 96-56-25 6-47 25-62 54z" fill="#17191d"/>
+  <g fill="none" stroke="#36393f" stroke-width="5">
+    <rect x="111" y="163" width="43" height="30" rx="10"/>
+    <rect x="169" y="163" width="43" height="30" rx="10"/>
+    <path d="M154 176h15M111 174l-17-4M212 174l17-4"/>
+  </g>
+  <ellipse cx="134" cy="179" rx="4" ry="6" fill="#303238"/>
+  <ellipse cx="190" cy="179" rx="4" ry="6" fill="#303238"/>
+  <path d="M142 221c12 8 27 8 39 0" fill="none" stroke="#8e4d42" stroke-width="4" stroke-linecap="round"/>
+  <path d="M158 184c-2 11-4 23-8 30 7 5 15 5 22 1" fill="none" stroke="#b96756" stroke-width="3" stroke-linecap="round"/>
+  <rect x="24" y="24" width="96" height="26" rx="13" fill="#ffffff" opacity=".88"/>
+  <text x="72" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#7a4800">ENGINEERING</text>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" role="img" aria-labelledby="title desc">
+  <title id="title">Chân dung minh hoạ thành viên thiết kế</title>
+  <desc id="desc">Minh hoạ chân dung hiện đại với nền teal, tóc ngắn và trang phục sáng màu.</desc>
+  <defs>
+    <linearGradient id="bg" x1=".1" y1="0" x2=".9" y2="1"><stop stop-color="#d8f3ef"/><stop offset="1" stop-color="#0f8b8d"/></linearGradient>
+    <linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7f5ee"/><stop offset="1" stop-color="#cddedb"/></linearGradient>
+  </defs>
+  <rect width="320" height="400" fill="url(#bg)"/>
+  <path d="M0 92c75 38 151 26 230-35 42-32 72-40 90-42v-15H0z" fill="#ffffff" opacity=".15"/>
+  <path d="M48 400c11-87 50-132 113-132 62 0 101 45 111 132z" fill="url(#shirt)"/>
+  <path d="M120 246h82v69c-18 20-62 20-82 0z" fill="#bd765d"/>
+  <ellipse cx="161" cy="178" rx="67" ry="84" fill="#d99170"/>
+  <path d="M93 175c-1-72 29-111 75-111 38 0 68 25 70 72-20-9-38-12-56-9-30 4-56 20-89 48z" fill="#3a2927"/>
+  <path d="M98 128c23-57 67-76 108-50-30 2-56 18-77 48z" fill="#2c201f"/>
+  <ellipse cx="135" cy="179" rx="5" ry="7" fill="#372827"/>
+  <ellipse cx="188" cy="179" rx="5" ry="7" fill="#372827"/>
+  <path d="M143 219c11 8 25 9 38 0" fill="none" stroke="#87483e" stroke-width="4" stroke-linecap="round"/>
+  <path d="M158 184c-2 12-4 23-8 31 8 5 15 5 22 1" fill="none" stroke="#b56655" stroke-width="3" stroke-linecap="round"/>
+  <path d="M95 164c-10 31-5 71 13 98l12-67zM228 151c13 31 10 72-4 101l-17-60z" fill="#3a2927"/>
+  <rect x="24" y="24" width="72" height="26" rx="13" fill="#ffffff" opacity=".88"/>
+  <text x="60" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#075e60">VISUAL</text>
+</svg>
