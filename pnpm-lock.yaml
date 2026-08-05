@@ -35,6 +35,9 @@ importers:
       '@deckory/deckory-story':
         specifier: workspace:*
         version: link:../../decks/deckory-story
+      '@deckory/myinterview-defense':
+        specifier: workspace:*
+        version: link:../../decks/myinterview-defense
       '@deckory/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -58,6 +61,12 @@ importers:
         version: 19.2.8(react@19.2.8)
 
   decks/deckory-story:
+    dependencies:
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+
+  decks/myinterview-defense:
     dependencies:
       '@deckory/schema':
         specifier: workspace:*

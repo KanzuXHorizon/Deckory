@@ -1,4 +1,5 @@
 import { deckoryStory } from "@deckory/deckory-story";
+import { myInterviewDefense } from "@deckory/myinterview-defense";
 import { templateGalleryDeck } from "@deckory/template-gallery";
 import { defineDeck, type DeckDocument, type Slide } from "@deckory/schema";
 
@@ -212,6 +213,13 @@ export type DeckCatalogItem = {
 };
 
 export const deckCatalog: DeckCatalogItem[] = [
+  {
+    deck: myInterviewDefense,
+    description: "Deck bảo vệ dự án tốt nghiệp AI Technical Interviewer của nhóm NEXUS.",
+    status: "ready",
+    updatedLabel: "Summer 2026",
+    tags: ["Academic defense", "MyInterview", "AI"]
+  },
   {
     deck: deckoryStory,
     description: "Deck sản phẩm tham chiếu, trình bày thesis và kiến trúc của Deckory.",
