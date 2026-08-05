@@ -1,6 +1,21 @@
 {
   "name": "deckory",
+  "description": "A code-native presentation system for structured, validated and visually expressive decks.",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KanzuXHorizon/Deckory.git"
+  },
+  "homepage": "https://github.com/KanzuXHorizon/Deckory#readme",
+  "keywords": [
+    "presentations",
+    "slides",
+    "typescript",
+    "nextjs",
+    "presentation-engine",
+    "data-visualization"
+  ],
   "packageManager": "pnpm@11.7.0",
   "scripts": {
     "dev": "pnpm --filter @deckory/present dev",

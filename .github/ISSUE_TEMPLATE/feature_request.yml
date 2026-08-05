@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose a focused improvement aligned with Deckory's structured presentation model.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or presentation problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior, not only an implementation idea.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - Hub
+        - Studio
+        - Preview
+        - Presenter
+        - Schema or validation
+        - Deck authoring
+        - Documentation or tooling
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Note any simpler workaround or competing approach.
+  - type: checkboxes
+    id: alignment
+    attributes:
+      label: Alignment
+      options:
+        - label: This preserves typed, semantic deck documents.
+          required: true
+        - label: I checked the documented current scope and existing issues.
+          required: true

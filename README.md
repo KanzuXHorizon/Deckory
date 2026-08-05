@@ -1,26 +1,105 @@
-# Deckory
+<div align="center">
+  <img src="docs/assets/deckory-mark.svg" width="88" alt="Deckory logo" />
+  <h1>Deckory</h1>
+  <p><strong>Presentations, engineered.</strong></p>
+  <p>A code-native presentation system for building structured, validated and visually expressive decks.</p>
 
-Deckory is a code-native presentation system. Its first vertical slice is **Engine + Present**: a typed deck AST, validated content, a browser presenter, keyboard navigation, speaker notes, sequence reveals, and a Vietnamese reference deck.
+  <p>
+    <a href="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml/badge.svg" /></a>
+    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5B52EE.svg" /></a>
+    <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.7-F69220?logo=pnpm&logoColor=white" />
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-15171A?logo=next.js&logoColor=white" />
+    <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" />
+  </p>
+</div>
+
+<img src="docs/assets/deckory-hero.svg" alt="Deckory — typed documents, semantic visuals and confident delivery" />
+
+## Why Deckory
+
+Most presentation tools treat slides as disconnected canvases. Deckory treats a deck as a **typed document system**: content is structured, validated and rendered through semantic components so the same source can power editing, previewing and presenting.
+
+- **Structured by design** — decks use a typed AST instead of arbitrary layout code.
+- **Semantic visuals** — charts, tables, comparisons, processes and code blocks communicate intent.
+- **Presentation-ready** — keyboard navigation, reveal sequences, overview mode and private speaker notes are built in.
+- **Safer iteration** — validation catches malformed documents before they reach the audience.
+- **Agent-friendly** — repository skills provide explicit direction for narrative, visual quality and completeness.
+
+## Product surfaces
+
+| Surface | Purpose |
+| --- | --- |
+| **Hub** | Browse and manage available decks. |
+| **Studio** | Edit a shared typed deck document in the browser. |
+| **Preview** | Review the audience-facing result before presenting. |
+| **Presenter** | Deliver with keyboard navigation, sequence reveals, overview and speaker notes. |
+
+## Quick start
+
+### Requirements
+
+- Node.js 24 or newer
+- pnpm 11.7.0 through Corepack
 
 ```bash
-pnpm install
+corepack enable
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:3000`. The Hub manages available decks, Studio edits the shared typed document, Preview reviews the audience result, and Present provides keyboard navigation, sequence reveals, speaker notes, overview, and audience display.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Agent design skills
+## Quality checks
 
-Deck and slide work must start with `.agents/skills/deckory-slide-director/SKILL.md`. It adapts the useful anti-slop principles from `Leonxlnx/taste-skill` to a structured 16:9 presentation system and adds explicit rules for narrative, chart, table, code, evidence, motion, notes, accessibility, and screenshot review.
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
 
-Supporting repo-local skills are optional and scoped:
+The same checks run on every push and pull request through GitHub Actions.
 
-- `.agents/skills/brandkit/SKILL.md` creates a reference identity board when a new product has no coherent visual language; it is an agent skill, not a Deckory product feature.
-- `.agents/skills/gpt-taste/SKILL.md` raises visual variance when a deck is repetitive or generic.
-- `.agents/skills/full-output-enforcement/SKILL.md` prevents placeholder slides, incomplete component coverage, and unverified completion claims.
+## Architecture
 
-The source and adaptation policy are recorded in `.agents/taste-skill.lock.json`.
+```text
+apps/present       Hub, Studio, Preview and Presenter
+packages/schema    Typed deck contract and validation
+packages/core      Presentation runtime and navigation behavior
+decks              Versioned deck packages and reference content
+.agents/skills     Deckory-specific design and completion guidance
+```
 
-## Current boundary
+Deck documents are created with `defineDeck`, use stable kebab-case IDs and compose named layouts with semantic components. See [`AGENTS.md`](AGENTS.md) for repository conventions.
 
-Deckory currently provides a typed deck AST, validation, Hub, browser Studio, Preview, Presenter, speaker notes, sequence reveals, semantic charts, tables, code snippets, and local draft persistence. Collaboration, cloud persistence, and PDF/PNG/PPTX export remain outside the current boundary.
+## Design system for agents
+
+Deck and slide work starts with [`.agents/skills/deckory-slide-director/SKILL.md`](.agents/skills/deckory-slide-director/SKILL.md). It defines standards for narrative, composition, charts, tables, code, evidence, motion, accessibility and screenshot-based review.
+
+Supporting skills include:
+
+- **Brandkit** — establishes a coherent identity direction when one does not exist.
+- **GPT Taste** — increases visual range when a deck feels repetitive or generic.
+- **Full Output Enforcement** — prevents placeholder slides and incomplete delivery claims.
+
+The source and adaptation policy is recorded in [`.agents/taste-skill.lock.json`](.agents/taste-skill.lock.json).
+
+## Current scope
+
+Deckory currently includes a typed deck AST, validation, Hub, browser Studio, Preview, Presenter, speaker notes, sequence reveals, semantic charts, tables, code snippets and local draft persistence.
+
+The following are intentionally outside the current boundary:
+
+- real-time collaboration;
+- cloud persistence and accounts;
+- PDF, PNG and PPTX export.
+
+This distinction is deliberate: the repository describes implemented behavior without presenting roadmap items as finished features.
+
+## Contributing
+
+Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. Security issues should follow [`SECURITY.md`](SECURITY.md), not public issue threads.
+
+## License
+
+Deckory is available under the [MIT License](LICENSE).
