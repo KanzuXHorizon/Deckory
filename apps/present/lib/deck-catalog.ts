@@ -1,4 +1,5 @@
 import { deckoryStory } from "@deckory/deckory-story";
+import { templateGalleryDeck } from "@deckory/template-gallery";
 import { defineDeck, type DeckDocument, type Slide } from "@deckory/schema";
 
 const visualLab = defineDeck({
@@ -219,6 +220,13 @@ export const deckCatalog: DeckCatalogItem[] = [
     status: "ready",
     updatedLabel: "Visual QA",
     tags: ["Charts", "Data story", "Component lab"]
+  },
+  {
+    deck: templateGalleryDeck,
+    description: "Deck được instantiate hoàn toàn từ style, recipe và blueprint của @deckory/templates.",
+    status: "ready",
+    updatedLabel: "Template system",
+    tags: ["Templates", "Blueprints", "Agent authoring"]
   }
 ];
 

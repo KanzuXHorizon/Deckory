@@ -22,12 +22,16 @@
     "build": "pnpm --filter @deckory/present build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
-    "lint": "pnpm -r --if-present lint"
+    "lint": "pnpm -r --if-present lint",
+    "build:e2e": "cross-env DECKORY_NEXT_DIST_DIR=.next-playwright-43217 pnpm --filter @deckory/present build",
+    "test:e2e": "pnpm build:e2e && playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
+    "cross-env": "10.1.0",
     "typescript": "5.9.3",
     "vitest": "4.1.0"
   }
