@@ -6,6 +6,7 @@
 
   <p>
     <a href="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml/badge.svg" /></a>
+    <a href="https://github.com/KanzuXHorizon/Deckory/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/KanzuXHorizon/Deckory/actions/workflows/codeql.yml/badge.svg" /></a>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5B52EE.svg" /></a>
     <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.7-F69220?logo=pnpm&logoColor=white" />
     <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-15171A?logo=next.js&logoColor=white" />
@@ -96,9 +97,12 @@ The following are intentionally outside the current boundary:
 
 This distinction is deliberate: the repository describes implemented behavior without presenting roadmap items as finished features.
 
-## Contributing
+## Community and support
 
-Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. Security issues should follow [`SECURITY.md`](SECURITY.md), not public issue threads.
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request.
+- Follow [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) in all project spaces.
+- Use [`SUPPORT.md`](SUPPORT.md) for setup and issue-reporting guidance.
+- Report vulnerabilities privately as described in [`SECURITY.md`](SECURITY.md).
 
 ## License
 
