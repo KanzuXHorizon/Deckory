@@ -9,6 +9,7 @@ export {
 } from "./catalog/index.js";
 export { recommendTemplate } from "./recommend.js";
 export { searchSlideRecipes } from "./search.js";
+export { validateTemplateInput } from "./validate-input.js";
 export type {
   BlueprintStep,
   ContentIntensity,
