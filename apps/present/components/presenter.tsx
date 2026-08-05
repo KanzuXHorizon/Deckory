@@ -33,6 +33,7 @@ import {
   createPresenterSyncMessage,
   describeOfflineStatus,
   formatElapsedTime,
+  getNavigationDirection,
   isEditableTarget,
   isPresenterSyncMessage,
   prepareOfflineCache,
@@ -43,6 +44,7 @@ import {
   type PresenterSyncMessage
 } from "./presenter-runtime";
 import { DeckoryBrand } from "./brand-mark";
+import { getSlideMotion, type NavigationDirection } from "./motion-system";
 import { SlideFrame } from "./slide-frame";
 
 type AudienceStatus = "closed" | "connecting" | "connected" | "blocked";
@@ -82,15 +84,22 @@ export function Presenter({
   const channelRef = useRef<BroadcastChannel | null>(null);
   const audienceWindowRef = useRef<Window | null>(null);
   const revisionRef = useRef(0);
+  const previousSlideIndexRef = useRef(state.slideIndex);
   const sourceIdRef = useRef(`${view}-${Math.random().toString(36).slice(2)}`);
 
   const currentSlide = deck.slides[state.slideIndex] ?? deck.slides[0]!;
   const nextSlide = deck.slides[state.slideIndex + 1];
   const currentSequenceCount = sequenceCounts[state.slideIndex] ?? 0;
+  const navigationDirection = getNavigationDirection(previousSlideIndexRef.current, state.slideIndex);
   const offlineCopy = describeOfflineStatus(offlineStatus, isOnline);
+  const storageKey = `${PRESENTER_STORAGE_KEY}:${deck.id}`;
 
   stateRef.current = state;
   blackoutRef.current = blackout;
+
+  useEffect(() => {
+    previousSlideIndexRef.current = state.slideIndex;
+  }, [state.slideIndex]);
 
   const dispatch = useCallback((command: PresenterCommand) => {
     setState((current) => present(current, command));
@@ -120,11 +129,11 @@ export function Presenter({
     const message = createCurrentMessage("presenter");
     channelRef.current?.postMessage(message);
     try {
-      window.localStorage.setItem(PRESENTER_STORAGE_KEY, JSON.stringify(message));
+      window.localStorage.setItem(storageKey, JSON.stringify(message));
     } catch {
       // BroadcastChannel remains available when storage is restricted.
     }
-  }, [createCurrentMessage]);
+  }, [createCurrentMessage, storageKey]);
 
   useEffect(() => {
     const slideId = new URLSearchParams(window.location.search).get("slide");
@@ -165,7 +174,7 @@ export function Presenter({
     };
 
     const handleStorage = (event: StorageEvent) => {
-      if (view !== "audience" || event.key !== PRESENTER_STORAGE_KEY || !event.newValue) return;
+      if (view !== "audience" || event.key !== storageKey || !event.newValue) return;
       try {
         const message: unknown = JSON.parse(event.newValue);
         if (isPresenterSyncMessage(message) && message.sender === "presenter") applyRemoteState(message);
@@ -186,7 +195,7 @@ export function Presenter({
 
     if (view === "audience") {
       try {
-        const cached: unknown = JSON.parse(window.localStorage.getItem(PRESENTER_STORAGE_KEY) ?? "null");
+        const cached: unknown = JSON.parse(window.localStorage.getItem(storageKey) ?? "null");
         if (isPresenterSyncMessage(cached) && cached.sender === "presenter") applyRemoteState(cached);
       } catch {
         // The next broadcast restores the state.
@@ -199,7 +208,7 @@ export function Presenter({
       channelRef.current?.close();
       channelRef.current = null;
     };
-  }, [applyRemoteState, createCurrentMessage, deck.id, publishPresenterState, view]);
+  }, [applyRemoteState, createCurrentMessage, deck.id, publishPresenterState, storageKey, view]);
 
   useEffect(() => {
     if (view === "presenter") publishPresenterState();
@@ -221,6 +230,15 @@ export function Presenter({
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target as HTMLElement)) return;
       const key = event.key.toLowerCase();
+
+      if (view === "audience") {
+        if (key === "f") {
+          event.preventDefault();
+          void toggleFullscreen();
+        }
+        return;
+      }
+
       if (["arrowright", "pagedown", " "].includes(key)) {
         event.preventDefault();
         dispatch({ type: "NEXT" });
@@ -278,7 +296,14 @@ export function Presenter({
   if (view === "audience") {
     return (
       <MotionConfig reducedMotion={reducedMotion ? "always" : "user"}>
-        <AudienceView slide={currentSlide} sequenceStep={state.sequenceStep} blackout={blackout} reducedMotion={Boolean(reducedMotion)} />
+        <AudienceView
+          slide={currentSlide}
+          deckId={deck.id}
+          sequenceStep={state.sequenceStep}
+          blackout={blackout}
+          reducedMotion={Boolean(reducedMotion)}
+          direction={navigationDirection}
+        />
       </MotionConfig>
     );
   }
@@ -314,7 +339,13 @@ export function Presenter({
               <div className="slide-position" aria-label={`Slide ${state.slideIndex + 1} trên ${deck.slides.length}`}><span>{String(state.slideIndex + 1).padStart(2, "0")}</span><i /><span>{String(deck.slides.length).padStart(2, "0")}</span></div>
             </div>
             <div className="presenter-stage-canvas">
-              <AnimatedSlide slide={currentSlide} sequenceStep={state.sequenceStep} reducedMotion={Boolean(reducedMotion)} />
+              <AnimatedSlide
+                slide={currentSlide}
+                deckId={deck.id}
+                sequenceStep={state.sequenceStep}
+                reducedMotion={Boolean(reducedMotion)}
+                direction={navigationDirection}
+              />
               {blackout && <div className="presenter-blackout-notice" role="status"><Square size={14} fill="currentColor" />Màn hình khán giả đang tạm ẩn</div>}
             </div>
             <div className="stage-meta-row">
@@ -327,7 +358,7 @@ export function Presenter({
             <section className="presenter-panel next-panel">
               <div className="panel-heading compact"><div><span className="section-label">TIẾP THEO</span><strong>{nextSlide ? labelForSlide(nextSlide) : "Kết thúc presentation"}</strong></div>{nextSlide && <span className="next-index">{String(state.slideIndex + 2).padStart(2, "0")}</span>}</div>
               <div className="next-slide-preview">
-                {nextSlide ? <SlideFrame slide={nextSlide} sequenceStep={0} reducedMotion /> : <div className="end-preview"><CheckCircle2 size={28} /><strong>Đã đến slide cuối</strong><span>Sẵn sàng kết thúc và chuyển sang phần trao đổi.</span></div>}
+                {nextSlide ? <SlideFrame slide={nextSlide} deckId={deck.id} sequenceStep={0} reducedMotion motionDisabled /> : <div className="end-preview"><CheckCircle2 size={28} /><strong>Đã đến slide cuối</strong><span>Sẵn sàng kết thúc và chuyển sang phần trao đổi.</span></div>}
               </div>
             </section>
 
@@ -357,7 +388,7 @@ export function Presenter({
           onOpenAudience={openAudienceView}
         />
 
-        {overviewOpen && <SlideOverview slides={deck.slides} sequenceCounts={sequenceCounts} currentSlideIndex={state.slideIndex} onClose={() => setOverviewOpen(false)} onSelect={(slideIndex) => { dispatch({ type: "GOTO", slideIndex }); setOverviewOpen(false); }} />}
+        {overviewOpen && <SlideOverview slides={deck.slides} deckId={deck.id} sequenceCounts={sequenceCounts} currentSlideIndex={state.slideIndex} onClose={() => setOverviewOpen(false)} onSelect={(slideIndex) => { dispatch({ type: "GOTO", slideIndex }); setOverviewOpen(false); }} />}
       </main>
     </MotionConfig>
   );
@@ -434,33 +465,44 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
   );
 }
 
-function AudienceView({ slide, sequenceStep, blackout, reducedMotion }: { slide: Slide; sequenceStep: number; blackout: boolean; reducedMotion: boolean }) {
+function AudienceView({ slide, deckId, sequenceStep, blackout, reducedMotion, direction }: { slide: Slide; deckId: string; sequenceStep: number; blackout: boolean; reducedMotion: boolean; direction: NavigationDirection }) {
   return (
     <main className={`audience-shell ${blackout ? "is-blackout" : ""}`} aria-label={`Màn hình trình chiếu: ${labelForSlide(slide)}`}>
-      <div className="audience-stage"><AnimatedSlide slide={slide} sequenceStep={sequenceStep} reducedMotion={reducedMotion} /></div>
+      <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} /></div>
       <AnimatePresence>{blackout && <motion.div className="audience-blackout" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}</AnimatePresence>
       <span className="sr-only" aria-live="polite">{labelForSlide(slide)}</span>
     </main>
   );
 }
 
-function AnimatedSlide({ slide, sequenceStep, reducedMotion }: { slide: Slide; sequenceStep: number; reducedMotion: boolean }) {
+function AnimatedSlide({ slide, deckId, sequenceStep, reducedMotion, direction }: { slide: Slide; deckId: string; sequenceStep: number; reducedMotion: boolean; direction: NavigationDirection }) {
+  const slideMotion = getSlideMotion(slide.transition, direction, reducedMotion);
+  const presenceMode = slide.transition?.type === "push" || slide.transition?.type === "morph" ? "sync" : "wait";
+
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={slide.id} className="animated-slide" initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.992 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: reducedMotion ? 1 : 1.006 }} transition={{ duration: reducedMotion ? 0 : 0.34, ease: [0.22, 1, 0.36, 1] }}>
-        <SlideFrame slide={slide} sequenceStep={sequenceStep} reducedMotion={reducedMotion} />
+    <AnimatePresence mode={presenceMode} initial={false}>
+      <motion.div
+        key={slide.id}
+        className="animated-slide"
+        data-transition={slide.transition?.type ?? "fade"}
+        initial={slideMotion.initial}
+        animate={slideMotion.animate}
+        exit={slideMotion.exit}
+        transition={slideMotion.transition}
+      >
+        <SlideFrame slide={slide} deckId={deckId} sequenceStep={sequenceStep} reducedMotion={reducedMotion} />
       </motion.div>
     </AnimatePresence>
   );
 }
 
-function SlideOverview({ slides, sequenceCounts, currentSlideIndex, onClose, onSelect }: { slides: Slide[]; sequenceCounts: readonly number[]; currentSlideIndex: number; onClose: () => void; onSelect: (slideIndex: number) => void }) {
+function SlideOverview({ slides, deckId, sequenceCounts, currentSlideIndex, onClose, onSelect }: { slides: Slide[]; deckId: string; sequenceCounts: readonly number[]; currentSlideIndex: number; onClose: () => void; onSelect: (slideIndex: number) => void }) {
   return (
     <div className="overview-backdrop" role="dialog" aria-modal="true" aria-label="Tổng quan slide">
       <div className="overview-panel">
         <header className="overview-header"><div><span className="section-label">SLIDE OVERVIEW</span><h2>Chọn nơi bạn muốn tiếp tục</h2><p>Xem toàn bộ mạch kể chuyện mà không làm gián đoạn màn hình khán giả.</p></div><button type="button" className="overview-close" onClick={onClose} aria-label="Đóng tổng quan"><X size={20} /></button></header>
         <div className="overview-grid">
-          {slides.map((slide, index) => <button type="button" key={slide.id} className={`overview-card ${index === currentSlideIndex ? "is-current" : ""}`} onClick={() => onSelect(index)} aria-label={`Mở slide ${index + 1}: ${labelForSlide(slide)}`}><span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span><div className="overview-preview"><SlideFrame slide={slide} sequenceStep={sequenceCounts[index] ?? 0} reducedMotion /></div><div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div></button>)}
+          {slides.map((slide, index) => <button type="button" key={slide.id} className={`overview-card ${index === currentSlideIndex ? "is-current" : ""}`} onClick={() => onSelect(index)} aria-label={`Mở slide ${index + 1}: ${labelForSlide(slide)}`}><span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span><div className="overview-preview"><SlideFrame slide={slide} deckId={deckId} sequenceStep={sequenceCounts[index] ?? 0} reducedMotion motionDisabled /></div><div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div></button>)}
         </div>
         <footer className="overview-footer"><CircleHelp size={16} /><span>Dùng phím mũi tên để điều hướng, <kbd>B</kbd> để tạm ẩn màn hình và <kbd>F</kbd> để bật toàn màn hình.</span></footer>
       </div>
