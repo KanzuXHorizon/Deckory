@@ -59,6 +59,7 @@ export function ExportDeck({ deck }: { deck: DeckDocument }) {
             <SlideFrame
               slide={slide}
               deckId={deck.id}
+              assets={deck.assets}
               sequenceStep={Number.MAX_SAFE_INTEGER}
               reducedMotion
               motionDisabled

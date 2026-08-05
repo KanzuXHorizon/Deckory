@@ -91,7 +91,7 @@ export function Hub() {
             <span>DECK ĐANG CHỌN</span>
             <span>{activeItem.deck.slides.length} slide</span>
           </div>
-          <DeckThumbnail slide={activeItem.deck.slides[0]!} themeClassName={deckThemeClassName(activeItem.deck)} />
+          <DeckThumbnail slide={activeItem.deck.slides[0]!} assets={activeItem.deck.assets} themeClassName={deckThemeClassName(activeItem.deck)} />
           <div className="hero-stage-footer">
             <div><strong>{slideTitle(activeItem.deck.slides[0]!)}</strong><span>{activeItem.tags.join(" · ")}</span></div>
             <Link href={`/preview?deck=${activeItem.deck.id}`}>Mở preview <ArrowRight size={15} /></Link>
@@ -113,7 +113,7 @@ export function Hub() {
               return (
                 <article className={`deck-card ${active ? "is-selected" : ""}`} key={item.deck.id}>
                   <button className="deck-card-preview" onClick={() => setActiveDeckId(item.deck.id)} aria-label={`Chọn ${item.deck.title}`}>
-                    <DeckThumbnail slide={item.deck.slides[0]!} themeClassName={deckThemeClassName(item.deck)} />
+                    <DeckThumbnail slide={item.deck.slides[0]!} assets={item.deck.assets} themeClassName={deckThemeClassName(item.deck)} />
                     <span className={`hub-status-chip ${hasDraft ? "hub-status-chip--draft" : "hub-status-chip--ready"}`}>
                       {hasDraft ? <Clock3 size={13} /> : <CheckCircle2 size={13} />}
                       {hasDraft ? "Có bản nháp" : "Sẵn sàng"}
@@ -148,7 +148,7 @@ export function Hub() {
           {activeItem.deck.slides.map((slide, index) => (
             <Link className="slide-strip-item" key={slide.id} href={`/studio?deck=${activeItem.deck.id}&slide=${slide.id}`}>
               <span>{String(index + 1).padStart(2, "0")}</span>
-              <DeckThumbnail slide={slide} themeClassName={deckThemeClassName(activeItem.deck)} />
+              <DeckThumbnail slide={slide} assets={activeItem.deck.assets} themeClassName={deckThemeClassName(activeItem.deck)} />
               <strong>{slideTitle(slide)}</strong>
               <small>{slide.layout} · {slide.components.length} thành phần</small>
             </Link>

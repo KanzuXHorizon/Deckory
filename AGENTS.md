@@ -1,6 +1,6 @@
 # Deckory Agent Guide
 
-Deckory documents are structured presentation data. Do not put arbitrary JSX, inline style objects, untyped coordinates, or external remote assets into a deck.
+Deckory documents are structured presentation data. Do not put arbitrary JSX, inline style objects, untyped coordinates, or external remote assets into a deck. Reusable images belong in the typed `deck.assets` manifest and must pass `pnpm assets:check`.
 
 Before creating, editing, redesigning, or reviewing any deck or slide, read and follow `.agents/skills/deckory-slide-director/SKILL.md`. Use `.agents/skills/brandkit/SKILL.md` only when a product lacks a coherent identity or the user explicitly requests a brand-kit reference. Deckory-specific rules override upstream page-design assumptions.
 
@@ -15,7 +15,7 @@ Before selecting or creating reusable styles, slide recipes or deck blueprints, 
 5. Write Vietnamese copy for the audience, not implementation details. Cite the source or label fixture data as illustrative.
 6. Give each meaningful slide concise `notes`; audience mode must never render them.
 7. Inspect representative slides in a real browser at full-size and thumbnail scale; fix overflow, contrast, density, motion, and evidence defects.
-8. Run `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm audit:decks -- --strict`, and `pnpm build` before claiming success.
+8. Run `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm audit:decks -- --strict`, `pnpm assets:check`, and `pnpm build` before claiming success.
 9. For Presenter, Hub, Studio, slide renderer or responsive changes, run `pnpm test:e2e` and review the new screenshots under `output/playwright/screenshots/<run-id>/`.
 
 ## Readability rules

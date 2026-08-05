@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { initialPresenterState, present, type PresenterCommand, type PresenterState } from "@deckory/core";
-import type { DeckDocument, Slide } from "@deckory/schema";
+import type { DeckAsset, DeckDocument, Slide } from "@deckory/schema";
 import { deckThemeClassName } from "../lib/deck-theme";
 import {
   createPresenterSyncMessage,
@@ -424,6 +424,7 @@ export function Presenter({
         <AudienceView
           slide={currentSlide}
           deckId={deck.id}
+          assets={deck.assets}
           sequenceStep={state.sequenceStep}
           blackout={blackout}
           reducedMotion={Boolean(reducedMotion)}
@@ -472,6 +473,7 @@ export function Presenter({
               <AnimatedSlide
                 slide={currentSlide}
                 deckId={deck.id}
+                assets={deck.assets}
                 sequenceStep={state.sequenceStep}
                 reducedMotion={Boolean(reducedMotion)}
                 direction={navigationDirection}
@@ -489,7 +491,7 @@ export function Presenter({
               <div className="panel-heading compact"><div><span className="section-label">TIẾP THEO</span><strong>{nextPreviewTitle}</strong></div>{nextPreviewIndex && <span className="next-index">{nextPreviewIndex}</span>}</div>
               <div className="next-slide-preview">
                 {nextPreviewSlide && nextPreviewCue.kind !== "end"
-                  ? <ScaledSlidePreview slide={nextPreviewSlide} deckId={deck.id} sequenceStep={nextPreviewCue.sequenceStep} className="next-slide-preview-canvas" />
+                  ? <ScaledSlidePreview slide={nextPreviewSlide} deckId={deck.id} assets={deck.assets} sequenceStep={nextPreviewCue.sequenceStep} className="next-slide-preview-canvas" />
                   : <div className="end-preview"><CheckCircle2 size={28} /><strong>Đã đến slide cuối</strong><span>Sẵn sàng kết thúc và chuyển sang phần trao đổi.</span></div>}
               </div>
             </section>
@@ -520,7 +522,7 @@ export function Presenter({
           onOpenAudience={openAudienceView}
         />
 
-        {overviewOpen && <SlideOverview slides={deck.slides} deckId={deck.id} sequenceCounts={sequenceCounts} currentSlideIndex={state.slideIndex} onClose={closeOverview} onSelect={(slideIndex) => { dispatch({ type: "GOTO", slideIndex }); closeOverview(); }} />}
+        {overviewOpen && <SlideOverview slides={deck.slides} deckId={deck.id} assets={deck.assets} sequenceCounts={sequenceCounts} currentSlideIndex={state.slideIndex} onClose={closeOverview} onSelect={(slideIndex) => { dispatch({ type: "GOTO", slideIndex }); closeOverview(); }} />}
       </main>
     </MotionConfig>
   );
@@ -604,6 +606,7 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
 export function AudienceView({
   slide,
   deckId,
+  assets,
   sequenceStep,
   blackout,
   reducedMotion,
@@ -615,6 +618,7 @@ export function AudienceView({
 }: {
   slide: Slide;
   deckId: string;
+  assets?: readonly DeckAsset[] | undefined;
   sequenceStep: number;
   blackout: boolean;
   reducedMotion: boolean;
@@ -686,7 +690,7 @@ export function AudienceView({
         void requestFullscreen();
       }}
     >
-      <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} /></div>
+      <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} /></div>
 
       <div className="audience-utility" role="group" aria-label="Điều khiển màn hình khán giả">
         <div className="audience-utility-copy">
@@ -714,7 +718,7 @@ export function AudienceView({
   );
 }
 
-function AnimatedSlide({ slide, deckId, sequenceStep, reducedMotion, direction }: { slide: Slide; deckId: string; sequenceStep: number; reducedMotion: boolean; direction: NavigationDirection }) {
+function AnimatedSlide({ slide, deckId, assets, sequenceStep, reducedMotion, direction }: { slide: Slide; deckId: string; assets?: readonly DeckAsset[] | undefined; sequenceStep: number; reducedMotion: boolean; direction: NavigationDirection }) {
   const slideMotion = getSlideMotion(slide.transition, direction, reducedMotion);
   const presenceMode = slide.transition?.type === "push" || slide.transition?.type === "morph" ? "sync" : "wait";
 
@@ -730,14 +734,14 @@ function AnimatedSlide({ slide, deckId, sequenceStep, reducedMotion, direction }
         transition={slideMotion.transition}
       >
         <div className="animated-slide-canvas">
-          <SlideFrame slide={slide} deckId={deckId} sequenceStep={sequenceStep} reducedMotion={reducedMotion} />
+          <SlideFrame slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceStep} reducedMotion={reducedMotion} />
         </div>
       </motion.div>
     </AnimatePresence>
   );
 }
 
-function SlideOverview({ slides, deckId, sequenceCounts, currentSlideIndex, onClose, onSelect }: { slides: Slide[]; deckId: string; sequenceCounts: readonly number[]; currentSlideIndex: number; onClose: () => void; onSelect: (slideIndex: number) => void }) {
+function SlideOverview({ slides, deckId, assets, sequenceCounts, currentSlideIndex, onClose, onSelect }: { slides: Slide[]; deckId: string; assets?: readonly DeckAsset[] | undefined; sequenceCounts: readonly number[]; currentSlideIndex: number; onClose: () => void; onSelect: (slideIndex: number) => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -812,7 +816,7 @@ function SlideOverview({ slides, deckId, sequenceCounts, currentSlideIndex, onCl
               aria-current={index === currentSlideIndex ? "page" : undefined}
             >
               <span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span>
-              <div className="overview-preview"><ScaledSlidePreview slide={slide} deckId={deckId} sequenceStep={sequenceCounts[index] ?? 0} className="overview-preview-canvas" /></div>
+              <div className="overview-preview"><ScaledSlidePreview slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceCounts[index] ?? 0} className="overview-preview-canvas" /></div>
               <div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div>
             </button>
           ))}

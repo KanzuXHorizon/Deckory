@@ -18,7 +18,7 @@ import {
   UsersRound
 } from "lucide-react";
 import { motion, type MotionStyle } from "motion/react";
-import type { SlideComponent } from "@deckory/schema";
+import { resolveTeamImageSource, type DeckAsset, type SlideComponent } from "@deckory/schema";
 import {
   getVisualizerMotion,
   resolveSemanticMotion,
@@ -43,10 +43,11 @@ export function TeamShowcase({
   project,
   variant = "editorial",
   members,
+  assets,
   reducedMotion,
   motionDisabled,
   active
-}: TeamShowcaseProps & VisualMotionContext) {
+}: TeamShowcaseProps & VisualMotionContext & { assets?: readonly DeckAsset[] | undefined }) {
   const detailId = useId();
   const initialMember = members.find((member) => member.featured) ?? members[0]!;
   const [selectedId, setSelectedId] = useState(initialMember.id);
@@ -70,6 +71,7 @@ export function TeamShowcase({
         {...(subtitle ? { subtitle } : {})}
         {...(project ? { project } : {})}
         member={selectedMember}
+        assets={assets}
         motionOff={motionOff}
         motionDisabled={motionDisabled}
         active={active}
@@ -130,7 +132,7 @@ export function TeamShowcase({
                 animate={memberMotion.animate}
                 transition={memberMotion.transition}
               >
-                <MemberAvatar member={member} decorative={false} />
+                <MemberAvatar member={member} assets={assets} decorative={false} />
                 <span className="team-member-copy">
                   <strong>{member.name}</strong>
                   {member.role && <span>{member.role}</span>}
@@ -152,7 +154,7 @@ export function TeamShowcase({
           transition={detailMotion.transition}
         >
           <div className="team-member-detail-identity">
-            <MemberAvatar member={selectedMember} decorative />
+            <MemberAvatar member={selectedMember} assets={assets} decorative />
             <div>
               <span>{selectedMember.role ?? "Thành viên dự án"}</span>
               <h3>{selectedMember.name}</h3>
@@ -203,6 +205,7 @@ function TeamProfileShowcase({
   subtitle,
   project,
   member,
+  assets,
   motionOff,
   motionDisabled,
   active,
@@ -212,6 +215,7 @@ function TeamProfileShowcase({
   subtitle?: string;
   project?: string;
   member: TeamMember;
+  assets: readonly DeckAsset[] | undefined;
   motionOff: boolean;
   motionDisabled: boolean;
   active: boolean;
@@ -259,7 +263,7 @@ function TeamProfileShowcase({
           animate={mediaMotion.animate}
           transition={mediaMotion.transition}
         >
-          <MemberAvatar member={member} decorative={false} />
+          <MemberAvatar member={member} assets={assets} decorative={false} />
           <div className="team-profile-media-caption">
             <span>{project ?? "Team profile"}</span>
             <strong>{member.role ?? "Thành viên dự án"}</strong>
@@ -305,11 +309,20 @@ function TeamProfileShowcase({
   );
 }
 
-function MemberAvatar({ member, decorative }: { member: TeamMember; decorative: boolean }) {
-  if (member.image) {
+function MemberAvatar({
+  member,
+  assets,
+  decorative
+}: {
+  member: TeamMember;
+  assets: readonly DeckAsset[] | undefined;
+  decorative: boolean;
+}) {
+  const source = resolveTeamImageSource(assets, member.image);
+  if (member.image && source) {
     return (
       <span className="team-member-avatar" data-image-position={member.image.position ?? "center"}>
-        <img src={member.image.src} alt={decorative ? "" : member.image.alt} aria-hidden={decorative || undefined} />
+        <img src={source} alt={decorative ? "" : member.image.alt} aria-hidden={decorative || undefined} />
       </span>
     );
   }

@@ -329,7 +329,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
             {deck.slides.map((slide, index) => (
               <button key={slide.id} className={`slide-rail-item ${slide.id === selectedSlide.id ? "is-active" : ""}`} onClick={() => selectSlide(slide)} aria-current={slide.id === selectedSlide.id ? "true" : undefined}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
-                <DeckThumbnail slide={slide} />
+                <DeckThumbnail slide={slide} assets={deck.assets} />
                 <strong>{slideTitle(slide)}</strong>
               </button>
             ))}
@@ -360,7 +360,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
             </div>
           </div>
           <div className="studio-stage">
-            <ScaledSlidePreview slide={selectedSlide} deckId={deck.id} sequenceStep={Number.MAX_SAFE_INTEGER} className="studio-slide-canvas" label={`Canvas slide ${selectedSlideIndex + 1}`} />
+            <ScaledSlidePreview slide={selectedSlide} deckId={deck.id} assets={deck.assets} sequenceStep={Number.MAX_SAFE_INTEGER} className="studio-slide-canvas" label={`Canvas slide ${selectedSlideIndex + 1}`} />
           </div>
           <div className="canvas-footnote"><span>Canvas an toàn 16:9</span><span>{selectedSlide.components.length} thành phần · {selectedSlide.notes ? "đã có ghi chú" : "chưa có ghi chú"}</span></div>
         </section>

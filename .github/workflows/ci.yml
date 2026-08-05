@@ -52,6 +52,9 @@ jobs:
       - name: Audit decks
         run: pnpm audit:decks -- --strict
 
+      - name: Check local assets
+        run: pnpm assets:check
+
       - name: Build
         run: pnpm build
 

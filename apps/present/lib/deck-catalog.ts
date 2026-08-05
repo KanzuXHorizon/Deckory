@@ -14,6 +14,11 @@ const visualLab = defineDeck({
     typography: "modern",
     density: "comfortable"
   },
+  assets: [
+    { id: "avatar-product", type: "image", src: "/team/avatar-product.svg", mediaType: "image/svg+xml", source: { label: "Deckory local fixture" } },
+    { id: "avatar-design", type: "image", src: "/team/avatar-design.svg", mediaType: "image/svg+xml", source: { label: "Deckory local fixture" } },
+    { id: "avatar-engineering", type: "image", src: "/team/avatar-engineering.svg", mediaType: "image/svg+xml", source: { label: "Deckory local fixture" } }
+  ],
   slides: [
     {
       id: "cover",
@@ -154,9 +159,9 @@ const visualLab = defineDeck({
           subtitle: "Fixture minh hoạ cách trình bày thành viên, năng lực và đóng góp trong cùng một visual grammar.",
           variant: "editorial",
           members: [
-            { id: "narrative-lead", name: "Narrative Lead", role: "Product & Story", summary: "Chuyển dữ liệu thô thành mạch kể có kết luận rõ.", skills: ["Narrative", "UX Writing"], contributions: ["Định hình story arc", "Review chất lượng nội dung"], accent: "cobalt", featured: true },
-            { id: "visual-lead", name: "Visual Lead", role: "Design System", summary: "Giữ hierarchy, typography và khả năng đọc nhất quán.", skills: ["Visual Design", "Accessibility"], contributions: ["Xây visual grammar", "Audit responsive"], accent: "teal" },
-            { id: "engine-lead", name: "Engine Lead", role: "Presentation Engineering", summary: "Đảm bảo schema, renderer và runtime cùng một source of truth.", skills: ["TypeScript", "Testing"], contributions: ["Typed renderer", "Validation và browser QA"], accent: "amber" }
+            { id: "narrative-lead", name: "Narrative Lead", role: "Product & Story", summary: "Chuyển dữ liệu thô thành mạch kể có kết luận rõ.", skills: ["Narrative", "UX Writing"], contributions: ["Định hình story arc", "Review chất lượng nội dung"], image: { assetId: "avatar-product", alt: "Chân dung minh hoạ Narrative Lead", position: "top" }, accent: "cobalt", featured: true },
+            { id: "visual-lead", name: "Visual Lead", role: "Design System", summary: "Giữ hierarchy, typography và khả năng đọc nhất quán.", skills: ["Visual Design", "Accessibility"], contributions: ["Xây visual grammar", "Audit responsive"], image: { assetId: "avatar-design", alt: "Chân dung minh hoạ Visual Lead", position: "top" }, accent: "teal" },
+            { id: "engine-lead", name: "Engine Lead", role: "Presentation Engineering", summary: "Đảm bảo schema, renderer và runtime cùng một source of truth.", skills: ["TypeScript", "Testing"], contributions: ["Typed renderer", "Validation và browser QA"], image: { assetId: "avatar-engineering", alt: "Chân dung minh hoạ Engine Lead", position: "top" }, accent: "amber" }
           ]
         }, sequence: 1 },
         { id: "footer", type: "evidence-footer", props: { page: "09", source: "Fixture team showcase" } }

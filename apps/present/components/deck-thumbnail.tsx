@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
-import type { Slide } from "@deckory/schema";
+import type { DeckAsset, Slide } from "@deckory/schema";
 import { SlideFrame } from "./slide-frame";
 
 const PRESENTATION_WIDTH = 1280;
@@ -16,6 +16,7 @@ export function calculatePreviewScale(width: number, height: number): number {
 type ScaledSlidePreviewProps = {
   slide: Slide;
   deckId?: string;
+  assets?: readonly DeckAsset[] | undefined;
   sequenceStep?: number;
   className?: string;
   label?: string;
@@ -24,6 +25,7 @@ type ScaledSlidePreviewProps = {
 export function ScaledSlidePreview({
   slide,
   deckId,
+  assets,
   sequenceStep = Number.MAX_SAFE_INTEGER,
   className = "",
   label
@@ -32,6 +34,7 @@ export function ScaledSlidePreview({
     <ScaledCanvas
       slide={slide}
       deckId={deckId ?? "preview"}
+      assets={assets}
       sequenceStep={sequenceStep}
       className={`scaled-slide-preview${className ? ` ${className}` : ""}`}
       {...(label ? { label } : {})}
@@ -42,11 +45,13 @@ export function ScaledSlidePreview({
 export function DeckThumbnail({
   slide,
   label,
-  themeClassName
+  themeClassName,
+  assets
 }: {
   slide: Slide;
   label?: string;
   themeClassName?: string;
+  assets?: readonly DeckAsset[] | undefined;
 }) {
   const classes = ["deck-thumbnail", "scaled-slide-preview", themeClassName].filter(Boolean).join(" ");
 
@@ -54,6 +59,7 @@ export function DeckThumbnail({
     <ScaledCanvas
       slide={slide}
       deckId="thumbnail"
+      assets={assets}
       sequenceStep={Number.MAX_SAFE_INTEGER}
       className={classes}
       label={label ?? `Xem trước slide ${slide.id}`}
@@ -64,12 +70,14 @@ export function DeckThumbnail({
 function ScaledCanvas({
   slide,
   deckId,
+  assets,
   sequenceStep,
   className,
   label
 }: {
   slide: Slide;
   deckId: string;
+  assets: readonly DeckAsset[] | undefined;
   sequenceStep: number;
   className: string;
   label?: string;
@@ -106,6 +114,7 @@ function ScaledCanvas({
         <SlideFrame
           slide={slide}
           deckId={deckId}
+          assets={assets}
           sequenceStep={sequenceStep}
           reducedMotion
           motionDisabled

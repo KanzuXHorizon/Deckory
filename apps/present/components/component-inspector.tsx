@@ -167,7 +167,10 @@ export function ComponentInspector({
               </div>
               <TextField label="Mã sinh viên" value={member.studentId ?? ""} onChange={(studentId) => updateTeamMember(component, index, { studentId: optional(studentId) }, onChange)} />
               <FieldGroup label="Ảnh thành viên (không bắt buộc)">
-                <TextField label="Đường dẫn ảnh cục bộ" value={member.image?.src ?? ""} onChange={(src) => updateTeamImage(component, index, { src }, onChange)} />
+                <div className="inspector-field-grid inspector-field-grid--two">
+                  <TextField label="Asset ID trong manifest" value={member.image?.assetId ?? ""} onChange={(assetId) => updateTeamImage(component, index, { assetId }, onChange)} />
+                  <TextField label="Đường dẫn ảnh cục bộ" value={member.image?.src ?? ""} onChange={(src) => updateTeamImage(component, index, { src }, onChange)} />
+                </div>
                 <TextField label="Mô tả ảnh" value={member.image?.alt ?? ""} onChange={(alt) => updateTeamImage(component, index, { alt }, onChange)} />
                 <SelectField label="Vị trí ảnh" value={member.image?.position ?? "center"} options={["center", "top", "bottom"]} labels={{ center: "Chính giữa", top: "Ưu tiên phía trên", bottom: "Ưu tiên phía dưới" }} onChange={(position) => updateTeamImage(component, index, { position: position as "center" | "top" | "bottom" }, onChange)} />
               </FieldGroup>
@@ -318,20 +321,30 @@ function updateTeamFeatured(component: Extract<SlideComponent, { type: "team-sho
   onChange({ ...component, props: { ...component.props, members } });
 }
 
-function updateTeamImage(component: Extract<SlideComponent, { type: "team-showcase" }>, index: number, patch: { src?: string; alt?: string; position?: "center" | "top" | "bottom" }, onChange: (component: SlideComponent) => void) {
+function updateTeamImage(component: Extract<SlideComponent, { type: "team-showcase" }>, index: number, patch: { src?: string; assetId?: string; alt?: string; position?: "center" | "top" | "bottom" }, onChange: (component: SlideComponent) => void) {
   const member = component.props.members[index]!;
-  const nextSrc = patch.src === undefined ? member.image?.src : optional(patch.src);
-  if (!nextSrc) {
+  let nextSrc = member.image?.src;
+  let nextAssetId = member.image?.assetId;
+
+  if (patch.src !== undefined) {
+    nextSrc = optional(patch.src);
+    if (nextSrc) nextAssetId = undefined;
+  }
+  if (patch.assetId !== undefined) {
+    nextAssetId = optional(patch.assetId);
+    if (nextAssetId) nextSrc = undefined;
+  }
+  if (!nextSrc && !nextAssetId) {
     updateTeamMember(component, index, { image: undefined }, onChange);
     return;
   }
 
+  const common = {
+    alt: patch.alt === undefined ? member.image?.alt ?? `Chân dung ${member.name}` : optional(patch.alt) ?? `Chân dung ${member.name}`,
+    position: patch.position ?? member.image?.position ?? "center"
+  };
   updateTeamMember(component, index, {
-    image: {
-      src: nextSrc,
-      alt: patch.alt === undefined ? member.image?.alt ?? `Chân dung ${member.name}` : optional(patch.alt) ?? `Chân dung ${member.name}`,
-      position: patch.position ?? member.image?.position ?? "center"
-    }
+    image: nextSrc ? { src: nextSrc, ...common } : { assetId: nextAssetId!, ...common }
   }, onChange);
 }
 

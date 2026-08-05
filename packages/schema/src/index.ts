@@ -31,6 +31,36 @@ export const SUPPORTED_LAYOUTS = [
 const stableId = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Expected a stable kebab-case ID");
 const nonEmptyText = z.string().trim().min(1, "Expected non-empty text");
 const optionalText = z.string().trim().min(1, "Expected non-empty text").optional();
+const localImageSource = z.string().trim().min(1).refine(
+  (value) => /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);/i.test(value)
+    || (value.startsWith("/")
+      && !value.startsWith("//")
+      && !value.includes("\\")
+      && !value.includes("..")
+      && !/[?#]/.test(value)),
+  "Expected a safe local path or inline image data"
+);
+
+export const DeckAssetSchema = z.object({
+  id: stableId,
+  type: z.literal("image"),
+  src: localImageSource,
+  mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"]),
+  width: z.number().int().positive().max(16_384).optional(),
+  height: z.number().int().positive().max(16_384).optional(),
+  source: z.object({
+    label: nonEmptyText.max(180),
+    url: z.string().trim().url().refine((value) => value.startsWith("https://"), "Expected an https source URL").optional()
+  }).strict().optional()
+}).strict().superRefine((asset, context) => {
+  if ((asset.width === undefined) !== (asset.height === undefined)) {
+    context.addIssue({
+      code: "custom",
+      path: [asset.width === undefined ? "width" : "height"],
+      message: "Expected width and height to be provided together"
+    });
+  }
+});
 
 const HeadingPropsSchema = z.object({
   eyebrow: optionalText,
@@ -122,14 +152,21 @@ const InsightPropsSchema = z.object({
   metric: optionalText,
   tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional()
 }).strict();
-const TeamImageSchema = z.object({
-  src: z.string().trim().min(1).refine(
-    (value) => value.startsWith("/") || /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);/i.test(value),
-    "Expected a local path or inline image data"
-  ),
+export const TeamImageSchema = z.object({
+  src: localImageSource.optional(),
+  assetId: stableId.optional(),
   alt: nonEmptyText.max(180),
   position: z.enum(["center", "top", "bottom"]).optional()
-}).strict();
+}).strict().superRefine((image, context) => {
+  const referenceCount = Number(image.src !== undefined) + Number(image.assetId !== undefined);
+  if (referenceCount !== 1) {
+    context.addIssue({
+      code: "custom",
+      path: [],
+      message: "Expected exactly one of src or assetId"
+    });
+  }
+});
 
 const TeamMemberSchema = z.object({
   id: stableId,
@@ -282,11 +319,14 @@ export const DeckDocumentSchema = z.object({
   locale: z.literal("vi-VN"),
   themeId: stableId,
   theme: DeckThemeSchema.optional(),
+  assets: z.array(DeckAssetSchema).max(128).optional(),
   slides: z.array(SlideSchema).min(1)
 }).strict();
 
 export type DeckDocument = z.infer<typeof DeckDocumentSchema>;
 export type DeckTheme = z.infer<typeof DeckThemeSchema>;
+export type DeckAsset = z.infer<typeof DeckAssetSchema>;
+export type TeamImage = z.infer<typeof TeamImageSchema>;
 export type MotionEasing = z.infer<typeof MotionEasingSchema>;
 export type SlideTransition = z.infer<typeof SlideTransitionSchema>;
 export type ElementEffect = z.infer<typeof ElementEffectSchema>;
@@ -314,6 +354,21 @@ export function defineDeck(deck: DeckDocument): DeckDocument {
   return deck;
 }
 
+export function resolveDeckAsset(
+  assets: readonly DeckAsset[] | undefined,
+  assetId: string | undefined
+): DeckAsset | undefined {
+  return assetId ? assets?.find((asset) => asset.id === assetId) : undefined;
+}
+
+export function resolveTeamImageSource(
+  assets: readonly DeckAsset[] | undefined,
+  image: TeamImage | undefined
+): string | undefined {
+  if (!image) return undefined;
+  return image.src ?? resolveDeckAsset(assets, image.assetId)?.src;
+}
+
 const LAYOUT_COMPONENTS: Partial<Record<Slide["layout"], ReadonlySet<SlideComponent["type"]>>> = {
   cover: new Set(["heading", "evidence-footer"]),
   statement: new Set(["statement", "heading", "visualizer", "evidence-footer"]),
@@ -334,6 +389,23 @@ export function validateDeck(input: unknown): DeckValidationResult {
 
   const diagnostics: DeckDiagnostic[] = [];
   const slideIds = new Set<string>();
+  const assetIds = new Set<string>();
+
+  for (const [assetIndex, asset] of (parsed.data.assets ?? []).entries()) {
+    if (assetIds.has(asset.id)) {
+      diagnostics.push(diagnostic(
+        parsed.data.id,
+        undefined,
+        undefined,
+        `assets.${assetIndex}.id`,
+        "Asset ID bị trùng.",
+        "Đặt một ID asset duy nhất trong deck manifest.",
+        "unique stable kebab-case ID",
+        asset.id
+      ));
+    }
+    assetIds.add(asset.id);
+  }
 
   for (const [slideIndex, slide] of parsed.data.slides.entries()) {
     if (slideIds.has(slide.id)) {
@@ -352,6 +424,24 @@ export function validateDeck(input: unknown): DeckValidationResult {
       const allowed = LAYOUT_COMPONENTS[slide.layout];
       if (allowed && !allowed.has(component.type)) {
         diagnostics.push(diagnostic(parsed.data.id, slide.id, component.id, `slides.${slideIndex}.components.${componentIndex}.type`, "Component không tương thích với layout đã chọn.", "Chọn component được layout hỗ trợ hoặc đổi sang layout phù hợp.", `component supported by ${slide.layout}: ${[...allowed].join(", ")}`, component.type));
+      }
+
+      if (component.type === "team-showcase") {
+        component.props.members.forEach((member, memberIndex) => {
+          const assetId = member.image?.assetId;
+          if (assetId && !assetIds.has(assetId)) {
+            diagnostics.push(diagnostic(
+              parsed.data.id,
+              slide.id,
+              component.id,
+              `slides.${slideIndex}.components.${componentIndex}.props.members.${memberIndex}.image.assetId`,
+              "Asset tham chiếu không tồn tại trong deck manifest.",
+              "Thêm asset vào deck.assets hoặc đổi sang một assetId hợp lệ.",
+              "asset ID declared in deck.assets",
+              assetId
+            ));
+          }
+        });
       }
 
       if (component.sequence !== undefined) {

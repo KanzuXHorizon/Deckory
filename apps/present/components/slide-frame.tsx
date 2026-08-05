@@ -12,7 +12,7 @@ import {
   UsersRound
 } from "lucide-react";
 import { motion } from "motion/react";
-import type { Slide, SlideComponent } from "@deckory/schema";
+import type { DeckAsset, Slide, SlideComponent } from "@deckory/schema";
 import { getElementMotion, getMorphLayoutId } from "./motion-system";
 import { SemanticVisualizer, TeamShowcase as SemanticTeamShowcase } from "./semantic-visuals";
 
@@ -36,12 +36,14 @@ export function SlideFrame({
   sequenceStep,
   reducedMotion,
   deckId,
+  assets,
   motionDisabled = false
 }: {
   slide: Slide;
   sequenceStep: number;
   reducedMotion: boolean;
   deckId?: string;
+  assets?: readonly DeckAsset[] | undefined;
   motionDisabled?: boolean;
 }) {
   const variant = slide.variant ?? "default";
@@ -57,6 +59,7 @@ export function SlideFrame({
         sequenceStep={sequenceStep}
         reducedMotion={reducedMotion}
         deckId={deckId}
+        assets={assets}
         motionDisabled={motionDisabled}
       />
     </article>
@@ -68,12 +71,14 @@ function SlideContent({
   sequenceStep,
   reducedMotion,
   deckId,
+  assets,
   motionDisabled
 }: {
   components: SlideComponent[];
   sequenceStep: number;
   reducedMotion: boolean;
   deckId: string | undefined;
+  assets: readonly DeckAsset[] | undefined;
   motionDisabled: boolean;
 }) {
   return (
@@ -89,7 +94,7 @@ function SlideContent({
             deckId={deckId}
             motionDisabled={motionDisabled}
           >
-            <Component component={component} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />
+            <Component component={component} assets={assets} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />
           </Reveal>
         );
       })}
@@ -140,11 +145,13 @@ function Reveal({
 
 function Component({
   component,
+  assets,
   reducedMotion,
   motionDisabled,
   active
 }: {
   component: SlideComponent;
+  assets: readonly DeckAsset[] | undefined;
   reducedMotion: boolean;
   motionDisabled: boolean;
   active: boolean;
@@ -171,7 +178,7 @@ function Component({
     case "insight":
       return <Insight {...component.props} />;
     case "team-showcase":
-      return <SemanticTeamShowcase {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />;
+      return <SemanticTeamShowcase {...component.props} assets={assets} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />;
     case "visualizer":
       return <SemanticVisualizer {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />;
     case "evidence-footer":
