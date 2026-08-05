@@ -51,6 +51,7 @@ describe("Studio responsive inspector", () => {
     expect(html).toContain('class="studio-save-state"');
     expect(html).toContain("Chưa có thay đổi");
     expect(html).toContain("Lưu ngay");
+    expect(html).toContain('aria-label="Phiên bản"');
     expect(html).toContain('aria-label="Lưu ngay"');
     expect(html).toContain('aria-label="Xem trước"');
     expect(html).toContain('aria-label="Xuất deck"');

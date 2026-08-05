@@ -26,27 +26,29 @@ test.describe("Deckory mobile and coarse-pointer usability", () => {
     await page.context().close();
   });
 
-  test("keeps Studio save, preview and present actions reachable on narrow screens", async ({ browser }) => {
+  test("keeps Studio snapshot, save, preview, export and present actions reachable on narrow screens", async ({ browser }) => {
     const page = await openTouchPage(browser, 375, 812);
 
     await page.goto("/studio?deck=deckory-story");
     await waitForReady(page);
 
+    const snapshots = page.getByRole("button", { name: "Phiên bản", exact: true });
     const save = page.getByRole("button", { name: "Lưu ngay" });
     const preview = page.getByRole("link", { name: "Xem trước" });
+    const exportDeck = page.getByRole("link", { name: "Xuất deck" });
     const present = page.getByRole("link", { name: "Trình chiếu" });
 
-    await expect(save).toBeVisible();
-    await expect(preview).toBeVisible();
-    await expect(present).toBeVisible();
-    await expectTouchTarget(save);
-    await expectTouchTarget(preview);
-    await expectTouchTarget(present);
+    for (const control of [snapshots, save, preview, exportDeck, present]) {
+      await expect(control).toBeVisible();
+      await expectTouchTarget(control);
+    }
     await expectNoHorizontalOverflow(page);
 
     await page.setViewportSize({ width: 320, height: 720 });
+    await expect(snapshots).toBeVisible();
     await expect(save).toBeVisible();
     await expect(preview).toBeVisible();
+    await expect(exportDeck).toBeVisible();
     await expect(present).toBeVisible();
     await expectNoHorizontalOverflow(page);
 

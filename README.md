@@ -136,7 +136,7 @@ Deckory conventions:
 - label illustrative data clearly and cite real evidence;
 - validate, test and inspect representative slides before presenting.
 
-See [`AGENTS.md`](AGENTS.md) for the complete repository rules, [`docs/AUDIT.md`](docs/AUDIT.md) for quality diagnostics, [`docs/ASSETS.md`](docs/ASSETS.md) for local asset manifests, [`docs/EXPORT.md`](docs/EXPORT.md) for PNG/PDF export and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
+See [`AGENTS.md`](AGENTS.md) for the complete repository rules, [`docs/AUDIT.md`](docs/AUDIT.md) for quality diagnostics, [`docs/ASSETS.md`](docs/ASSETS.md) for local asset manifests, [`docs/EXPORT.md`](docs/EXPORT.md) for PNG/PDF export, [`docs/SNAPSHOTS.md`](docs/SNAPSHOTS.md) for local Studio checkpoints and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
 
 ## Architecture
 
@@ -172,7 +172,7 @@ Deckory is an actively developed early-stage project. The current repository inc
 - Hub, browser Studio, Preview and Presenter;
 - semantic charts, tables, code, metrics, comparisons and process visuals;
 - speaker notes, sequence reveals and presentation navigation;
-- local draft persistence;
+- local draft persistence and named version snapshots with protected restore;
 - deterministic deck audit with human-readable and JSON reports;
 - isolated Chromium E2E coverage for production CSS, focus, privacy, reduced motion and narrow viewports;
 - typed local image manifests shared by Hub, Studio, Presenter and Export;

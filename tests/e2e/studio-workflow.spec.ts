@@ -1,11 +1,21 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
+const runId = process.env.DECKORY_E2E_RUN_ID ?? "manual";
+const screenshotRoot = join(process.cwd(), "output", "playwright", "screenshots", runId);
+mkdirSync(screenshotRoot, { recursive: true });
+
 const draftKey = "deckory:draft:v1:deckory-story";
+const snapshotKey = "deckory:snapshots:v1:deckory-story";
 
 test.describe("Deckory Studio production workflow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.evaluate((key) => window.localStorage.removeItem(key), draftKey);
+    await page.evaluate(([draft, snapshots]) => {
+      window.localStorage.removeItem(draft);
+      window.localStorage.removeItem(snapshots);
+    }, [draftKey, snapshotKey]);
   });
 
   test("autosaves a meaningful edit and restores it after reload", async ({ page }) => {
@@ -62,6 +72,64 @@ test.describe("Deckory Studio production workflow", () => {
     await expect(deleteDialog).toBeVisible();
     await page.getByRole("button", { name: "Xoá slide" }).last().click();
     await expect(slideItems).toHaveCount(11);
+  });
+
+  test("creates a named checkpoint and restores it as the current draft", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/studio?deck=deckory-story");
+    await waitForReady(page);
+
+    const title = page.getByRole("textbox", { name: "Tên deck" });
+    const history = page.getByRole("button", { name: "Phiên bản", exact: true });
+    await history.click();
+
+    const snapshotName = page.getByRole("textbox", { name: "Tên checkpoint" });
+    await expect(snapshotName).toBeFocused();
+    await snapshotName.fill("Trước khi đổi tiêu đề");
+    await page.getByRole("button", { name: "Tạo checkpoint" }).click();
+    await expect(page.getByText("1 phiên bản")).toBeVisible();
+    await expect(page.getByText("Trước khi đổi tiêu đề", { exact: true })).toBeVisible();
+
+    await history.click();
+    await title.fill("Deckory — tiêu đề sau checkpoint");
+    await expect(page.locator(".studio-save-state")).toContainText("Đã lưu trên trình duyệt", { timeout: 5_000 });
+
+    await history.click();
+    const restore = page.getByRole("button", { name: "Khôi phục phiên bản Trước khi đổi tiêu đề" });
+    await restore.click();
+    const dialog = page.getByRole("dialog", { name: "Khôi phục phiên bản này?" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Trước khi đổi tiêu đề");
+    await dialog.getByRole("button", { name: "Khôi phục phiên bản", exact: true }).click();
+
+    await expect(title).toHaveValue("Deckory — biến dữ liệu thành một câu chuyện rõ");
+    await expect(page.getByRole("status")).toContainText("Đã khôi phục phiên bản");
+    await history.click();
+    await page.screenshot({ path: join(screenshotRoot, "studio-version-history.png"), animations: "disabled" });
+    await history.click();
+    const stored = await page.evaluate(([draft, snapshots]) => ({
+      draft: JSON.parse(window.localStorage.getItem(draft) ?? "null"),
+      snapshots: JSON.parse(window.localStorage.getItem(snapshots) ?? "[]")
+    }), [draftKey, snapshotKey]);
+    expect(stored.draft.title).toBe("Deckory — biến dữ liệu thành một câu chuyện rõ");
+    expect(stored.snapshots).toHaveLength(1);
+
+    await page.reload();
+    await waitForReady(page);
+    await expect(title).toHaveValue("Deckory — biến dữ liệu thành một câu chuyện rõ");
+    await history.click();
+    await expect(page.getByText("Trước khi đổi tiêu đề", { exact: true })).toBeVisible();
+  });
+
+  test("drops malformed local snapshot history without blocking Studio", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate((key) => window.localStorage.setItem(key, "{not-valid-json"), snapshotKey);
+
+    await page.goto("/studio?deck=deckory-story");
+    await waitForReady(page);
+    await page.getByRole("button", { name: "Phiên bản" }).click();
+    await expect(page.getByText("Chưa có checkpoint")).toBeVisible();
+    await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), snapshotKey)).toBeNull();
   });
 
   test("falls back safely when the saved draft is malformed", async ({ page }) => {

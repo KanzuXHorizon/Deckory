@@ -195,7 +195,12 @@ export function StudioPopover({
 
   useEffect(() => {
     if (open && !previousOpenRef.current) {
-      requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>(".studio-command-grid > button:not(:disabled)")?.focus());
+      requestAnimationFrame(() => {
+        const target = panelRef.current?.querySelector<HTMLElement>(
+          "[data-popover-autofocus], .studio-command-grid > button:not(:disabled), input:not(:disabled), button:not(:disabled)"
+        );
+        target?.focus();
+      });
     }
     if (previousOpenRef.current && !open) triggerRef.current?.focus();
     previousOpenRef.current = open;

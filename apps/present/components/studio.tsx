@@ -11,6 +11,7 @@ import {
   Copy,
   Eye,
   FileDown,
+  History,
   Layers3,
   Play,
   Plus,
@@ -29,6 +30,12 @@ import {
 } from "@deckory/schema";
 import { cloneDeck, slideTitle } from "../lib/deck-catalog";
 import { deckThemeClassName } from "../lib/deck-theme";
+import {
+  createDeckSnapshot,
+  parseDeckSnapshots,
+  restoreDeckSnapshot,
+  type DeckSnapshot
+} from "../lib/deck-snapshots";
 import { createComponent, isCompatible } from "../lib/component-catalog";
 import {
   componentLabel,
@@ -45,6 +52,7 @@ import { CommandGrid, IconChoiceGroup, StudioPopover } from "./studio-controls";
 import { DeckThumbnail, ScaledSlidePreview } from "./deck-thumbnail";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
+const SNAPSHOT_KEY_PREFIX = "deckory:snapshots:v1:";
 const INSPECTOR_TABS = [
   ["content", "Nội dung"],
   ["slide", "Slide"],
@@ -53,7 +61,7 @@ const INSPECTOR_TABS = [
 ] as const;
 type SaveState = "clean" | "dirty" | "saving" | "saved" | "error";
 type InspectorTab = (typeof INSPECTOR_TABS)[number][0];
-type DestructiveAction = "reset-draft" | "delete-slide" | "delete-component";
+type DestructiveAction = "reset-draft" | "delete-slide" | "delete-component" | "restore-snapshot";
 
 export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocument; initialSlideId?: string }) {
   const [deck, setDeck] = useState(() => cloneDeck(sourceDeck));
@@ -63,11 +71,16 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const [storageMessage, setStorageMessage] = useState("");
   const [slideMenuOpen, setSlideMenuOpen] = useState(false);
   const [componentMenuOpen, setComponentMenuOpen] = useState(false);
+  const [snapshotMenuOpen, setSnapshotMenuOpen] = useState(false);
+  const [snapshotLabel, setSnapshotLabel] = useState("");
+  const [snapshots, setSnapshots] = useState<DeckSnapshot[]>([]);
+  const [pendingSnapshotId, setPendingSnapshotId] = useState<string | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("content");
   const [compactStudio, setCompactStudio] = useState(false);
   const [pendingDestructiveAction, setPendingDestructiveAction] = useState<DestructiveAction | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement>(null);
+  const snapshotInputRef = useRef<HTMLInputElement>(null);
   const destructiveReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -91,6 +104,27 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
       setStorageMessage("Không thể đọc bản nháp cục bộ. Bản nguồn vẫn an toàn.");
     }
   }, [initialSlideId, sourceDeck.id]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(`${SNAPSHOT_KEY_PREFIX}${sourceDeck.id}`);
+      if (!stored) return;
+      const parsed = parseDeckSnapshots(JSON.parse(stored) as unknown, sourceDeck.id);
+      setSnapshots(parsed);
+      if (parsed.length === 0) {
+        window.localStorage.removeItem(`${SNAPSHOT_KEY_PREFIX}${sourceDeck.id}`);
+      } else {
+        window.localStorage.setItem(`${SNAPSHOT_KEY_PREFIX}${sourceDeck.id}`, JSON.stringify(parsed));
+      }
+    } catch {
+      setSnapshots([]);
+      try {
+        window.localStorage.removeItem(`${SNAPSHOT_KEY_PREFIX}${sourceDeck.id}`);
+      } catch {
+        // Studio vẫn hoạt động với lịch sử rỗng khi storage bị hạn chế.
+      }
+    }
+  }, [sourceDeck.id]);
 
   const validation = useMemo(() => validateDeck(deck), [deck]);
   const diagnostics = validation.diagnostics;
@@ -135,6 +169,12 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   }, [deck, saveState]);
 
   useEffect(() => {
+    if (!snapshotMenuOpen) return;
+    const timer = window.setTimeout(() => snapshotInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [snapshotMenuOpen]);
+
+  useEffect(() => {
     if (!inspectorOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -163,8 +203,14 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     setPendingDestructiveAction(action);
   };
 
+  const requestSnapshotRestore = (snapshotId: string, trigger: HTMLElement) => {
+    setPendingSnapshotId(snapshotId);
+    requestDestructiveAction("restore-snapshot", trigger);
+  };
+
   const closeDestructiveConfirmation = () => {
     setPendingDestructiveAction(null);
+    setPendingSnapshotId(null);
     requestAnimationFrame(() => {
       const target = destructiveReturnFocusRef.current;
       if (target?.isConnected) target.focus();
@@ -204,6 +250,49 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     } catch {
       setSaveState("error");
       setStorageMessage("Trình duyệt không cho phép lưu cục bộ. Phiên chỉnh sửa hiện tại vẫn còn trong bộ nhớ.");
+    }
+  };
+
+  const createSnapshot = () => {
+    if (!validation.ok) {
+      setStorageMessage("Chưa thể tạo phiên bản khi document còn lỗi cấu trúc. Hãy xử lý diagnostics trước.");
+      return;
+    }
+
+    try {
+      const next = createDeckSnapshot(deck, snapshotLabel, new Date(), snapshots);
+      window.localStorage.setItem(`${SNAPSHOT_KEY_PREFIX}${deck.id}`, JSON.stringify(next));
+      window.localStorage.setItem(`${DRAFT_KEY_PREFIX}${deck.id}`, JSON.stringify(deck));
+      setSnapshots(next);
+      setSnapshotLabel("");
+      setSaveState("saved");
+      setStorageMessage(`Đã tạo phiên bản “${next[0]!.label}”.`);
+    } catch {
+      setStorageMessage("Không thể lưu phiên bản trên trình duyệt này. Bản nháp hiện tại vẫn còn trong bộ nhớ.");
+    }
+  };
+
+  const restoreSnapshot = (snapshotId: string) => {
+    const snapshot = snapshots.find((candidate) => candidate.id === snapshotId);
+    if (!snapshot) {
+      setStorageMessage("Phiên bản này không còn tồn tại. Danh sách đã được làm mới.");
+      return;
+    }
+
+    const restored = restoreDeckSnapshot(snapshot);
+    const targetSlide = restored.slides.find((slide) => slide.id === selectedSlideId) ?? restored.slides[0]!;
+    setDeck(restored);
+    setSelectedSlideId(targetSlide.id);
+    setSelectedComponentId(targetSlide.components[0]!.id);
+    setSnapshotMenuOpen(false);
+
+    try {
+      window.localStorage.setItem(`${DRAFT_KEY_PREFIX}${restored.id}`, JSON.stringify(restored));
+      setSaveState("saved");
+      setStorageMessage(`Đã khôi phục phiên bản “${snapshot.label}” và lưu thành bản nháp hiện tại.`);
+    } catch {
+      setSaveState("error");
+      setStorageMessage(`Đã khôi phục phiên bản “${snapshot.label}” trong bộ nhớ, nhưng trình duyệt không cho phép lưu cục bộ.`);
     }
   };
 
@@ -286,10 +375,13 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
 
   const confirmDestructiveAction = () => {
     const action = pendingDestructiveAction;
+    const snapshotId = pendingSnapshotId;
     setPendingDestructiveAction(null);
+    setPendingSnapshotId(null);
     if (action === "reset-draft") resetDraft();
     else if (action === "delete-slide") deleteSlide();
     else if (action === "delete-component") deleteComponent();
+    else if (action === "restore-snapshot" && snapshotId) restoreSnapshot(snapshotId);
     requestAnimationFrame(() => {
       const target = destructiveReturnFocusRef.current;
       if (target?.isConnected) target.focus();
@@ -297,7 +389,8 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     });
   };
 
-  const destructiveCopy = getDestructiveCopy(pendingDestructiveAction, selectedSlide, selectedComponent);
+  const pendingSnapshot = pendingSnapshotId ? snapshots.find((snapshot) => snapshot.id === pendingSnapshotId) : undefined;
+  const destructiveCopy = getDestructiveCopy(pendingDestructiveAction, selectedSlide, selectedComponent, pendingSnapshot?.label);
 
   return (
     <main className={`studio-shell ${deckThemeClassName(deck)}`}>
@@ -312,6 +405,75 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
           <div className="studio-save-state" data-state={saveState} aria-live="polite"><Save size={14} /><span>{saveStateLabel}</span></div>
         </div>
         <div className="studio-actions">
+          <StudioPopover
+            open={snapshotMenuOpen}
+            onOpenChange={setSnapshotMenuOpen}
+            label="Lịch sử phiên bản"
+            description="Checkpoint cục bộ trên trình duyệt này. Không đồng bộ cloud."
+            triggerIcon={History}
+            triggerLabel="Phiên bản"
+            triggerClassName="toolbar-button studio-action--snapshots"
+            align="end"
+          >
+            <div className="studio-snapshot-panel">
+              <form
+                className="studio-snapshot-create"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  createSnapshot();
+                }}
+              >
+                <label>
+                  <span>Tên checkpoint</span>
+                  <input
+                    ref={snapshotInputRef}
+                    data-popover-autofocus
+                    value={snapshotLabel}
+                    maxLength={80}
+                    placeholder="Ví dụ: Trước khi chỉnh biểu đồ"
+                    onChange={(event) => setSnapshotLabel(event.target.value)}
+                  />
+                </label>
+                <button type="submit" disabled={!validation.ok} title={validation.ok ? "Lưu phiên bản hiện tại" : "Xử lý lỗi cấu trúc trước khi tạo phiên bản"}>
+                  <Plus size={15} aria-hidden="true" />
+                  <span>Tạo checkpoint</span>
+                </button>
+              </form>
+
+              <div className="studio-snapshot-history" aria-live="polite">
+                <div className="studio-snapshot-summary">
+                  <strong>{snapshots.length} phiên bản</strong>
+                  <span>Tối đa 20 checkpoint mới nhất</span>
+                </div>
+                {snapshots.length > 0 ? (
+                  <ol>
+                    {snapshots.map((snapshot) => (
+                      <li key={snapshot.id}>
+                        <div>
+                          <strong>{snapshot.label}</strong>
+                          <span>{formatSnapshotTime(snapshot.createdAt)} · {snapshot.deck.slides.length} slide</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(event) => requestSnapshotRestore(snapshot.id, event.currentTarget)}
+                          aria-label={`Khôi phục phiên bản ${snapshot.label}`}
+                        >
+                          <RotateCcw size={14} aria-hidden="true" />
+                          <span>Khôi phục</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="studio-snapshot-empty">
+                    <History size={19} aria-hidden="true" />
+                    <strong>Chưa có checkpoint</strong>
+                    <span>Tạo một phiên bản trước thay đổi lớn để có điểm quay lại an toàn.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </StudioPopover>
           <button className="toolbar-button studio-action--reset" onClick={(event) => requestDestructiveAction("reset-draft", event.currentTarget)}><RotateCcw size={16} /> Khôi phục</button>
           <button className="toolbar-button studio-action--save" onClick={saveDraft} data-state={saveState} aria-label="Lưu ngay"><Save size={16} /><span>Lưu ngay</span></button>
           <Link className="toolbar-button studio-action--preview" href={`/preview?deck=${deck.id}&slide=${selectedSlide.id}`} aria-label="Xem trước"><Eye size={16} /><span>Xem trước</span></Link>
@@ -504,7 +666,8 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
 function getDestructiveCopy(
   action: DestructiveAction | null,
   slide: Slide,
-  component: SlideComponent
+  component: SlideComponent,
+  snapshotLabel?: string
 ): { title: string; description: string; confirmLabel: string } | null {
   if (action === "reset-draft") {
     return {
@@ -527,7 +690,18 @@ function getDestructiveCopy(
       confirmLabel: "Xoá thành phần"
     };
   }
+  if (action === "restore-snapshot") {
+    return {
+      title: "Khôi phục phiên bản này?",
+      description: `Bản nháp hiện tại sẽ được thay bằng checkpoint “${snapshotLabel ?? "đã chọn"}”. Lịch sử phiên bản vẫn được giữ nguyên.`,
+      confirmLabel: "Khôi phục phiên bản"
+    };
+  }
   return null;
+}
+
+function formatSnapshotTime(createdAt: string): string {
+  return createdAt.slice(0, 16).replace("T", " ");
 }
 
 function getSaveStateLabel(state: SaveState): string {
