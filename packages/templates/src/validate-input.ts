@@ -3,14 +3,14 @@ import {
   deckBlueprintById,
   slideRecipeById,
   visualStyleById
-} from "./catalog/index.js";
+} from "./catalog/index";
 import type {
   CreateDeckFromTemplateInput,
   ResolvedTemplateInput,
   TemplateDiagnostic,
   TemplateResult,
   TemplateSlideInput
-} from "./types.js";
+} from "./types";
 
 export function validateTemplateInput(input: CreateDeckFromTemplateInput): TemplateResult<ResolvedTemplateInput> {
   const diagnostics: TemplateDiagnostic[] = [];

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@deckory/schema": "workspace:*"
+    "@deckory/schema": "workspace:*",
+    "@deckory/templates": "workspace:*"
   }
 }
