@@ -263,4 +263,30 @@ describe("Deck document contract", () => {
       ])
     });
   });
+
+  it("rejects components that do not belong in a closing layout", () => {
+    const result = validateDeck({
+      id: "invalid-closing",
+      version: 1,
+      title: "Closing không hợp lệ",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "closing",
+        layout: "closing",
+        components: [{
+          id: "chart",
+          type: "chart",
+          props: { title: "Không dành cho closing", unit: "điểm", values: [{ label: "A", value: 1 }] }
+        }]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.type" })
+      ])
+    });
+  });
 });

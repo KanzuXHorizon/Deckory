@@ -183,7 +183,8 @@ const LAYOUT_COMPONENTS: Partial<Record<Slide["layout"], ReadonlySet<SlideCompon
   architecture: new Set(["heading", "architecture", "insight", "evidence-footer"]),
   data: new Set(["heading", "chart", "metric-grid", "insight", "evidence-footer"]),
   split: new Set(["heading", "metric-grid", "insight", "evidence-footer"]),
-  dashboard: new Set(["heading", "metric-grid", "chart", "insight", "evidence-footer"])
+  dashboard: new Set(["heading", "metric-grid", "chart", "insight", "evidence-footer"]),
+  closing: new Set(["heading", "statement", "evidence-footer"])
 };
 
 export function validateDeck(input: unknown): DeckValidationResult {
