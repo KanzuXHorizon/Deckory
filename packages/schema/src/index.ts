@@ -8,6 +8,7 @@ export const SUPPORTED_COMPONENT_TYPES = [
   "process",
   "architecture",
   "chart",
+  "insight",
   "evidence-footer"
 ] as const;
 
@@ -64,20 +65,53 @@ const ArchitecturePropsSchema = z.object({
 const ChartPropsSchema = z.object({
   title: nonEmptyText,
   unit: nonEmptyText,
+  variant: z.enum(["bar", "line", "area", "donut"]).optional(),
+  showValues: z.boolean().optional(),
   values: z.array(z.object({
     label: nonEmptyText,
     value: z.number().finite().nonnegative(),
     highlight: z.boolean().optional()
   }).strict()).min(1).max(8)
 }).strict();
+const InsightPropsSchema = z.object({
+  label: nonEmptyText,
+  title: nonEmptyText,
+  description: nonEmptyText,
+  metric: optionalText,
+  tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional()
+}).strict();
 const EvidenceFooterPropsSchema = z.object({ source: nonEmptyText, page: optionalText }).strict();
+
+export const DeckThemeSchema = z.object({
+  preset: z.enum(["editorial-light", "editorial-dark", "technical-clean"]),
+  accent: z.enum(["cobalt", "teal", "amber"]).default("cobalt"),
+  typography: z.enum(["editorial", "modern", "technical"]).default("editorial"),
+  density: z.enum(["comfortable", "compact"]).default("comfortable")
+}).strict();
+
+export const SlideVariantSchema = z.enum(["default", "spotlight", "quiet", "technical"]);
+
+export const MotionEasingSchema = z.enum(["standard", "emphasized", "linear"]);
+export const SlideTransitionSchema = z.object({
+  type: z.enum(["none", "fade", "slide", "push", "wipe", "zoom", "morph"]),
+  duration: z.number().finite().min(0.1).max(1.2).optional(),
+  easing: MotionEasingSchema.optional()
+}).strict();
+export const ElementEffectSchema = z.object({
+  type: z.enum(["none", "fade", "rise", "scale", "wipe", "blur", "pop"]),
+  duration: z.number().finite().min(0.1).max(1.2).optional(),
+  delay: z.number().finite().min(0).max(1.5).optional(),
+  easing: MotionEasingSchema.optional()
+}).strict();
 
 function componentSchema<T extends (typeof SUPPORTED_COMPONENT_TYPES)[number], S extends z.ZodTypeAny>(type: T, props: S) {
   return z.object({
     id: stableId,
     type: z.literal(type),
     props,
-    sequence: z.number().int().positive().optional()
+    sequence: z.number().int().positive().optional(),
+    effect: ElementEffectSchema.optional(),
+    morphId: stableId.optional()
   }).strict();
 }
 
@@ -89,12 +123,15 @@ export const SlideComponentSchema = z.discriminatedUnion("type", [
   componentSchema("process", ProcessPropsSchema),
   componentSchema("architecture", ArchitecturePropsSchema),
   componentSchema("chart", ChartPropsSchema),
+  componentSchema("insight", InsightPropsSchema),
   componentSchema("evidence-footer", EvidenceFooterPropsSchema)
 ]);
 
 export const SlideSchema = z.object({
   id: stableId,
   layout: z.enum(SUPPORTED_LAYOUTS),
+  variant: SlideVariantSchema.optional(),
+  transition: SlideTransitionSchema.optional(),
   notes: z.string().trim().min(1).max(6_000).optional(),
   components: z.array(SlideComponentSchema).min(1)
 }).strict();
@@ -105,11 +142,17 @@ export const DeckDocumentSchema = z.object({
   title: nonEmptyText.max(140),
   locale: z.literal("vi-VN"),
   themeId: stableId,
+  theme: DeckThemeSchema.optional(),
   slides: z.array(SlideSchema).min(1)
 }).strict();
 
 export type DeckDocument = z.infer<typeof DeckDocumentSchema>;
+export type DeckTheme = z.infer<typeof DeckThemeSchema>;
+export type MotionEasing = z.infer<typeof MotionEasingSchema>;
+export type SlideTransition = z.infer<typeof SlideTransitionSchema>;
+export type ElementEffect = z.infer<typeof ElementEffectSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
+export type SlideVariant = z.infer<typeof SlideVariantSchema>;
 export type SlideComponent = z.infer<typeof SlideComponentSchema>;
 
 export type DeckDiagnostic = {
@@ -137,8 +180,10 @@ const LAYOUT_COMPONENTS: Partial<Record<Slide["layout"], ReadonlySet<SlideCompon
   statement: new Set(["statement", "heading", "evidence-footer"]),
   comparison: new Set(["heading", "comparison", "evidence-footer"]),
   process: new Set(["heading", "process", "evidence-footer"]),
-  architecture: new Set(["heading", "architecture", "evidence-footer"]),
-  data: new Set(["heading", "chart", "metric-grid", "evidence-footer"])
+  architecture: new Set(["heading", "architecture", "insight", "evidence-footer"]),
+  data: new Set(["heading", "chart", "metric-grid", "insight", "evidence-footer"]),
+  split: new Set(["heading", "metric-grid", "insight", "evidence-footer"]),
+  dashboard: new Set(["heading", "metric-grid", "chart", "insight", "evidence-footer"])
 };
 
 export function validateDeck(input: unknown): DeckValidationResult {
