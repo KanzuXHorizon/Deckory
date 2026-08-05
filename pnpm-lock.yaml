@@ -71,9 +71,6 @@ importers:
       '@deckory/templates':
         specifier: workspace:*
         version: link:../../packages/templates
-      '@deckory/templates':
-        specifier: workspace:*
-        version: link:../../packages/templates
 
   packages/audit:
     dependencies:

@@ -557,7 +557,7 @@ function createSlideTemplate(layout: Slide["layout"], id: string, page: number):
   const heading: SlideComponent = { id: "heading", type: "heading", props: { eyebrow: "SLIDE MỚI", title: "Đặt kết luận chính của slide ở đây.", description: "Thay nội dung minh hoạ bằng thông tin thật trước khi trình chiếu." } };
   const footer: SlideComponent = { id: "footer", type: "evidence-footer", props: { page: String(page).padStart(2, "0"), source: "Nội dung minh hoạ — cần thay bằng nguồn thật" } };
   const middle: Partial<Record<Slide["layout"], SlideComponent>> = {
-    statement: { id: "statement", type: "statement", props: { quote: "Một luận điểm rõ ràng đáng nhớ hơn một trang đầy chữ.", byline: "Deckory placeholder" } },
+    statement: { id: "statement", type: "statement", props: { quote: "Một luận điểm rõ ràng đáng nhớ hơn một trang đầy chữ.", byline: "Nguyên tắc trình bày Deckory" } },
     split: { id: "metrics", type: "metric-grid", props: { metrics: [
       { value: "64%", label: "tín hiệu chính", note: "fixture minh hoạ", tone: "cobalt" },
       { value: "24%", label: "tín hiệu phụ", note: "fixture minh hoạ", tone: "teal" },
