@@ -69,6 +69,12 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/templates:
+    dependencies:
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../schema
+
 packages:
 
   '@emnapi/runtime@1.11.3':
