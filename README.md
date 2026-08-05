@@ -2,45 +2,72 @@
   <img src="docs/assets/deckory-mark.svg" width="88" alt="Deckory logo" />
   <h1>Deckory</h1>
   <p><strong>Presentations, engineered.</strong></p>
-  <p>A code-native presentation system for building structured, validated and visually expressive decks.</p>
+  <p>A code-native presentation system for structured, validated and visually expressive decks.</p>
 
   <p>
-    <a href="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml/badge.svg" /></a>
-    <a href="https://github.com/KanzuXHorizon/Deckory/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/KanzuXHorizon/Deckory/actions/workflows/codeql.yml/badge.svg" /></a>
-    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5B52EE.svg" /></a>
-    <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.7-F69220?logo=pnpm&logoColor=white" />
-    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-15171A?logo=next.js&logoColor=white" />
-    <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" />
+    <a href="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/KanzuXHorizon/Deckory/actions/workflows/ci.yml/badge.svg" /></a>
+    <a href="https://github.com/KanzuXHorizon/Deckory/actions/workflows/codeql.yml"><img alt="CodeQL status" src="https://github.com/KanzuXHorizon/Deckory/actions/workflows/codeql.yml/badge.svg" /></a>
+    <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-5B52EE.svg" /></a>
+    <img alt="Node.js 24" src="https://img.shields.io/badge/Node.js-24-339933?logo=node.js&logoColor=white" />
+    <img alt="pnpm 11.7" src="https://img.shields.io/badge/pnpm-11.7-F69220?logo=pnpm&logoColor=white" />
+    <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-15171A?logo=next.js&logoColor=white" />
+    <img alt="TypeScript 5.9" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" />
+  </p>
+
+  <p>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#how-it-works">How it works</a> ·
+    <a href="#create-a-deck">Create a deck</a> ·
+    <a href="CONTRIBUTING.md">Contributing</a>
   </p>
 </div>
 
-<img src="docs/assets/deckory-hero.svg" alt="Deckory — typed documents, semantic visuals and confident delivery" />
+<img src="docs/assets/deckory-hero.svg" alt="Deckory turns typed documents into semantic visuals and a presentation-ready experience" />
 
 ## Why Deckory
 
-Most presentation tools treat slides as disconnected canvases. Deckory treats a deck as a **typed document system**: content is structured, validated and rendered through semantic components so the same source can power editing, previewing and presenting.
+Traditional presentation tools treat every slide as an isolated canvas. Deckory treats a presentation as a **typed document system**: content is structured, validated and rendered through semantic components, allowing the same source to power editing, previewing and presenting.
 
-- **Structured by design** — decks use a typed AST instead of arbitrary layout code.
-- **Semantic visuals** — charts, tables, comparisons, processes and code blocks communicate intent.
+- **Structured by design** — decks use a typed AST instead of arbitrary page-level JSX.
+- **Semantic visuals** — charts, tables, comparisons, processes, architecture diagrams and code blocks communicate intent.
 - **Presentation-ready** — keyboard navigation, reveal sequences, overview mode and private speaker notes are built in.
 - **Safer iteration** — validation catches malformed documents before they reach the audience.
-- **Agent-friendly** — repository skills provide explicit direction for narrative, visual quality and completeness.
+- **Agent-friendly** — repository skills define standards for narrative, visual quality, accessibility and completeness.
 
 ## Product surfaces
 
 | Surface | Purpose |
 | --- | --- |
-| **Hub** | Browse and manage available decks. |
-| **Studio** | Edit a shared typed deck document in the browser. |
-| **Preview** | Review the audience-facing result before presenting. |
-| **Presenter** | Deliver with keyboard navigation, sequence reveals, overview and speaker notes. |
+| **Hub** | Browse available decks and open the right working surface. |
+| **Studio** | Edit the shared typed document with live validation. |
+| **Preview** | Review the audience-facing result before delivery. |
+| **Presenter** | Present with keyboard controls, sequence reveals, overview and speaker notes. |
+
+## How it works
+
+```text
+Typed DeckDocument
+        │
+        ▼
+ Schema validation ──► actionable diagnostics
+        │
+        ▼
+ Semantic slide renderer
+        │
+        ├──► Studio
+        ├──► Preview
+        └──► Presenter
+```
+
+A deck is authored once and consumed by multiple product surfaces. Layouts describe composition; semantic components describe meaning; the renderer owns visual consistency and presentation behavior.
 
 ## Quick start
 
 ### Requirements
 
 - Node.js 24 or newer
-- pnpm 11.7.0 through Corepack
+- Corepack
+- pnpm 11.7.0
 
 ```bash
 corepack enable
@@ -50,16 +77,62 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Quality checks
+### Common commands
 
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+| Command | Purpose |
+| --- | --- |
+| `pnpm dev` | Start the Deckory application locally. |
+| `pnpm lint` | Run repository lint checks. |
+| `pnpm typecheck` | Validate TypeScript contracts. |
+| `pnpm test` | Run workspace test suites. |
+| `pnpm build` | Create the production Next.js build. |
+
+The same quality gates run on every push and pull request through GitHub Actions.
+
+## Create a deck
+
+Decks live under `decks/<name>/` and are defined with `defineDeck`.
+
+```ts
+import { defineDeck } from "@deckory/schema";
+
+export const productStory = defineDeck({
+  id: "product-story",
+  version: 1,
+  title: "Product story",
+  locale: "en-US",
+  themeId: "deckory-editorial",
+  slides: [
+    {
+      id: "cover",
+      layout: "cover",
+      notes: "Introduce the problem before the product.",
+      components: [
+        {
+          id: "heading",
+          type: "heading",
+          props: {
+            eyebrow: "PRODUCT / 2026",
+            title: "Turn complex information into",
+            emphasis: "a clear decision."
+          }
+        }
+      ]
+    }
+  ]
+});
 ```
 
-The same checks run on every push and pull request through GitHub Actions.
+Deckory conventions:
+
+- use stable, kebab-case deck, slide and component IDs;
+- select a named layout such as `cover`, `split`, `dashboard`, `comparison`, `process`, `architecture` or `data`;
+- prefer semantic components over arbitrary positioning;
+- add concise speaker notes to meaningful slides;
+- label illustrative data clearly and cite real evidence;
+- validate, test and inspect representative slides before presenting.
+
+See [`AGENTS.md`](AGENTS.md) for the complete repository rules and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
 
 ## Architecture
 
@@ -71,7 +144,7 @@ decks              Versioned deck packages and reference content
 .agents/skills     Deckory-specific design and completion guidance
 ```
 
-Deck documents are created with `defineDeck`, use stable kebab-case IDs and compose named layouts with semantic components. See [`AGENTS.md`](AGENTS.md) for repository conventions.
+The monorepo uses pnpm workspaces. Presentation content remains independent from product surfaces, while shared schemas and runtime behavior live in focused packages.
 
 ## Design system for agents
 
@@ -85,17 +158,24 @@ Supporting skills include:
 
 The source and adaptation policy is recorded in [`.agents/taste-skill.lock.json`](.agents/taste-skill.lock.json).
 
-## Current scope
+## Project status
 
-Deckory currently includes a typed deck AST, validation, Hub, browser Studio, Preview, Presenter, speaker notes, sequence reveals, semantic charts, tables, code snippets and local draft persistence.
+Deckory is an actively developed early-stage project. The current repository includes:
 
-The following are intentionally outside the current boundary:
+- typed deck documents and validation;
+- Hub, browser Studio, Preview and Presenter;
+- semantic charts, tables, code, metrics, comparisons and process visuals;
+- speaker notes, sequence reveals and presentation navigation;
+- local draft persistence;
+- automated lint, typecheck, test, build and CodeQL workflows.
+
+The following remain outside the current product boundary:
 
 - real-time collaboration;
-- cloud persistence and accounts;
+- cloud persistence and user accounts;
 - PDF, PNG and PPTX export.
 
-This distinction is deliberate: the repository describes implemented behavior without presenting roadmap items as finished features.
+The README intentionally distinguishes implemented behavior from future product direction.
 
 ## Community and support
 
