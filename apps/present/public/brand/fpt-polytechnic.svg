@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 180" role="img" aria-labelledby="title desc">
+  <title id="title">FPT Polytechnic</title>
+  <desc id="desc">Biểu trưng FPT với ba khối xanh dương, cam và xanh lá, kèm chữ FPT Polytechnic.</desc>
+  <rect width="760" height="180" rx="18" fill="#ffffff"/>
+  <g transform="translate(24 24) skewX(-10)">
+    <rect x="0" y="0" width="86" height="74" rx="12" fill="#1769aa"/>
+    <rect x="76" y="0" width="86" height="74" rx="12" fill="#f36f21"/>
+    <rect x="152" y="0" width="86" height="74" rx="12" fill="#39a949"/>
+    <g fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800" text-anchor="middle">
+      <text x="43" y="55">F</text><text x="119" y="55">P</text><text x="195" y="55">T</text>
+    </g>
+  </g>
+  <text x="292" y="78" fill="#f36f21" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="800" letter-spacing="1">FPT POLYTECHNIC</text>
+  <text x="294" y="118" fill="#1f3a5f" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600" letter-spacing="3">THỰC HỌC · THỰC NGHIỆP</text>
+  <path d="M292 138h420" stroke="#f36f21" stroke-width="6" stroke-linecap="round"/>
+</svg>

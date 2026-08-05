@@ -18,7 +18,7 @@ describe("ComponentInspector", () => {
 
     const html = renderToStaticMarkup(<ComponentInspector component={component} onChange={() => undefined} />);
 
-    expect(html).toContain("Data table");
+    expect(html).toContain("Bảng dữ liệu");
     expect(html).toContain("Cột 1");
     expect(html).toContain("Hàng 1");
     expect(html).toContain("Nhấn mạnh");
@@ -41,7 +41,7 @@ describe("ComponentInspector", () => {
 
     const html = renderToStaticMarkup(<ComponentInspector component={component} onChange={() => undefined} />);
 
-    expect(html).toContain("Code snippet");
+    expect(html).toContain("Đoạn mã");
     expect(html).toContain("Ngôn ngữ");
     expect(html).toContain("Số dòng");
     expect(html).toContain("Dòng nhấn mạnh (1, 2, 4)");
@@ -90,11 +90,38 @@ describe("ComponentInspector", () => {
 
     const html = renderToStaticMarkup(<ComponentInspector component={component} onChange={() => undefined} />);
 
-    expect(html).toContain("Visualizer");
-    expect(html).toContain("Kiểu visual");
+    expect(html).toContain("Sơ đồ tương tác");
+    expect(html).toContain("Kiểu sơ đồ");
     expect(html).toContain("Tương tác");
-    expect(html).toContain("Animation");
-    expect(html).toContain("Parent ID");
+    expect(html).toContain("Chuyển động");
+    expect(html).toContain("ID nút cha");
     expect(html).toContain("Nút tiêu điểm");
+  });
+
+  it("renders every editable field required by the weight simulator contract", () => {
+    const component: Extract<SlideComponent, { type: "weight-simulator" }> = {
+      id: "quality-weighting",
+      type: "weight-simulator",
+      props: {
+        title: "Mô phỏng trọng số",
+        description: "Thử nhiều ưu tiên đánh giá.",
+        dimensions: [
+          { id: "quality", label: "Chất lượng", score: 86, weight: 60, tone: "teal" },
+          { id: "speed", label: "Tốc độ", score: 72, weight: 40, tone: "cobalt" }
+        ],
+        presets: [{ id: "balanced", label: "Cân bằng", description: "Ưu tiên đồng đều", weights: { quality: 50, speed: 50 } }],
+        disclaimer: "Dữ liệu minh hoạ."
+      }
+    };
+
+    const html = renderToStaticMarkup(<ComponentInspector component={component} onChange={() => undefined} />);
+
+    expect(html).toContain("Mô phỏng trọng số");
+    expect(html).toContain("Tiêu chí 1");
+    expect(html).toContain("Điểm");
+    expect(html).toContain("Trọng số (%)");
+    expect(html).toContain("Cấu hình 1");
+    expect(html).toContain("Trọng số · Chất lượng");
+    expect(html).toContain("Lưu ý sử dụng");
   });
 });

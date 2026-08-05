@@ -100,6 +100,35 @@ test.describe("Deckory production presentation surfaces", () => {
     runtime.assertClean();
   });
 
+  test("synchronizes interactive team selection from presenter to audience", async ({ browser }) => {
+    const context = await browser.newContext({ baseURL: e2eBaseURL, viewport: { width: 1440, height: 900 } });
+    const presenter = await context.newPage();
+    const presenterRuntime = watchRuntimeErrors(presenter);
+
+    await presenter.goto("/present?deck=visual-lab&slide=team-showcase");
+    await waitForFonts(presenter);
+    await presenter.keyboard.press("ArrowRight");
+
+    const presenterMembers = presenter.locator(".presenter-stage-canvas .team-member");
+    await expect(presenterMembers).toHaveCount(3);
+    await expect(presenterMembers.nth(1)).toBeEnabled();
+    await presenter.waitForTimeout(700);
+    const selectedName = (await presenterMembers.nth(1).locator("strong").innerText()).trim();
+    await presenterMembers.nth(1).click({ force: true });
+    await expect(presenterMembers.nth(1)).toHaveClass(/is-selected/);
+
+    const audience = await context.newPage();
+    const audienceRuntime = watchRuntimeErrors(audience);
+    await audience.goto("/present?deck=visual-lab&slide=team-showcase&view=audience");
+    await waitForFonts(audience);
+    await expect(audience.locator(".audience-stage .team-member.is-selected strong")).toHaveText(selectedName);
+    await expect(audience.locator(".audience-stage .team-member-detail h3")).toHaveText(selectedName);
+
+    presenterRuntime.assertClean();
+    audienceRuntime.assertClean();
+    await context.close();
+  });
+
   test("keeps speaker notes private in audience view", async ({ page }) => {
     const runtime = watchRuntimeErrors(page);
     await page.goto("/present?deck=template-gallery&slide=shared-contract&view=audience");

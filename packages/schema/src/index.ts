@@ -13,6 +13,7 @@ export const SUPPORTED_COMPONENT_TYPES = [
   "insight",
   "team-showcase",
   "visualizer",
+  "weight-simulator",
   "evidence-footer"
 ] as const;
 
@@ -152,6 +153,43 @@ const InsightPropsSchema = z.object({
   metric: optionalText,
   tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional()
 }).strict();
+
+const WeightSimulatorPropsSchema = z.object({
+  title: nonEmptyText,
+  description: nonEmptyText,
+  dimensions: z.array(z.object({
+    id: stableId,
+    label: nonEmptyText,
+    score: z.number().finite().min(0).max(100),
+    weight: z.number().finite().min(0).max(100),
+    tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional()
+  }).strict()).min(2).max(8),
+  presets: z.array(z.object({
+    id: stableId,
+    label: nonEmptyText,
+    description: nonEmptyText,
+    weights: z.record(stableId, z.number().finite().min(0).max(100))
+  }).strict()).min(1).max(5),
+  disclaimer: nonEmptyText
+}).strict().superRefine((simulator, context) => {
+  const dimensionIds = new Set(simulator.dimensions.map((dimension) => dimension.id));
+  const baseTotal = simulator.dimensions.reduce((sum, dimension) => sum + dimension.weight, 0);
+  if (Math.abs(baseTotal - 100) > 0.01) {
+    context.addIssue({ code: "custom", path: ["dimensions"], message: "Expected base weights to total 100" });
+  }
+  simulator.presets.forEach((preset, presetIndex) => {
+    const entries = Object.entries(preset.weights);
+    const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+    if (Math.abs(total - 100) > 0.01) {
+      context.addIssue({ code: "custom", path: ["presets", presetIndex, "weights"], message: "Expected preset weights to total 100" });
+    }
+    entries.forEach(([id], weightIndex) => {
+      if (!dimensionIds.has(id)) {
+        context.addIssue({ code: "custom", path: ["presets", presetIndex, "weights", weightIndex], message: "Expected preset weight key to reference a dimension" });
+      }
+    });
+  });
+});
 export const TeamImageSchema = z.object({
   src: localImageSource.optional(),
   assetId: stableId.optional(),
@@ -252,7 +290,12 @@ const VisualizerPropsSchema = z.object({
   });
 });
 
-const EvidenceFooterPropsSchema = z.object({ source: nonEmptyText, page: optionalText }).strict();
+const EvidenceFooterPropsSchema = z.object({
+  source: nonEmptyText,
+  page: optionalText,
+  logoAssetId: stableId.optional(),
+  brandLabel: optionalText
+}).strict();
 
 export const DeckThemeSchema = z.object({
   preset: z.enum(["editorial-light", "editorial-dark", "technical-clean"]),
@@ -300,6 +343,7 @@ export const SlideComponentSchema = z.discriminatedUnion("type", [
   componentSchema("insight", InsightPropsSchema),
   componentSchema("team-showcase", TeamShowcasePropsSchema),
   componentSchema("visualizer", VisualizerPropsSchema),
+  componentSchema("weight-simulator", WeightSimulatorPropsSchema),
   componentSchema("evidence-footer", EvidenceFooterPropsSchema)
 ]);
 
@@ -307,6 +351,7 @@ export const SlideSchema = z.object({
   id: stableId,
   layout: z.enum(SUPPORTED_LAYOUTS),
   variant: SlideVariantSchema.optional(),
+  background: z.enum(["plain", "editorial", "grid", "spotlight", "bands"]).optional(),
   transition: SlideTransitionSchema.optional(),
   notes: z.string().trim().min(1).max(6_000).optional(),
   components: z.array(SlideComponentSchema).min(1)
@@ -375,9 +420,9 @@ const LAYOUT_COMPONENTS: Partial<Record<Slide["layout"], ReadonlySet<SlideCompon
   comparison: new Set(["heading", "comparison", "table", "evidence-footer"]),
   process: new Set(["heading", "process", "team-showcase", "visualizer", "evidence-footer"]),
   architecture: new Set(["heading", "architecture", "code", "insight", "team-showcase", "visualizer", "evidence-footer"]),
-  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "evidence-footer"]),
-  split: new Set(["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "evidence-footer"]),
-  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "evidence-footer"]),
+  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"]),
+  split: new Set(["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"]),
+  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"]),
   closing: new Set(["heading", "statement", "team-showcase", "visualizer", "evidence-footer"])
 };
 
@@ -444,6 +489,22 @@ export function validateDeck(input: unknown): DeckValidationResult {
         });
       }
 
+      if (component.type === "evidence-footer") {
+        const assetId = component.props.logoAssetId;
+        if (assetId && !assetIds.has(assetId)) {
+          diagnostics.push(diagnostic(
+            parsed.data.id,
+            slide.id,
+            component.id,
+            `slides.${slideIndex}.components.${componentIndex}.props.logoAssetId`,
+            "Logo footer tham chiếu asset không tồn tại trong deck manifest.",
+            "Thêm logo vào deck.assets hoặc đổi sang một logoAssetId hợp lệ.",
+            "asset ID declared in deck.assets",
+            assetId
+          ));
+        }
+      }
+
       if (component.sequence !== undefined) {
         if (component.sequence <= lastSequence) {
           diagnostics.push(diagnostic(parsed.data.id, slide.id, component.id, `slides.${slideIndex}.components.${componentIndex}.sequence`, "Thứ tự reveal phải tăng dần.", "Đặt sequence tăng dần theo thứ tự hiển thị.", `integer greater than ${lastSequence}`, String(component.sequence)));
@@ -464,6 +525,71 @@ function diagnostic(documentId: string, slideId: string | undefined, componentId
   return { documentId, ...(slideId ? { slideId } : {}), ...(componentId ? { componentId } : {}), propertyPath, severity: "error", message, remediation, ...(expected ? { expected } : {}), ...(received ? { received } : {}) };
 }
 
+const VALIDATION_MESSAGE_COPY: Record<string, { message: string; remediation: string; expected?: string }> = {
+  "Expected a stable kebab-case ID": {
+    message: "ID chỉ được dùng chữ thường, chữ số và dấu gạch nối.",
+    remediation: "Đổi ID sang dạng kebab-case ổn định, ví dụ: tong-quan-du-an.",
+    expected: "ID dạng kebab-case"
+  },
+  "Expected non-empty text": {
+    message: "Nội dung bắt buộc đang để trống.",
+    remediation: "Nhập nội dung có ý nghĩa trước khi tiếp tục.",
+    expected: "Văn bản không trống"
+  },
+  "Expected width and height to be provided together": {
+    message: "Chiều rộng và chiều cao phải được khai báo cùng nhau.",
+    remediation: "Bổ sung cả chiều rộng lẫn chiều cao, hoặc bỏ cả hai giá trị."
+  },
+  "Expected base weights to total 100": {
+    message: "Tổng trọng số mặc định phải bằng 100%.",
+    remediation: "Điều chỉnh các trọng số để tổng cuối cùng bằng 100%."
+  },
+  "Expected preset weights to total 100": {
+    message: "Tổng trọng số của cấu hình mẫu phải bằng 100%.",
+    remediation: "Điều chỉnh các trọng số trong cấu hình mẫu để tổng bằng 100%."
+  },
+  "Expected preset weight key to reference a dimension": {
+    message: "Trọng số trong cấu hình mẫu đang tham chiếu một tiêu chí không tồn tại.",
+    remediation: "Dùng đúng ID của một tiêu chí đã khai báo trong bộ mô phỏng."
+  },
+  "Expected exactly one of src or assetId": {
+    message: "Ảnh chỉ được dùng đường dẫn cục bộ hoặc mã tài nguyên, không dùng đồng thời cả hai.",
+    remediation: "Giữ lại một nguồn ảnh duy nhất."
+  },
+  "Expected a unique team member ID": {
+    message: "ID thành viên đang bị trùng.",
+    remediation: "Đặt một ID riêng cho từng thành viên."
+  },
+  "Expected at most one featured team member": {
+    message: "Chỉ được chọn tối đa một thành viên tiêu điểm.",
+    remediation: "Bỏ trạng thái tiêu điểm ở các thành viên còn lại."
+  },
+  "Expected exactly one member for the profile variant": {
+    message: "Bố cục hồ sơ riêng chỉ hỗ trợ đúng một thành viên.",
+    remediation: "Giữ lại một thành viên hoặc đổi sang bố cục đội ngũ."
+  },
+  "Expected a profile summary of at most 220 characters": {
+    message: "Phần tóm tắt hồ sơ vượt quá 220 ký tự.",
+    remediation: "Rút gọn phần tóm tắt để giữ khả năng đọc trên trang chiếu."
+  },
+  "Expected at most four profile contributions": {
+    message: "Hồ sơ chỉ nên có tối đa bốn đóng góp chính.",
+    remediation: "Giữ lại các đóng góp quan trọng và có thể kiểm chứng nhất."
+  },
+  "Expected at most three profile links": {
+    message: "Hồ sơ chỉ hỗ trợ tối đa ba liên kết.",
+    remediation: "Giữ lại các liên kết cần thiết nhất."
+  },
+  "Expected parentId to reference another visualizer item": {
+    message: "Nút cha phải tham chiếu đến một nút khác đang tồn tại.",
+    remediation: "Chọn ID của một nút đã có trong cùng sơ đồ."
+  },
+  "Expected parentId to reference a different item": {
+    message: "Nút không thể tham chiếu chính nó làm nút cha.",
+    remediation: "Chọn một nút khác làm nút cha hoặc bỏ liên kết cha."
+  }
+};
+
 function invalidValueDiagnostic(input: unknown, issue: z.core.$ZodIssue): DeckDiagnostic {
   const path = issue.path;
   const source = input as { slides?: Array<{ id?: string; components?: Array<{ id?: string }> }> };
@@ -473,16 +599,16 @@ function invalidValueDiagnostic(input: unknown, issue: z.core.$ZodIssue): DeckDi
   const componentIndex = componentMarker >= 0 && typeof path[componentMarker + 1] === "number" ? path[componentMarker + 1] as number : undefined;
   const slideId = slideIndex === undefined ? undefined : source.slides?.[slideIndex]?.id;
   const componentId = slideIndex === undefined || componentIndex === undefined ? undefined : source.slides?.[slideIndex]?.components?.[componentIndex]?.id;
-  const message = issue.message.replace(/^Expected /, "");
-  const expected = issue.message.includes("stable kebab-case") ? "stable kebab-case ID" : issue.message.includes("non-empty text") ? "non-empty text" : issue.message;
+  const localized = VALIDATION_MESSAGE_COPY[issue.message];
+  const fallbackMessage = issue.message.replace(/^Expected /, "");
 
   return diagnostic(
     getDocumentId(input),
     slideId,
     componentId,
     path.map(String).join(".") || "document",
-    `Giá trị không hợp lệ: ${message}`,
-    "Sửa giá trị để khớp contract Deckory v1.",
-    expected
+    localized?.message ?? `Giá trị chưa hợp lệ: ${fallbackMessage}`,
+    localized?.remediation ?? "Điều chỉnh giá trị theo yêu cầu hiển thị của thành phần.",
+    localized?.expected ?? issue.message
   );
 }

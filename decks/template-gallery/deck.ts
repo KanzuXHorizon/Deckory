@@ -73,9 +73,9 @@ const input = {
           metric: "44 recipes",
           tone: "teal"
         },
-        evidence: { source: "Dữ liệu fixture minh hoạ / Deckory template validation" }
+        evidence: { source: "Dữ liệu minh hoạ · kiểm tra template Deckory" }
       },
-      notes: "Các con số là coverage của fixture trong repo tại thời điểm tạo deck, không phải benchmark thị trường."
+      notes: "Các con số phản ánh phạm vi bao phủ của dữ liệu minh hoạ trong repo tại thời điểm tạo deck, không phải so sánh thị trường."
     },
     {
       stepId: "evidence",
@@ -162,7 +162,7 @@ const input = {
           quote: "Template là điểm khởi đầu có chất lượng — không phải giới hạn của thiết kế.",
           byline: "Deckory"
         },
-        evidence: { source: "@deckory/templates / gallery fixture" }
+        evidence: { source: "@deckory/templates · dữ liệu minh hoạ thư viện" }
       },
       notes: "Kết thúc bằng lời hứa cụ thể của hệ thống template và chuyển sang demo catalog hoặc Studio."
     }

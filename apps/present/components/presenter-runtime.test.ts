@@ -47,8 +47,8 @@ describe("presenter runtime helpers", () => {
   it("uses precise readiness copy instead of claiming offline support after registration", () => {
     expect(describeOfflineStatus("checking", true).label).toBe("Đang chuẩn bị");
     expect(describeOfflineStatus("ready", false).label).toBe("Ngoại tuyến");
-    expect(describeOfflineStatus("online-only", true).label).toBe("Chỉ trực tuyến");
-    expect(describeOfflineStatus("unsupported", true).label).toBe("Không hỗ trợ cache");
+    expect(describeOfflineStatus("online-only", true).label).toBe("Cần kết nối mạng");
+    expect(describeOfflineStatus("unsupported", true).label).toBe("Không hỗ trợ ngoại tuyến");
   });
 
   it("does not trigger slide shortcuts while the user is editing", () => {
@@ -122,6 +122,27 @@ describe("presenter runtime helpers", () => {
     expect(isPresenterSyncMessage(message)).toBe(true);
     expect(isPresenterSyncMessage({ ...message, audienceAvailable: "yes" })).toBe(false);
     expect(isPresenterSyncMessage({ ...message, audienceFullscreen: 1 })).toBe(false);
+  });
+
+  it("bounds and validates synchronized interaction state", () => {
+    const message = createPresenterSyncMessage({
+      sourceId: "presenter-1",
+      sender: "presenter",
+      slideIndex: 1,
+      sequenceStep: 0,
+      blackout: false,
+      revision: 4,
+      interactionState: { "scoring::simulator": "custom-state" }
+    });
+
+    expect(isPresenterSyncMessage(message)).toBe(true);
+    expect(isPresenterSyncMessage({ ...message, interactionState: { "": "value" } })).toBe(false);
+    expect(isPresenterSyncMessage({ ...message, interactionState: { "invalid key": "value" } })).toBe(false);
+    expect(isPresenterSyncMessage({ ...message, interactionState: { "scoring::simulator": "x".repeat(4_097) } })).toBe(false);
+    expect(isPresenterSyncMessage({
+      ...message,
+      interactionState: Object.fromEntries(Array.from({ length: 129 }, (_, index) => [`slide-${index}::component`, "value"]))
+    })).toBe(false);
   });
 
   it("expires audience presence only after the reliability window", () => {

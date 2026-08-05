@@ -35,6 +35,8 @@ type VisualMotionContext = {
   reducedMotion: boolean;
   motionDisabled: boolean;
   active: boolean;
+  selectedId: string | undefined;
+  onSelectedIdChange: ((selectedId: string) => void) | undefined;
 };
 
 export function TeamShowcase({
@@ -46,14 +48,23 @@ export function TeamShowcase({
   assets,
   reducedMotion,
   motionDisabled,
-  active
+  active,
+  selectedId: controlledSelectedId,
+  onSelectedIdChange
 }: TeamShowcaseProps & VisualMotionContext & { assets?: readonly DeckAsset[] | undefined }) {
   const detailId = useId();
   const initialMember = members.find((member) => member.featured) ?? members[0]!;
-  const [selectedId, setSelectedId] = useState(initialMember.id);
+  const [localSelectedId, setLocalSelectedId] = useState(initialMember.id);
+  const selectedId = controlledSelectedId ?? localSelectedId;
+  const setSelectedId = (nextId: string) => {
+    setLocalSelectedId(nextId);
+    onSelectedIdChange?.(nextId);
+  };
   const selectedMember = members.find((member) => member.id === selectedId) ?? initialMember;
   const motionOff = reducedMotion || motionDisabled;
-  const interactive = active && !motionDisabled;
+  const interactive = active
+    && !motionDisabled
+    && (controlledSelectedId === undefined || onSelectedIdChange !== undefined);
   const summary = members.map((member) => [member.name, member.role, member.studentId].filter(Boolean).join(", ")).join("; ");
   const detailMotion = resolveSemanticMotion({
     active,
@@ -112,26 +123,8 @@ export function TeamShowcase({
               duration: 0.42,
               delay: Math.min(index * 0.07, 0.28)
             });
-            return (
-              <motion.div
-                role={interactive ? "button" : undefined}
-                className={`team-member team-member--${member.accent ?? "neutral"} ${selected ? "is-selected" : ""}`}
-                key={member.id}
-                aria-pressed={interactive ? selected : undefined}
-                aria-controls={interactive ? detailId : undefined}
-                aria-label={`Xem thông tin ${member.name}${member.role ? `, ${member.role}` : ""}`}
-                tabIndex={interactive ? 0 : -1}
-                onClick={interactive ? () => setSelectedId(member.id) : undefined}
-                onKeyDown={interactive ? (event) => {
-                  if (event.key !== "Enter" && event.key !== " ") return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setSelectedId(member.id);
-                } : undefined}
-                initial={memberMotion.initial}
-                animate={memberMotion.animate}
-                transition={memberMotion.transition}
-              >
+            const content = (
+              <>
                 <MemberAvatar member={member} assets={assets} decorative={false} />
                 <span className="team-member-copy">
                   <strong>{member.name}</strong>
@@ -139,6 +132,33 @@ export function TeamShowcase({
                   {member.studentId && <small>{member.studentId}</small>}
                 </span>
                 {member.featured && <i>Lead</i>}
+              </>
+            );
+
+            return interactive ? (
+              <motion.button
+                type="button"
+                className={`team-member team-member--${member.accent ?? "neutral"} ${selected ? "is-selected" : ""}`}
+                key={member.id}
+                aria-pressed={selected}
+                aria-controls={detailId}
+                aria-label={`Xem thông tin ${member.name}${member.role ? `, ${member.role}` : ""}`}
+                onClick={() => setSelectedId(member.id)}
+                initial={memberMotion.initial}
+                animate={memberMotion.animate}
+                transition={memberMotion.transition}
+              >
+                {content}
+              </motion.button>
+            ) : (
+              <motion.div
+                className={`team-member team-member--${member.accent ?? "neutral"} ${selected ? "is-selected" : ""}`}
+                key={member.id}
+                initial={memberMotion.initial}
+                animate={memberMotion.animate}
+                transition={memberMotion.transition}
+              >
+                {content}
               </motion.div>
             );
           })}
@@ -321,14 +341,14 @@ function MemberAvatar({
   const source = resolveTeamImageSource(assets, member.image);
   if (member.image && source) {
     return (
-      <span className="team-member-avatar" data-image-position={member.image.position ?? "center"}>
+      <span className="team-member-avatar" data-image-position={member.image.position ?? "center"} data-qa-allow-clip>
         <img src={source} alt={decorative ? "" : member.image.alt} aria-hidden={decorative || undefined} />
       </span>
     );
   }
 
   return (
-    <span className="team-member-avatar team-member-avatar--monogram" aria-hidden={decorative || undefined}>
+    <span className="team-member-avatar team-member-avatar--monogram" aria-hidden={decorative || undefined} data-qa-allow-clip>
       {initials(member.name)}
     </span>
   );
@@ -344,16 +364,26 @@ export function SemanticVisualizer({
   items,
   reducedMotion,
   motionDisabled,
-  active
+  active,
+  selectedId: controlledSelectedId,
+  onSelectedIdChange
 }: VisualizerProps & VisualMotionContext) {
   const detailId = useId();
   const positions = useMemo(() => createPositions(variant, items.length), [items.length, variant]);
   const initialIndex = Math.max(0, items.findIndex((item) => item.featured));
-  const [selectedId, setSelectedId] = useState(items[initialIndex]?.id ?? items[0]!.id);
+  const [localSelectedId, setLocalSelectedId] = useState(items[initialIndex]?.id ?? items[0]!.id);
+  const selectedId = controlledSelectedId ?? localSelectedId;
+  const setSelectedId = (nextId: string) => {
+    setLocalSelectedId(nextId);
+    onSelectedIdChange?.(nextId);
+  };
   const selectedIndex = Math.max(0, items.findIndex((item) => item.id === selectedId));
   const selectedItem = items[selectedIndex] ?? items[0]!;
   const motionOff = reducedMotion || motionDisabled || animation === "none";
-  const interactive = active && !motionDisabled && interaction !== "none";
+  const interactive = active
+    && !motionDisabled
+    && interaction !== "none"
+    && (controlledSelectedId === undefined || onSelectedIdChange !== undefined);
   const accessibleSummary = items.map((item) => `${item.label}${item.value ? `: ${item.value}` : ""}${item.description ? `. ${item.description}` : ""}`).join("; ");
   const edges = createEdges(items, positions, variant);
   const trunkMotion = getVisualizerMotion(animation, "path", { active, motionOff, trunk: true });
@@ -398,8 +428,8 @@ export function SemanticVisualizer({
       )}
 
       <div className="semantic-visualizer-layout">
-        <div className="visual-canvas" aria-hidden="true">
-          <svg className="visual-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <div className="visual-canvas" data-qa-allow-clip>
+          <svg className="visual-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             {variant === "growth-tree" && (
               <motion.path
                 className="visual-trunk"
@@ -544,22 +574,22 @@ function defaultIconForVariant(variant: VisualizerProps["variant"]): keyof typeo
 function createPositions(variant: VisualizerProps["variant"], count: number): Point[] {
   if (variant === "growth-tree") {
     const positions: Point[] = [
-      { x: 50, y: 84 },
-      { x: 34, y: 67 },
-      { x: 66, y: 65 },
-      { x: 22, y: 46 },
-      { x: 43, y: 43 },
-      { x: 60, y: 38 },
-      { x: 78, y: 47 },
-      { x: 50, y: 20 }
+      { x: 50, y: 76 },
+      { x: 35, y: 62 },
+      { x: 65, y: 62 },
+      { x: 22, y: 43 },
+      { x: 42, y: 42 },
+      { x: 59, y: 39 },
+      { x: 78, y: 44 },
+      { x: 50, y: 24 }
     ];
     return positions.slice(0, count);
   }
 
   if (variant === "timeline-path") {
     return Array.from({ length: count }, (_, index) => ({
-      x: count === 1 ? 50 : 10 + (index / (count - 1)) * 80,
-      y: index % 2 === 0 ? 42 : 61
+      x: count === 1 ? 50 : 16 + (index / (count - 1)) * 68,
+      y: index % 2 === 0 ? 39 : 63
     }));
   }
 

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Deckory Present",
     short_name: "Deckory",
-    description: "Trình chiếu deck có cấu trúc, hỗ trợ keyboard, speaker notes và offline cache đã được xác minh.",
+    description: "Trình chiếu có cấu trúc, hỗ trợ bàn phím, ghi chú diễn giả và chế độ ngoại tuyến đã được xác minh.",
     start_url: "/",
     scope: "/",
     display: "standalone",

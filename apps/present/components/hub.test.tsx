@@ -7,7 +7,7 @@ describe("Deckory Hub workspace hierarchy", () => {
     const html = renderToStaticMarkup(<Hub />);
 
     expect(html).toContain('class="hub-workspace-intro"');
-    expect(html).toContain('aria-label="Tình trạng workspace"');
+    expect(html).toContain('aria-label="Tình trạng không gian làm việc"');
     expect(html).toContain('class="hub-health-strip"');
     expect(html).toContain("Mở deck");
     expect(html).toContain("Xem trước");

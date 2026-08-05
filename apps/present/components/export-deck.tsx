@@ -23,12 +23,12 @@ export function ExportDeck({ deck }: { deck: DeckDocument }) {
         </div>
         <div className="export-toolbar-copy">
           <strong>{deck.title}</strong>
-          <span>{deck.slides.length} slide · 16:9 · cùng renderer với Presenter</span>
+          <span>{deck.slides.length} trang chiếu · 16:9 · dùng cùng bộ dựng với chế độ trình chiếu</span>
         </div>
         <div className="export-toolbar-actions">
           <Link className="toolbar-button" href={`/present?deck=${deck.id}`}>
             <ArrowLeft size={16} />
-            <span>Về Presenter</span>
+            <span>Về chế độ trình chiếu</span>
           </Link>
           <button
             type="button"
@@ -44,7 +44,7 @@ export function ExportDeck({ deck }: { deck: DeckDocument }) {
 
       <section className="export-intro" aria-label="Thông tin xuất">
         <FileDown size={18} aria-hidden="true" />
-        <p>Mỗi slide được khóa ở 1280 × 720. Speaker notes và điều khiển Presenter không xuất hiện trong tài liệu.</p>
+        <p>Mỗi trang chiếu được cố định ở 1280 × 720. Ghi chú diễn giả và các điều khiển trình chiếu không xuất hiện trong tài liệu xuất.</p>
       </section>
 
       <div className="export-pages">
@@ -53,7 +53,7 @@ export function ExportDeck({ deck }: { deck: DeckDocument }) {
             className="export-page"
             data-export-slide-id={slide.id}
             data-export-slide-index={index + 1}
-            aria-label={`Slide ${index + 1} trên ${deck.slides.length}: ${slide.id}`}
+            aria-label={`Trang chiếu ${index + 1} trên ${deck.slides.length}: ${slide.id}`}
             key={slide.id}
           >
             <SlideFrame

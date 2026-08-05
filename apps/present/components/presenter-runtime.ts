@@ -31,6 +31,7 @@ export type PresenterSyncState = {
   revision: number;
   audienceAvailable?: boolean;
   audienceFullscreen?: boolean;
+  interactionState?: Record<string, string>;
 };
 
 export type PresenterSyncMessage = PresenterSyncState & {
@@ -47,6 +48,9 @@ export const PRESENTER_CHANNEL_NAME = "deckory-presentation";
 export const PRESENTER_STORAGE_KEY = "deckory:presentation-state";
 
 const REQUIRED_SHELL_PATHS = ["/", "/manifest.webmanifest", "/icon.svg"] as const;
+const INTERACTION_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:::[a-z0-9]+(?:-[a-z0-9]+)*)?$/;
+const MAX_INTERACTION_ENTRIES = 128;
+const MAX_INTERACTION_VALUE_LENGTH = 4_096;
 
 export function buildRequiredAssetList(
   resources: readonly PerformanceResourceLike[],
@@ -76,13 +80,13 @@ export function describeOfflineStatus(status: OfflineStatus, isOnline: boolean) 
     case "checking":
       return { label: "Đang chuẩn bị", description: "Đang kiểm tra font, deck và tài nguyên cần thiết." };
     case "ready":
-      return { label: "Sẵn sàng ngoại tuyến", description: "Shell, font và tài nguyên của deck đã được lưu." };
+      return { label: "Sẵn sàng ngoại tuyến", description: "Giao diện, phông chữ và tài nguyên trình chiếu đã được lưu trên thiết bị." };
     case "online-only":
-      return { label: "Chỉ trực tuyến", description: "Một số tài nguyên chưa được lưu đầy đủ trên thiết bị." };
+      return { label: "Cần kết nối mạng", description: "Một số tài nguyên chưa được lưu đầy đủ trên thiết bị." };
     case "unsupported":
-      return { label: "Không hỗ trợ cache", description: "Trình duyệt này không hỗ trợ service worker." };
+      return { label: "Không hỗ trợ ngoại tuyến", description: "Trình duyệt này không thể lưu bản trình chiếu để sử dụng khi mất mạng." };
     case "error":
-      return { label: "Không thể chuẩn bị", description: "Deck vẫn trình chiếu trực tuyến; cache ngoại tuyến chưa sẵn sàng." };
+      return { label: "Chưa sẵn sàng ngoại tuyến", description: "Vẫn có thể trình chiếu khi đang kết nối mạng." };
   }
 }
 
@@ -187,8 +191,20 @@ export function isPresenterSyncMessage(value: unknown): value is PresenterSyncMe
     && (message.revision ?? -1) >= 0
     && (message.audienceAvailable === undefined || typeof message.audienceAvailable === "boolean")
     && (message.audienceFullscreen === undefined || typeof message.audienceFullscreen === "boolean")
+    && (message.interactionState === undefined || isValidInteractionState(message.interactionState))
     && typeof message.sentAt === "number"
     && Number.isFinite(message.sentAt);
+}
+
+function isValidInteractionState(value: unknown): value is Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const entries = Object.entries(value);
+  return entries.length <= MAX_INTERACTION_ENTRIES
+    && entries.every(([key, interactionValue]) => (
+      INTERACTION_KEY_PATTERN.test(key)
+      && typeof interactionValue === "string"
+      && interactionValue.length <= MAX_INTERACTION_VALUE_LENGTH
+    ));
 }
 
 export function getNextPreviewCue(

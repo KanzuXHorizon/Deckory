@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { deckCatalog, slideTitle, visualCoverage } from "../lib/deck-catalog";
 import { deckThemeClassName } from "../lib/deck-theme";
+import { layoutLabel } from "../lib/studio-option-catalog";
 import { DeckoryBrand } from "./brand-mark";
 import { DeckThumbnail } from "./deck-thumbnail";
 
@@ -63,7 +64,7 @@ export function Hub() {
         <div className="hub-workspace-copy">
           <span className="section-label">DECKORY WORKSPACE</span>
           <h1 id="hub-title">Không gian làm việc cho những deck cần được tin cậy.</h1>
-          <p>Chọn deck, kiểm tra trạng thái và đi thẳng vào chỉnh sửa hoặc trình chiếu. Hub giữ vai trò thư viện sản xuất, không phải một landing page.</p>
+          <p>Chọn bộ trình chiếu, kiểm tra trạng thái và đi thẳng vào chỉnh sửa hoặc trình chiếu. Đây là thư viện làm việc tập trung, không phải trang giới thiệu tiếp thị.</p>
 
           <div className="hub-active-deck" aria-label={`Deck đang chọn: ${activeItem.deck.title}`}>
             <div>
@@ -78,7 +79,7 @@ export function Hub() {
             </div>
           </div>
 
-          <div className="hub-health-strip" aria-label="Tình trạng workspace">
+          <div className="hub-health-strip" aria-label="Tình trạng không gian làm việc">
             <article><LayoutGrid size={17} /><strong>{deckCatalog.length}</strong><span>deck có cấu trúc</span></article>
             <article><SlidersHorizontal size={17} /><strong>{totalSlides}</strong><span>slide có thể quản lý</span></article>
             <article><BarChart3 size={17} /><strong>4</strong><span>kiểu biểu đồ</span></article>
@@ -101,7 +102,7 @@ export function Hub() {
 
       <section className="hub-section hub-library" id="library" aria-labelledby="library-title">
         <div className="section-heading-row">
-          <div><span className="section-label">THƯ VIỆN DECK</span><h2 id="library-title">Deck trong workspace</h2><p>Chọn một deck để cập nhật vùng làm việc phía trên hoặc mở trực tiếp vào chế độ cần dùng.</p></div>
+          <div><span className="section-label">THƯ VIỆN TRÌNH CHIẾU</span><h2 id="library-title">Bộ trình chiếu trong không gian làm việc</h2><p>Chọn một bộ trình chiếu để cập nhật vùng làm việc phía trên hoặc mở trực tiếp vào chế độ cần dùng.</p></div>
           <label className="search-field"><Search size={17} /><span className="sr-only">Tìm deck</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm theo tên, mục đích hoặc visual…" /></label>
         </div>
 
@@ -141,7 +142,7 @@ export function Hub() {
 
       <section className="hub-section slide-manager" id="slides" aria-labelledby="slides-title">
         <div className="section-heading-row">
-          <div><span className="section-label">CẤU TRÚC DECK</span><h2 id="slides-title">Slide của deck đang chọn</h2></div>
+          <div><span className="section-label">CẤU TRÚC TRÌNH CHIẾU</span><h2 id="slides-title">Các trang của bộ trình chiếu đang chọn</h2></div>
           <div className="selected-deck-copy"><span>{activeItem.deck.title}</span><strong>{activeItem.deck.slides.length} slide</strong></div>
         </div>
         <div className="slide-strip">
@@ -150,7 +151,7 @@ export function Hub() {
               <span>{String(index + 1).padStart(2, "0")}</span>
               <DeckThumbnail slide={slide} assets={activeItem.deck.assets} themeClassName={deckThemeClassName(activeItem.deck)} />
               <strong>{slideTitle(slide)}</strong>
-              <small>{slide.layout} · {slide.components.length} thành phần</small>
+              <small>{layoutLabel(slide.layout)} · {slide.components.length} thành phần</small>
             </Link>
           ))}
         </div>
@@ -160,7 +161,7 @@ export function Hub() {
         <div className="visual-system-copy">
           <span className="section-label">HỆ THỐNG TRÌNH BÀY</span>
           <h2 id="visual-title">Một visual grammar đủ rộng nhưng không mất kiểm soát.</h2>
-          <p>Mỗi layout và thành phần đều có contract, giới hạn nội dung và kiểm tra trước khi trình chiếu. Agent có thể tái sử dụng template mà vẫn giữ hierarchy và độ chính xác.</p>
+          <p>Mỗi bố cục và thành phần đều có quy tắc rõ ràng, giới hạn nội dung và bước kiểm tra trước khi trình chiếu. Trợ lý có thể tái sử dụng mẫu mà vẫn giữ đúng thứ bậc thông tin và độ chính xác.</p>
           <Link className="secondary-action" href="/studio?deck=visual-lab">Mở Visual Lab <ArrowRight size={16} /></Link>
         </div>
         <div className="coverage-list">
@@ -168,7 +169,7 @@ export function Hub() {
         </div>
       </section>
 
-      <footer className="hub-footer"><span>Deckory / structured presentation workspace</span><span>Local-first editor preview</span></footer>
+      <footer className="hub-footer"><span>Deckory / không gian trình chiếu có cấu trúc</span><span>Biên tập và xem trước ưu tiên ngoại tuyến</span></footer>
     </main>
   );
 }

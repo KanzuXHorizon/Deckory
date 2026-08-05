@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Slide } from "@deckory/schema";
+import { encodeWeightSimulatorInteraction, getComponentInteractionKey } from "./interaction-state";
 import { SlideFrame } from "./slide-frame";
 
 const dataSlide: Slide = {
@@ -283,6 +284,98 @@ describe("SlideFrame", () => {
     expect(visibleHtml).toContain('role="button"');
     expect(visibleHtml).toContain('aria-pressed="true"');
     expect(visibleHtml).toContain("is-pulse-target");
+    expect(visibleHtml).not.toContain('class="visual-canvas" aria-hidden="true"');
+    expect(visibleHtml).toMatch(/<svg class="visual-connections"[^>]*aria-hidden="true"/);
+  });
+
+  it("renders synchronized semantic selections as read-only when no interaction handler is available", () => {
+    const slide: Slide = {
+      id: "audience-selections",
+      layout: "process",
+      components: [
+        {
+          id: "team",
+          type: "team-showcase",
+          props: {
+            members: [
+              { id: "lead", name: "Trưởng nhóm", featured: true },
+              { id: "designer", name: "Thiết kế" }
+            ]
+          }
+        },
+        {
+          id: "map",
+          type: "visualizer",
+          props: {
+            variant: "network",
+            interaction: "inspect",
+            items: [
+              { id: "source", label: "Nguồn", featured: true },
+              { id: "result", label: "Kết quả", parentId: "source" }
+            ]
+          }
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame
+        slide={slide}
+        sequenceStep={0}
+        reducedMotion={false}
+        interactionState={{
+          [getComponentInteractionKey(slide.id, "team")]: "designer",
+          [getComponentInteractionKey(slide.id, "map")]: "result"
+        }}
+      />
+    );
+
+    expect(html).toContain("Thiết kế");
+    expect(html).toContain("Kết quả");
+    expect(html).not.toContain('role="button"');
+    expect(html).not.toContain('aria-pressed=');
+  });
+
+  it("renders a synchronized weight simulator state and keeps read-only audiences non-interactive", () => {
+    const slide: Slide = {
+      id: "weighting",
+      layout: "data",
+      components: [{
+        id: "simulator",
+        type: "weight-simulator",
+        props: {
+          title: "Mô phỏng trọng số",
+          description: "Thử nhiều ưu tiên đánh giá.",
+          dimensions: [
+            { id: "quality", label: "Chất lượng", score: 86, weight: 60 },
+            { id: "speed", label: "Tốc độ", score: 72, weight: 40 }
+          ],
+          presets: [
+            { id: "balanced", label: "Cân bằng", description: "Ưu tiên đồng đều", weights: { quality: 50, speed: 50 } },
+            { id: "quality-first", label: "Ưu tiên chất lượng", description: "Tăng trọng số chất lượng", weights: { quality: 75, speed: 25 } }
+          ],
+          disclaimer: "Dữ liệu minh hoạ."
+        }
+      }]
+    };
+    const interactionState = {
+      [getComponentInteractionKey(slide.id, "simulator")]: encodeWeightSimulatorInteraction({ presetId: "custom", weights: { quality: 64, speed: 36 } })
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={slide} sequenceStep={0} reducedMotion={false} interactionState={interactionState} />
+    );
+    const staticHtml = renderToStaticMarkup(
+      <SlideFrame slide={slide} sequenceStep={0} reducedMotion={false} motionDisabled />
+    );
+
+    expect(html).toContain('value="64"');
+    expect(html).toContain('value="36"');
+    expect(html).toContain("Tổng trọng số 100%");
+    expect(html).toContain('data-read-only="true"');
+    expect(html).toContain("disabled=\"\"");
+    expect(staticHtml).toContain('data-read-only="true"');
+    expect(staticHtml).toContain("disabled=\"\"");
   });
 
   it("preserves reveal state when motion is disabled or reduced", () => {

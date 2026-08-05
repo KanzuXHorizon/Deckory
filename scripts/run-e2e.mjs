@@ -8,6 +8,7 @@ const runId = `${Date.now().toString(36)}-${process.pid}`;
 const distDir = `.next-e2e-${runId}`;
 const distPath = resolve(repositoryRoot, "apps", "present", distDir);
 const port = await findAvailablePort();
+const playwrightArgs = process.argv.slice(2).filter((argument, index) => !(index === 0 && argument === "--"));
 const environment = {
   ...process.env,
   DECKORY_NEXT_DIST_DIR: distDir,
@@ -21,7 +22,7 @@ console.log(`[deckory:e2e] run=${runId} port=${port} dist=${distDir}`);
 let exitCode = 1;
 try {
   await runPnpm(["--filter", "@deckory/present", "build"], environment);
-  await runPnpm(["exec", "playwright", "test"], environment);
+  await runPnpm(["exec", "playwright", "test", ...playwrightArgs], environment);
   exitCode = 0;
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);

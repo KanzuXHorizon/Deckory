@@ -95,7 +95,7 @@ export const deckoryStory = defineDeck({
         {
           id: "footer",
           type: "evidence-footer",
-          props: { page: "03", source: "Số liệu fixture minh hoạ — không phải benchmark sản phẩm" }
+          props: { page: "03", source: "Số liệu minh hoạ — không phải kết quả đối chuẩn sản phẩm" }
         }
       ]
     },
@@ -104,7 +104,7 @@ export const deckoryStory = defineDeck({
       layout: "data",
       variant: "spotlight",
       transition: { type: "wipe", duration: 0.5 },
-      notes: "Đọc kết luận trước, sau đó dùng biểu đồ để chứng minh. Điểm số chỉ là fixture minh hoạ.",
+      notes: "Đọc kết luận trước, sau đó dùng biểu đồ để chứng minh. Điểm số chỉ là dữ liệu minh hoạ.",
       components: [
         {
           id: "heading",
@@ -147,7 +147,7 @@ export const deckoryStory = defineDeck({
         {
           id: "footer",
           type: "evidence-footer",
-          props: { page: "04", source: "Fixture quality score — dữ liệu minh hoạ" }
+          props: { page: "04", source: "Dữ liệu minh hoạ · điểm chất lượng" }
         }
       ]
     },

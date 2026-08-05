@@ -61,7 +61,7 @@ describe("Deck document contract", () => {
     expect(result).toMatchObject({
       ok: false,
       diagnostics: expect.arrayContaining([
-        expect.objectContaining({ propertyPath: "id", expected: "stable kebab-case ID" }),
+        expect.objectContaining({ propertyPath: "id", expected: "ID dạng kebab-case" }),
         expect.objectContaining({ slideId: "Cover Slide", propertyPath: "slides.0.id" }),
         expect.objectContaining({ componentId: "Title", propertyPath: "slides.0.components.0.id" })
       ])
@@ -84,7 +84,7 @@ describe("Deck document contract", () => {
         slideId: "cover",
         componentId: "title",
         propertyPath: "slides.0.components.0.props.title",
-        expected: "non-empty text"
+        expected: "Văn bản không trống"
       })]
     });
   });
@@ -594,8 +594,14 @@ describe("Deck document contract", () => {
     expect(invalid).toMatchObject({
       ok: false,
       diagnostics: expect.arrayContaining([
-        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items.0.parentId" }),
-        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items.1.parentId" })
+        expect.objectContaining({
+          propertyPath: "slides.0.components.0.props.items.0.parentId",
+          message: "Nút cha phải tham chiếu đến một nút khác đang tồn tại."
+        }),
+        expect.objectContaining({
+          propertyPath: "slides.0.components.0.props.items.1.parentId",
+          message: "Nút không thể tham chiếu chính nó làm nút cha."
+        })
       ])
     });
   });

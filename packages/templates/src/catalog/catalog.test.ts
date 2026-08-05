@@ -38,6 +38,14 @@ function sampleProps(type: SlideComponent["type"]): SlideComponent["props"] {
       return { members: [{ id: "member-one", name: "Nguyễn Văn A", role: "Product Designer" }] };
     case "visualizer":
       return { variant: "network", items: [{ id: "source", label: "Nguồn" }, { id: "result", label: "Kết quả", parentId: "source" }] };
+    case "weight-simulator":
+      return {
+        title: "Mô phỏng trọng số",
+        description: "Dữ liệu fixture minh hoạ.",
+        dimensions: [{ id: "quality", label: "Chất lượng", score: 80, weight: 60 }, { id: "evidence", label: "Bằng chứng", score: 70, weight: 40 }],
+        presets: [{ id: "default", label: "Mặc định", description: "Fixture", weights: { quality: 60, evidence: 40 } }],
+        disclaimer: "Không phải rubric production."
+      };
     case "evidence-footer":
       return { source: "Dữ liệu fixture minh hoạ" };
   }

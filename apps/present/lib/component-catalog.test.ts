@@ -61,6 +61,31 @@ describe("Studio component catalog", () => {
     }
   });
 
+  it("creates a valid weight simulator and exposes every supported layout", () => {
+    const simulator = createComponent("weight-simulator", "assessment-weighting");
+    const result = validateDeck({
+      id: "weight-simulator-catalog",
+      version: 1,
+      title: "Weight simulator catalog",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{ id: "weighting", layout: "split", components: [simulator] }]
+    });
+
+    expect(simulator).toMatchObject({
+      type: "weight-simulator",
+      props: {
+        dimensions: expect.arrayContaining([expect.objectContaining({ weight: expect.any(Number) })]),
+        presets: expect.any(Array),
+        disclaimer: expect.any(String)
+      }
+    });
+    expect(isCompatible("split", "weight-simulator")).toBe(true);
+    expect(isCompatible("dashboard", "weight-simulator")).toBe(true);
+    expect(isCompatible("data", "weight-simulator")).toBe(true);
+    expect(result).toMatchObject({ ok: true });
+  });
+
   it("creates complete valid defaults for team showcases and semantic visualizers", () => {
     const team = createComponent("team-showcase", "project-team");
     const visualizer = createComponent("visualizer", "growth-visual");
@@ -103,4 +128,5 @@ describe("Studio component catalog", () => {
       expect(isCompatible(layout as Parameters<typeof isCompatible>[0], type)).toBe(expected);
     }
   });
+
 });

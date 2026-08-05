@@ -28,8 +28,8 @@ export function ComponentInspector({
   switch (component.type) {
     case "heading":
       return (
-        <InspectorSection title="Nội dung heading" description="Heading đặt kết luận của slide lên trước.">
-          <TextField label="Kicker" value={component.props.eyebrow ?? ""} onChange={(value) => update({ eyebrow: optional(value) })} />
+        <InspectorSection title="Nội dung tiêu đề" description="Tiêu đề cần đưa kết luận chính của slide lên trước.">
+          <TextField label="Nhãn dẫn" value={component.props.eyebrow ?? ""} onChange={(value) => update({ eyebrow: optional(value) })} />
           <TextAreaField label="Tiêu đề" value={component.props.title} onChange={(value) => update({ title: value })} rows={3} />
           <TextField label="Phần nhấn" value={component.props.emphasis ?? ""} onChange={(value) => update({ emphasis: optional(value) })} />
           <TextAreaField label="Mô tả" value={component.props.description ?? ""} onChange={(value) => update({ description: optional(value) })} rows={3} />
@@ -37,16 +37,16 @@ export function ComponentInspector({
       );
     case "statement":
       return (
-        <InspectorSection title="Statement" description="Một luận điểm mạnh, ít chi tiết phụ.">
+        <InspectorSection title="Thông điệp chính" description="Một luận điểm mạnh, ít chi tiết phụ.">
           <TextAreaField label="Trích dẫn" value={component.props.quote} onChange={(value) => update({ quote: value })} rows={5} />
-          <TextField label="Nguồn hoặc byline" value={component.props.byline ?? ""} onChange={(value) => update({ byline: optional(value) })} />
+          <TextField label="Nguồn hoặc dòng ghi chú" value={component.props.byline ?? ""} onChange={(value) => update({ byline: optional(value) })} />
         </InspectorSection>
       );
     case "metric-grid":
       return (
-        <InspectorSection title="Metric grid" description="Mỗi metric cần trả lời một câu hỏi riêng.">
+        <InspectorSection title="Nhóm chỉ số" description="Mỗi chỉ số cần trả lời một câu hỏi riêng.">
           {component.props.metrics.map((metric, index) => (
-            <FieldGroup key={`${metric.label}-${index}`} label={`Metric ${index + 1}`}>
+            <FieldGroup key={`${metric.label}-${index}`} label={`Chỉ số ${index + 1}`}>
               <TextField label="Giá trị" value={metric.value} onChange={(value) => updateMetric(component, index, { value }, onChange)} />
               <IconChoiceGroup label="Màu nhấn" value={metric.tone ?? "cobalt"} options={metricToneOptions} compact onChange={(tone) => updateMetric(component, index, { tone }, onChange)} />
               <TextField label="Nhãn" value={metric.label} onChange={(value) => updateMetric(component, index, { label: value }, onChange)} />
@@ -57,10 +57,10 @@ export function ComponentInspector({
       );
     case "chart":
       return (
-        <InspectorSection title="Chart" description="Chọn chart theo quan hệ dữ liệu cần giải thích.">
+        <InspectorSection title="Biểu đồ" description="Chọn dạng biểu đồ theo quan hệ dữ liệu cần giải thích.">
           <IconChoiceGroup label="Kiểu biểu đồ" value={component.props.variant ?? "bar"} options={chartVariantOptions} compact onChange={(variant) => update({ variant })} />
           <BooleanChoice label="Hiện giá trị" value={component.props.showValues !== false} onChange={(showValues) => update({ showValues })} trueLabel="Hiện" falseLabel="Ẩn" trueIcon={booleanIcons.true} falseIcon={booleanIcons.false} />
-          <TextField label="Tiêu đề chart" value={component.props.title} onChange={(value) => update({ title: value })} />
+          <TextField label="Tiêu đề biểu đồ" value={component.props.title} onChange={(value) => update({ title: value })} />
           <TextField label="Đơn vị" value={component.props.unit} onChange={(value) => update({ unit: value })} />
           {component.props.values.map((item, index) => (
             <FieldGroup key={`${item.label}-${index}`} label={`Điểm dữ liệu ${index + 1}`}>
@@ -73,7 +73,7 @@ export function ComponentInspector({
       );
     case "table":
       return (
-        <InspectorSection title="Data table" description="Bảng dùng cho dữ liệu cần đối chiếu chính xác theo hàng và cột.">
+        <InspectorSection title="Bảng dữ liệu" description="Dùng khi cần đối chiếu chính xác theo hàng và cột.">
           <TextField label="Tiêu đề" value={component.props.title} onChange={(value) => update({ title: value })} />
           <div className="inspector-field-grid inspector-field-grid--two">
             {component.props.columns.map((column, index) => (
@@ -91,7 +91,7 @@ export function ComponentInspector({
       );
     case "code":
       return (
-        <InspectorSection title="Code snippet" description="Code block dành cho bằng chứng kỹ thuật ngắn, có dòng cần chú ý.">
+        <InspectorSection title="Đoạn mã" description="Dùng cho bằng chứng kỹ thuật ngắn và có dòng cần chú ý.">
           <div className="inspector-field-grid inspector-field-grid--two">
             <TextField label="Tiêu đề" value={component.props.title} onChange={(value) => update({ title: value })} />
             <TextField label="Ngôn ngữ" value={component.props.language} onChange={(value) => update({ language: value })} />
@@ -99,15 +99,15 @@ export function ComponentInspector({
           <TextAreaField label="Mã nguồn" value={component.props.code} onChange={(value) => update({ code: value })} rows={9} />
           <TextField label="Dòng nhấn mạnh (1, 2, 4)" value={(component.props.highlightLines ?? []).join(", ")} onChange={(value) => update({ highlightLines: parseLineNumbers(value) })} />
           <BooleanChoice label="Số dòng" value={component.props.showLineNumbers !== false} onChange={(showLineNumbers) => update({ showLineNumbers })} trueLabel="Hiện" falseLabel="Ẩn" trueIcon={booleanIcons.true} falseIcon={booleanIcons.false} />
-          <TextAreaField label="Caption" value={component.props.caption ?? ""} onChange={(value) => update({ caption: optional(value) })} rows={2} />
+          <TextAreaField label="Chú thích" value={component.props.caption ?? ""} onChange={(value) => update({ caption: optional(value) })} rows={2} />
         </InspectorSection>
       );
     case "comparison":
       return (
-        <InspectorSection title="Comparison" description="Hai phía phải dùng cùng tiêu chí để so sánh công bằng.">
+        <InspectorSection title="So sánh" description="Hai phía phải dùng cùng tiêu chí để so sánh công bằng.">
           {(["left", "right"] as const).map((side) => (
             <FieldGroup key={side} label={side === "left" ? "Vế trái" : "Vế phải"}>
-              <TextField label="Kicker" value={component.props[side].eyebrow} onChange={(value) => updateComparison(component, side, { eyebrow: value }, onChange)} />
+              <TextField label="Nhãn dẫn" value={component.props[side].eyebrow} onChange={(value) => updateComparison(component, side, { eyebrow: value }, onChange)} />
               <TextField label="Tiêu đề" value={component.props[side].title} onChange={(value) => updateComparison(component, side, { title: value }, onChange)} />
               {component.props[side].points.map((point, index) => (
                 <TextField key={`${side}-${index}`} label={`Điểm ${index + 1}`} value={point} onChange={(value) => updateComparisonPoint(component, side, index, value, onChange)} />
@@ -118,7 +118,7 @@ export function ComponentInspector({
       );
     case "process":
       return (
-        <InspectorSection title="Process" description="Mỗi bước cần một hành động và kết quả rõ.">
+        <InspectorSection title="Quy trình" description="Mỗi bước cần một hành động và kết quả rõ.">
           {component.props.steps.map((step, index) => (
             <FieldGroup key={`${step.title}-${index}`} label={`Bước ${index + 1}`}>
               <TextField label="Tiêu đề" value={step.title} onChange={(value) => updateProcessStep(component, index, { title: value }, onChange)} />
@@ -130,13 +130,13 @@ export function ComponentInspector({
       );
     case "architecture":
       return (
-        <InspectorSection title="Architecture" description="Các layer đi từ input đến source of truth rồi output.">
+        <InspectorSection title="Kiến trúc" description="Các lớp cần thể hiện rõ đầu vào, nguồn dữ liệu chuẩn và đầu ra.">
           {component.props.layers.map((layer, index) => (
-            <FieldGroup key={`${layer.label}-${index}`} label={`Layer ${index + 1}`}>
+            <FieldGroup key={`${layer.label}-${index}`} label={`Lớp ${index + 1}`}>
               <TextField label="Nhãn" value={layer.label} onChange={(value) => updateArchitectureLayer(component, index, { label: value }, onChange)} />
               <BooleanChoice label="Điểm nhấn" value={layer.accent === true} onChange={(accent) => updateArchitectureLayer(component, index, { accent }, onChange)} trueLabel="Nhấn" falseLabel="Thường" trueIcon={booleanIcons.yes} falseIcon={booleanIcons.no} />
               {layer.items.map((item, itemIndex) => (
-                <TextField key={`${index}-${itemIndex}`} label={`Item ${itemIndex + 1}`} value={item} onChange={(value) => updateArchitectureItem(component, index, itemIndex, value, onChange)} />
+                <TextField key={`${index}-${itemIndex}`} label={`Mục ${itemIndex + 1}`} value={item} onChange={(value) => updateArchitectureItem(component, index, itemIndex, value, onChange)} />
               ))}
             </FieldGroup>
           ))}
@@ -144,10 +144,10 @@ export function ComponentInspector({
       );
     case "insight":
       return (
-        <InspectorSection title="Insight" description="Insight diễn giải kết luận mà chart hoặc metric cần dẫn tới.">
+        <InspectorSection title="Kết luận" description="Diễn giải điều mà biểu đồ hoặc chỉ số cần dẫn tới.">
           <TextField label="Nhãn" value={component.props.label} onChange={(value) => update({ label: value })} />
           <IconChoiceGroup label="Màu nhấn" value={component.props.tone ?? "cobalt"} options={insightToneOptions} compact onChange={(tone) => update({ tone })} />
-          <TextField label="Metric" value={component.props.metric ?? ""} onChange={(value) => update({ metric: optional(value) })} />
+          <TextField label="Chỉ số nổi bật" value={component.props.metric ?? ""} onChange={(value) => update({ metric: optional(value) })} />
           <TextAreaField label="Tiêu đề" value={component.props.title} onChange={(value) => update({ title: value })} rows={2} />
           <TextAreaField label="Diễn giải" value={component.props.description} onChange={(value) => update({ description: value })} rows={4} />
         </InspectorSection>
@@ -185,20 +185,20 @@ export function ComponentInspector({
       );
     case "visualizer":
       return (
-        <InspectorSection title="Visualizer" description="Biến quan hệ phức tạp thành một cấu trúc có thể khám phá.">
+        <InspectorSection title="Sơ đồ tương tác" description="Biến quan hệ phức tạp thành một cấu trúc có thể khám phá.">
           <TextField label="Tiêu đề" value={component.props.title ?? ""} onChange={(value) => update({ title: optional(value) })} />
           <TextAreaField label="Tóm tắt" value={component.props.summary ?? ""} onChange={(value) => update({ summary: optional(value) })} rows={2} />
           <TextField label="Nhãn trung tâm" value={component.props.center ?? ""} onChange={(value) => update({ center: optional(value) })} />
-          <IconChoiceGroup label="Kiểu visual" value={component.props.variant} options={visualizerVariantOptions} compact onChange={(variant) => update({ variant })} />
+          <IconChoiceGroup label="Kiểu sơ đồ" value={component.props.variant} options={visualizerVariantOptions} compact onChange={(variant) => update({ variant })} />
           <IconChoiceGroup label="Tương tác" value={component.props.interaction ?? "inspect"} options={visualizerInteractionOptions} compact onChange={(interaction) => update({ interaction })} />
-          <IconChoiceGroup label="Animation" value={component.props.animation ?? "none"} options={visualizerAnimationOptions} compact onChange={(animation) => update({ animation })} />
+          <IconChoiceGroup label="Chuyển động" value={component.props.animation ?? "none"} options={visualizerAnimationOptions} compact onChange={(animation) => update({ animation })} />
           {component.props.items.map((item, index) => (
             <FieldGroup key={item.id} label={`Nút ${index + 1}`}>
               <TextField label="Nhãn" value={item.label} onChange={(label) => updateVisualizerItem(component, index, { label }, onChange)} />
               <TextAreaField label="Diễn giải" value={item.description ?? ""} onChange={(description) => updateVisualizerItem(component, index, { description: optional(description) }, onChange)} rows={2} />
               <div className="inspector-field-grid inspector-field-grid--two">
                 <TextField label="Giá trị" value={item.value ?? ""} onChange={(value) => updateVisualizerItem(component, index, { value: optional(value) }, onChange)} />
-                <TextField label="Parent ID" value={item.parentId ?? ""} onChange={(parentId) => updateVisualizerItem(component, index, { parentId: optional(parentId) }, onChange)} />
+                <TextField label="ID nút cha" value={item.parentId ?? ""} onChange={(parentId) => updateVisualizerItem(component, index, { parentId: optional(parentId) }, onChange)} />
               </div>
               <IconChoiceGroup label="Biểu tượng" value={item.icon ?? "data"} options={visualizerIconOptions} compact onChange={(icon) => updateVisualizerItem(component, index, { icon }, onChange)} />
               <IconChoiceGroup label="Màu nhấn" value={item.tone ?? "neutral"} options={insightToneOptions} compact onChange={(tone) => updateVisualizerItem(component, index, { tone }, onChange)} />
@@ -207,9 +207,43 @@ export function ComponentInspector({
           ))}
         </InspectorSection>
       );
+    case "weight-simulator":
+      return (
+        <InspectorSection title="Mô phỏng trọng số" description="Cho phép điều chỉnh tỷ trọng và quan sát cách điểm tổng hợp thay đổi.">
+          <TextField label="Tiêu đề" value={component.props.title} onChange={(value) => update({ title: value })} />
+          <TextAreaField label="Mô tả" value={component.props.description} onChange={(value) => update({ description: value })} rows={3} />
+          {component.props.dimensions.map((dimension, index) => (
+            <FieldGroup key={dimension.id} label={`Tiêu chí ${index + 1}`}>
+              <TextField label="Nhãn" value={dimension.label} onChange={(label) => updateWeightDimension(component, index, { label }, onChange)} />
+              <div className="inspector-field-grid inspector-field-grid--two">
+                <NumberField label="Điểm" value={dimension.score} onChange={(score) => updateWeightDimension(component, index, { score: Math.min(100, score) }, onChange)} />
+                <NumberField label="Trọng số (%)" value={dimension.weight} onChange={(weight) => updateWeightDimension(component, index, { weight: Math.min(100, weight) }, onChange)} />
+              </div>
+              <IconChoiceGroup label="Màu nhấn" value={dimension.tone ?? "neutral"} options={insightToneOptions} compact onChange={(tone) => updateWeightDimension(component, index, { tone }, onChange)} />
+            </FieldGroup>
+          ))}
+          {component.props.presets.map((preset, presetIndex) => (
+            <FieldGroup key={preset.id} label={`Cấu hình ${presetIndex + 1}`}>
+              <TextField label="Tên cấu hình" value={preset.label} onChange={(label) => updateWeightPreset(component, presetIndex, { label }, onChange)} />
+              <TextAreaField label="Mô tả cấu hình" value={preset.description} onChange={(description) => updateWeightPreset(component, presetIndex, { description }, onChange)} rows={2} />
+              <div className="inspector-field-grid inspector-field-grid--two">
+                {component.props.dimensions.map((dimension) => (
+                  <NumberField
+                    key={`${preset.id}-${dimension.id}`}
+                    label={`Trọng số · ${dimension.label}`}
+                    value={preset.weights[dimension.id] ?? 0}
+                    onChange={(weight) => updateWeightPresetWeight(component, presetIndex, dimension.id, Math.min(100, weight), onChange)}
+                  />
+                ))}
+              </div>
+            </FieldGroup>
+          ))}
+          <TextAreaField label="Lưu ý sử dụng" value={component.props.disclaimer} onChange={(value) => update({ disclaimer: value })} rows={2} />
+        </InspectorSection>
+      );
     case "evidence-footer":
       return (
-        <InspectorSection title="Evidence footer" description="Nguồn phải rõ hoặc ghi nhãn fixture minh hoạ.">
+        <InspectorSection title="Chân trang nguồn" description="Nguồn phải rõ hoặc được ghi nhãn là dữ liệu minh hoạ.">
           <TextField label="Nguồn" value={component.props.source} onChange={(value) => update({ source: value })} />
           <TextField label="Số trang" value={component.props.page ?? ""} onChange={(value) => update({ page: optional(value) })} />
         </InspectorSection>
@@ -346,6 +380,21 @@ function updateTeamImage(component: Extract<SlideComponent, { type: "team-showca
   updateTeamMember(component, index, {
     image: nextSrc ? { src: nextSrc, ...common } : { assetId: nextAssetId!, ...common }
   }, onChange);
+}
+
+function updateWeightDimension(component: Extract<SlideComponent, { type: "weight-simulator" }>, index: number, patch: Partial<(typeof component.props.dimensions)[number]>, onChange: (component: SlideComponent) => void) {
+  const dimensions = component.props.dimensions.map((dimension, dimensionIndex) => dimensionIndex === index ? { ...dimension, ...patch } : dimension);
+  onChange({ ...component, props: { ...component.props, dimensions } });
+}
+
+function updateWeightPreset(component: Extract<SlideComponent, { type: "weight-simulator" }>, index: number, patch: Partial<(typeof component.props.presets)[number]>, onChange: (component: SlideComponent) => void) {
+  const presets = component.props.presets.map((preset, presetIndex) => presetIndex === index ? { ...preset, ...patch } : preset);
+  onChange({ ...component, props: { ...component.props, presets } });
+}
+
+function updateWeightPresetWeight(component: Extract<SlideComponent, { type: "weight-simulator" }>, presetIndex: number, dimensionId: string, weight: number, onChange: (component: SlideComponent) => void) {
+  const preset = component.props.presets[presetIndex]!;
+  updateWeightPreset(component, presetIndex, { weights: { ...preset.weights, [dimensionId]: weight } }, onChange);
 }
 
 function updateVisualizerItem(component: Extract<SlideComponent, { type: "visualizer" }>, index: number, patch: Partial<(typeof component.props.items)[number]>, onChange: (component: SlideComponent) => void) {

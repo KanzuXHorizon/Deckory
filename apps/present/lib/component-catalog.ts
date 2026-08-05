@@ -3,12 +3,12 @@ import type { Slide, SlideComponent } from "@deckory/schema";
 const compatibleComponents: Record<Slide["layout"], SlideComponent["type"][]> = {
   cover: ["heading", "evidence-footer"],
   statement: ["statement", "heading", "visualizer", "evidence-footer"],
-  split: ["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "evidence-footer"],
-  dashboard: ["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "evidence-footer"],
+  split: ["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"],
+  dashboard: ["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"],
   comparison: ["heading", "comparison", "table", "evidence-footer"],
   process: ["heading", "process", "team-showcase", "visualizer", "evidence-footer"],
   architecture: ["heading", "architecture", "code", "insight", "team-showcase", "visualizer", "evidence-footer"],
-  data: ["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "evidence-footer"],
+  data: ["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"],
   closing: ["heading", "statement", "team-showcase", "visualizer", "evidence-footer"]
 };
 
@@ -28,9 +28,9 @@ export function createComponent(type: SlideComponent["type"], id: string): Slide
         type,
         props: {
           metrics: [
-            { value: "82", label: "Metric A", note: "Fixture", tone: "cobalt" },
-            { value: "74", label: "Metric B", note: "Fixture", tone: "teal" },
-            { value: "61", label: "Metric C", note: "Fixture", tone: "amber" }
+            { value: "82", label: "Chỉ số A", note: "Dữ liệu minh hoạ", tone: "cobalt" },
+            { value: "74", label: "Chỉ số B", note: "Dữ liệu minh hoạ", tone: "teal" },
+            { value: "61", label: "Chỉ số C", note: "Dữ liệu minh hoạ", tone: "amber" }
           ]
         }
       };
@@ -61,9 +61,9 @@ export function createComponent(type: SlideComponent["type"], id: string): Slide
         type,
         props: {
           layers: [
-            { label: "INPUT", items: ["Nguồn"] },
-            { label: "CORE", items: ["Source of truth"], accent: true },
-            { label: "OUTPUT", items: ["Kết quả"] }
+            { label: "ĐẦU VÀO", items: ["Nguồn dữ liệu"] },
+            { label: "LÕI", items: ["Nguồn dữ liệu chuẩn"], accent: true },
+            { label: "ĐẦU RA", items: ["Kết quả"] }
           ]
         }
       };
@@ -72,7 +72,7 @@ export function createComponent(type: SlideComponent["type"], id: string): Slide
         id,
         type,
         props: {
-          title: "Chart mới",
+          title: "Biểu đồ mới",
           unit: "điểm",
           variant: "bar",
           values: [
@@ -114,7 +114,7 @@ export function createComponent(type: SlideComponent["type"], id: string): Slide
         type,
         props: {
           label: "KẾT LUẬN",
-          title: "Insight chính",
+          title: "Kết luận chính",
           description: "Diễn giải vì sao insight này quan trọng.",
           metric: "+12",
           tone: "cobalt"
@@ -136,7 +136,7 @@ export function createComponent(type: SlideComponent["type"], id: string): Slide
               role: "Product & Presentation",
               summary: "Phụ trách mạch kể, chất lượng nội dung và trải nghiệm trình chiếu.",
               skills: ["Narrative", "UI/UX"],
-              contributions: ["Thiết kế cấu trúc deck", "Review chất lượng visual"],
+              contributions: ["Thiết kế cấu trúc trình chiếu", "Đánh giá chất lượng hình ảnh"],
               accent: "cobalt",
               featured: true
             },
@@ -158,16 +158,39 @@ export function createComponent(type: SlideComponent["type"], id: string): Slide
         type,
         props: {
           title: "Từ nền tảng đến kết quả",
-          summary: "Một visual có cấu trúc giúp khán giả nhìn thấy quan hệ giữa các phần.",
+          summary: "Một sơ đồ có cấu trúc giúp khán giả nhìn thấy quan hệ giữa các phần.",
           center: "Deckory",
           variant: "growth-tree",
           interaction: "inspect",
           animation: "grow",
           items: [
-            { id: "foundation", label: "Nền tảng", description: "Document model có type", icon: "seed", tone: "cobalt" },
-            { id: "system", label: "Hệ thống", description: "Renderer và validation", icon: "system", tone: "teal", parentId: "foundation" },
-            { id: "experience", label: "Trải nghiệm", description: "Hub, Studio và Presenter", icon: "people", tone: "amber", parentId: "system", featured: true }
+            { id: "foundation", label: "Nền tảng", description: "Mô hình tài liệu có kiểu dữ liệu", icon: "seed", tone: "cobalt" },
+            { id: "system", label: "Hệ thống", description: "Bộ dựng và kiểm tra dữ liệu", icon: "system", tone: "teal", parentId: "foundation" },
+            { id: "experience", label: "Trải nghiệm", description: "Thư viện, trình biên tập và chế độ trình chiếu", icon: "people", tone: "amber", parentId: "system", featured: true }
           ]
+        }
+      };
+    case "weight-simulator":
+      return {
+        id,
+        type,
+        props: {
+          title: "Mô phỏng trọng số đánh giá",
+          description: "Điều chỉnh tỷ trọng để quan sát cách từng tiêu chí ảnh hưởng đến điểm tổng hợp.",
+          dimensions: [
+            { id: "evidence", label: "Minh chứng", score: 86, weight: 40, tone: "cobalt" },
+            { id: "clarity", label: "Độ rõ ràng", score: 78, weight: 35, tone: "teal" },
+            { id: "delivery", label: "Cách trình bày", score: 72, weight: 25, tone: "amber" }
+          ],
+          presets: [
+            {
+              id: "balanced",
+              label: "Cân bằng",
+              description: "Phân bổ tương đối đồng đều giữa minh chứng, độ rõ ràng và cách trình bày.",
+              weights: { evidence: 40, clarity: 35, delivery: 25 }
+            }
+          ],
+          disclaimer: "Kết quả chỉ mang tính minh hoạ; không dùng làm quyết định tự động."
         }
       };
     case "evidence-footer":

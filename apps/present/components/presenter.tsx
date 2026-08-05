@@ -31,6 +31,7 @@ import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/
 import { initialPresenterState, present, type PresenterCommand, type PresenterState } from "@deckory/core";
 import type { DeckAsset, DeckDocument, Slide } from "@deckory/schema";
 import { deckThemeClassName } from "../lib/deck-theme";
+import { layoutLabel } from "../lib/studio-option-catalog";
 import {
   createPresenterSyncMessage,
   describeAudienceFullscreen,
@@ -93,8 +94,10 @@ export function Presenter({
   const [timerRunning, setTimerRunning] = useState(false);
   const [noteScale, setNoteScale] = useState(1);
   const [wallClock, setWallClock] = useState(() => new Date());
+  const [interactionState, setInteractionState] = useState<Record<string, string>>({});
   const stateRef = useRef(state);
   const blackoutRef = useRef(blackout);
+  const interactionStateRef = useRef(interactionState);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const audienceWindowRef = useRef<Window | null>(null);
   const audienceLastSeenRef = useRef(0);
@@ -124,6 +127,7 @@ export function Presenter({
 
   stateRef.current = state;
   blackoutRef.current = blackout;
+  interactionStateRef.current = interactionState;
 
   useEffect(() => {
     previousSlideIndexRef.current = state.slideIndex;
@@ -154,6 +158,7 @@ export function Presenter({
     const sequenceStep = Math.min(message.sequenceStep, sequenceCounts[slideIndex] ?? 0);
     setState((current) => ({ ...current, slideIndex, sequenceStep }));
     setBlackout(message.blackout);
+    setInteractionState(message.interactionState ?? {});
   }, [sequenceCounts]);
 
   const createCurrentMessage = useCallback((
@@ -170,6 +175,7 @@ export function Presenter({
       sequenceStep: current.sequenceStep,
       blackout: blackoutRef.current,
       revision: revisionRef.current,
+      interactionState: interactionStateRef.current,
       ...(sender === "audience" ? {
         audienceAvailable: audienceAvailable ?? true,
         audienceFullscreen: audienceFullscreenState ?? Boolean(document.fullscreenElement)
@@ -308,7 +314,7 @@ export function Presenter({
 
   useEffect(() => {
     if (view === "presenter") publishPresenterState();
-  }, [blackout, publishPresenterState, state.sequenceStep, state.slideIndex, view]);
+  }, [blackout, interactionState, publishPresenterState, state.sequenceStep, state.slideIndex, view]);
 
   useEffect(() => {
     if (view !== "audience") return;
@@ -433,6 +439,7 @@ export function Presenter({
           isFullscreen={isFullscreen}
           fullscreenSupported={fullscreenSupported}
           onToggleFullscreen={handleToggleFullscreen}
+          interactionState={interactionState}
         />
       </MotionConfig>
     );
@@ -477,6 +484,10 @@ export function Presenter({
                 sequenceStep={state.sequenceStep}
                 reducedMotion={Boolean(reducedMotion)}
                 direction={navigationDirection}
+                interactionState={interactionState}
+                onInteractionChange={(componentId, selectedId) => {
+                  setInteractionState((current) => ({ ...current, [componentId]: selectedId }));
+                }}
               />
               {blackout && <div className="presenter-blackout-notice" role="status"><Square size={14} fill="currentColor" />Màn hình khán giả đang tạm ẩn</div>}
             </div>
@@ -614,7 +625,8 @@ export function AudienceView({
   themeClassName,
   isFullscreen,
   fullscreenSupported,
-  onToggleFullscreen
+  onToggleFullscreen,
+  interactionState
 }: {
   slide: Slide;
   deckId: string;
@@ -627,6 +639,7 @@ export function AudienceView({
   isFullscreen: boolean;
   fullscreenSupported: boolean;
   onToggleFullscreen: () => Promise<FullscreenResult>;
+  interactionState?: Record<string, string>;
 }) {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -690,7 +703,7 @@ export function AudienceView({
         void requestFullscreen();
       }}
     >
-      <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} /></div>
+      <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} interactionState={interactionState ?? {}} /></div>
 
       <div className="audience-utility" role="group" aria-label="Điều khiển màn hình khán giả">
         <div className="audience-utility-copy">
@@ -718,7 +731,7 @@ export function AudienceView({
   );
 }
 
-function AnimatedSlide({ slide, deckId, assets, sequenceStep, reducedMotion, direction }: { slide: Slide; deckId: string; assets?: readonly DeckAsset[] | undefined; sequenceStep: number; reducedMotion: boolean; direction: NavigationDirection }) {
+function AnimatedSlide({ slide, deckId, assets, sequenceStep, reducedMotion, direction, interactionState, onInteractionChange }: { slide: Slide; deckId: string; assets?: readonly DeckAsset[] | undefined; sequenceStep: number; reducedMotion: boolean; direction: NavigationDirection; interactionState?: Record<string, string>; onInteractionChange?: (componentId: string, selectedId: string) => void }) {
   const slideMotion = getSlideMotion(slide.transition, direction, reducedMotion);
   const presenceMode = slide.transition?.type === "push" || slide.transition?.type === "morph" ? "sync" : "wait";
 
@@ -734,7 +747,15 @@ function AnimatedSlide({ slide, deckId, assets, sequenceStep, reducedMotion, dir
         transition={slideMotion.transition}
       >
         <div className="animated-slide-canvas">
-          <SlideFrame slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceStep} reducedMotion={reducedMotion} />
+          <SlideFrame
+            slide={slide}
+            deckId={deckId}
+            assets={assets}
+            sequenceStep={sequenceStep}
+            reducedMotion={reducedMotion}
+            {...(interactionState ? { interactionState } : {})}
+            {...(onInteractionChange ? { onInteractionChange } : {})}
+          />
         </div>
       </motion.div>
     </AnimatePresence>
@@ -817,7 +838,7 @@ function SlideOverview({ slides, deckId, assets, sequenceCounts, currentSlideInd
             >
               <span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span>
               <div className="overview-preview"><ScaledSlidePreview slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceCounts[index] ?? 0} className="overview-preview-canvas" /></div>
-              <div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div>
+              <div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{layoutLabel(slide.layout)}</span></div>
             </button>
           ))}
         </div>

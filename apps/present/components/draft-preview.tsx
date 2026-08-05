@@ -16,7 +16,7 @@ export function DraftPreview({ sourceDeck }: { sourceDeck: DeckDocument }) {
       const raw = window.localStorage.getItem(`${DRAFT_KEY_PREFIX}${sourceDeck.id}`);
       if (!raw) {
         setDeck(sourceDeck);
-        setMessage("Chưa có draft đã lưu; Preview đang dùng bản nguồn.");
+        setMessage("Chưa có bản nháp đã lưu; chế độ xem trước đang dùng nội dung gốc.");
         return;
       }
       const result = validateDeck(JSON.parse(raw) as unknown);
@@ -25,10 +25,10 @@ export function DraftPreview({ sourceDeck }: { sourceDeck: DeckDocument }) {
         return;
       }
       setDeck(sourceDeck);
-      setMessage("Draft đang có lỗi cấu trúc; Preview đã dùng bản nguồn an toàn.");
+      setMessage("Bản nháp có lỗi cấu trúc; chế độ xem trước đã chuyển sang nội dung gốc an toàn.");
     } catch {
       setDeck(sourceDeck);
-      setMessage("Không thể đọc draft cục bộ; Preview đã dùng bản nguồn an toàn.");
+      setMessage("Không thể đọc bản nháp cục bộ; chế độ xem trước đã chuyển sang nội dung gốc an toàn.");
     }
   }, [sourceDeck]);
 
@@ -39,7 +39,7 @@ export function DraftPreview({ sourceDeck }: { sourceDeck: DeckDocument }) {
   return (
     <div className="preview-shell">
       {message && <div className="preview-warning" role="status"><CircleAlert size={16} />{message}</div>}
-      <Presenter deck={deck} returnHref={`/studio?deck=${sourceDeck.id}`} editHref={`/studio?deck=${sourceDeck.id}`} modeLabel="DRAFT PREVIEW" />
+      <Presenter deck={deck} returnHref={`/studio?deck=${sourceDeck.id}`} editHref={`/studio?deck=${sourceDeck.id}`} modeLabel="XEM TRƯỚC BẢN NHÁP" />
     </div>
   );
 }
