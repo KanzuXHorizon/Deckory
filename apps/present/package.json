@@ -2,7 +2,7 @@
   "name": "@deckory/present",
   "version": "0.1.0",
   "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "typecheck": "tsc --noEmit", "lint": "tsc --noEmit" },
+  "scripts": { "dev": "next dev", "start": "next start", "build": "next build", "typecheck": "tsc --noEmit", "lint": "tsc --noEmit" },
   "dependencies": {
     "@deckory/core": "workspace:*",
     "@deckory/deckory-story": "workspace:*",
