@@ -43,6 +43,7 @@ export const deckBlueprints = [
       step("evidence", "data-with-insight", "Cung cấp bằng chứng chính.", false, [0, 2]),
       step("comparison", "before-after", "Làm rõ thay đổi hoặc khác biệt."),
       step("plan", "roadmap-phases", "Trình bày đường đi đến kết quả."),
+      step("recommendation", "recommendation", "Chốt phương án hoặc lựa chọn được đề xuất."),
       step("action", "closing-action", "Kết thúc bằng hành động tiếp theo.")
     ]
   ),

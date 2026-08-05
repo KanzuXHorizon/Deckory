@@ -108,4 +108,26 @@ describe("validateTemplateInput", () => {
     expect(result.diagnostics.some((item) => item.code === "repeat-limit")).toBe(true);
     expect(result.diagnostics.some((item) => item.code === "invalid-slot")).toBe(true);
   });
+
+  it("rejects headings that exceed the visual budget of a multi-component slide", () => {
+    const input = validInput();
+    const planIndex = input.slides.findIndex((slide) => slide.stepId === "plan");
+    if (planIndex < 0) throw new Error("Missing plan slide fixture");
+    const slides = [...input.slides];
+    const planSlide = slides[planIndex];
+    if (!planSlide) throw new Error("Missing plan slide fixture");
+    slides[planIndex] = {
+      ...planSlide,
+      slots: {
+        ...planSlide.slots,
+        heading: {
+          title: "Một heading quá dài vẫn có thể đúng schema nhưng sẽ chiếm quá nhiều dòng, đẩy chart và insight ra khỏi safe area của slide chuyên nghiệp."
+        }
+      }
+    };
+
+    const result = validateTemplateInput({ ...input, slides });
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((item) => item.code === "invalid-slot" && item.slotId === "heading")).toBe(true);
+  });
 });

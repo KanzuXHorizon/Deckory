@@ -107,6 +107,15 @@ export function validateTemplateInput(input: CreateDeckFromTemplateInput): Templ
       return candidate ? [candidate] : [];
     });
 
+    const headingDiagnostic = validateHeadingVisualBudget({
+      blueprintId: blueprint.id,
+      recipe,
+      stepId: step.id,
+      slide,
+      componentCount: components.length
+    });
+    if (headingDiagnostic) diagnostics.push(headingDiagnostic);
+
     if (components.length > 0) {
       const validation = validateDeck({
         id: input.id,
@@ -151,6 +160,47 @@ export function validateTemplateInput(input: CreateDeckFromTemplateInput): Templ
     ok: true,
     value: { input, blueprint, style, slides: resolvedSlides },
     diagnostics
+  };
+}
+
+function validateHeadingVisualBudget({
+  blueprintId,
+  recipe,
+  stepId,
+  slide,
+  componentCount
+}: {
+  blueprintId: string;
+  recipe: ResolvedTemplateInput["slides"][number]["recipe"];
+  stepId: string;
+  slide: TemplateSlideInput;
+  componentCount: number;
+}): TemplateDiagnostic | undefined {
+  const headingSpec = recipe.components.find((component) => component.type === "heading");
+  if (!headingSpec) return undefined;
+  const value = slide.slots[headingSpec.slotId];
+  if (typeof value !== "object" || value === null || !("title" in value) || typeof value.title !== "string") return undefined;
+
+  const visibleComponents = recipe.components.filter((component) => component.type !== "evidence-footer").length;
+  const layoutBudget = recipe.layout === "cover" || recipe.layout === "closing"
+    ? 96
+    : recipe.layout === "statement"
+      ? 92
+      : 88;
+  const compositionBudget = visibleComponents >= 3 ? 84 : visibleComponents === 2 ? 112 : 180;
+  const characterBudget = Math.min(layoutBudget, compositionBudget);
+  const normalizedTitle = value.title.trim().replace(/\s+/g, " ");
+  if (normalizedTitle.length <= characterBudget) return undefined;
+
+  return {
+    code: "invalid-slot",
+    message: `Heading dài ${normalizedTitle.length} ký tự, vượt ngân sách ${characterBudget} ký tự của slide có ${componentCount} component.`,
+    remediation: "Rút heading về một kết luận ngắn hơn hoặc tách nội dung sang slide tiếp theo để giữ chart, insight và visual trong safe area.",
+    blueprintId,
+    recipeId: recipe.id,
+    stepId,
+    ...(slide.id ? { slideId: slide.id } : {}),
+    slotId: headingSpec.slotId
   };
 }
 

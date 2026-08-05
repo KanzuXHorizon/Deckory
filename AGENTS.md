@@ -4,6 +4,8 @@ Deckory documents are structured presentation data. Do not put arbitrary JSX, in
 
 Before creating, editing, redesigning, or reviewing any deck or slide, read and follow `.agents/skills/deckory-slide-director/SKILL.md`. Use `.agents/skills/brandkit/SKILL.md` only when a product lacks a coherent identity or the user explicitly requests a brand-kit reference. Deckory-specific rules override upstream page-design assumptions.
 
+Before selecting or creating reusable styles, slide recipes or deck blueprints, also read `.agents/skills/deckory-template-system/SKILL.md`.
+
 ## Fast path
 
 1. Add a deck package under `decks/<name>/` with a `DeckDocument` created by `defineDeck`.
