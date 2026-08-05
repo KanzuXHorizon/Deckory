@@ -11,6 +11,8 @@ export const SUPPORTED_COMPONENT_TYPES = [
   "table",
   "code",
   "insight",
+  "team-showcase",
+  "visualizer",
   "evidence-footer"
 ] as const;
 
@@ -120,6 +122,84 @@ const InsightPropsSchema = z.object({
   metric: optionalText,
   tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional()
 }).strict();
+const TeamImageSchema = z.object({
+  src: z.string().trim().min(1).refine(
+    (value) => value.startsWith("/") || /^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);/i.test(value),
+    "Expected a local path or inline image data"
+  ),
+  alt: nonEmptyText.max(180),
+  position: z.enum(["center", "top", "bottom"]).optional()
+}).strict();
+
+const TeamMemberSchema = z.object({
+  id: stableId,
+  name: nonEmptyText.max(80),
+  role: optionalText,
+  studentId: optionalText,
+  summary: z.string().trim().min(1).max(360).optional(),
+  skills: z.array(nonEmptyText.max(48)).max(6).optional(),
+  contributions: z.array(nonEmptyText.max(140)).max(5).optional(),
+  links: z.array(z.object({
+    label: nonEmptyText.max(40),
+    href: z.string().trim().regex(/^(?:https?:\/\/|mailto:)/, "Expected an https or mailto link")
+  }).strict()).max(4).optional(),
+  image: TeamImageSchema.optional(),
+  accent: z.enum(["cobalt", "teal", "amber", "neutral"]).optional(),
+  featured: z.boolean().optional()
+}).strict();
+
+const TeamShowcasePropsSchema = z.object({
+  title: optionalText,
+  subtitle: optionalText,
+  project: optionalText,
+  variant: z.enum(["editorial", "cards", "constellation", "spotlight"]).optional(),
+  members: z.array(TeamMemberSchema).min(1).max(6)
+}).strict().superRefine((team, context) => {
+  const memberIds = new Set<string>();
+  let featuredCount = 0;
+  team.members.forEach((member, index) => {
+    if (memberIds.has(member.id)) {
+      context.addIssue({ code: "custom", path: ["members", index, "id"], message: "Expected a unique team member ID" });
+    }
+    memberIds.add(member.id);
+    if (member.featured) featuredCount += 1;
+  });
+  if (featuredCount > 1) {
+    context.addIssue({ code: "custom", path: ["members"], message: "Expected at most one featured team member" });
+  }
+});
+
+const VisualizerItemSchema = z.object({
+  id: stableId,
+  label: nonEmptyText.max(80),
+  description: z.string().trim().min(1).max(260).optional(),
+  value: z.string().trim().min(1).max(48).optional(),
+  icon: z.enum(["seed", "leaf", "data", "system", "people", "sparkle", "code"]).optional(),
+  tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional(),
+  parentId: stableId.optional(),
+  featured: z.boolean().optional()
+}).strict();
+
+const VisualizerPropsSchema = z.object({
+  title: optionalText,
+  summary: optionalText,
+  center: optionalText,
+  variant: z.enum(["growth-tree", "timeline-path", "orbit", "network"]),
+  interaction: z.enum(["inspect", "step", "none"]).optional(),
+  animation: z.enum(["grow", "draw", "orbit", "pulse", "none"]).optional(),
+  items: z.array(VisualizerItemSchema).min(2).max(8)
+}).strict().superRefine((visualizer, context) => {
+  const ids = new Set(visualizer.items.map((item) => item.id));
+  visualizer.items.forEach((item, index) => {
+    if (item.parentId && !ids.has(item.parentId)) {
+      context.addIssue({ code: "custom", path: ["items", index, "parentId"], message: "Expected parentId to reference another visualizer item" });
+    }
+    if (item.parentId === item.id) {
+      context.addIssue({ code: "custom", path: ["items", index, "parentId"], message: "Expected parentId to reference a different item" });
+    }
+  });
+});
+
 const EvidenceFooterPropsSchema = z.object({ source: nonEmptyText, page: optionalText }).strict();
 
 export const DeckThemeSchema = z.object({
@@ -166,6 +246,8 @@ export const SlideComponentSchema = z.discriminatedUnion("type", [
   componentSchema("table", TablePropsSchema),
   componentSchema("code", CodePropsSchema),
   componentSchema("insight", InsightPropsSchema),
+  componentSchema("team-showcase", TeamShowcasePropsSchema),
+  componentSchema("visualizer", VisualizerPropsSchema),
   componentSchema("evidence-footer", EvidenceFooterPropsSchema)
 ]);
 
@@ -219,14 +301,14 @@ export function defineDeck(deck: DeckDocument): DeckDocument {
 
 const LAYOUT_COMPONENTS: Partial<Record<Slide["layout"], ReadonlySet<SlideComponent["type"]>>> = {
   cover: new Set(["heading", "evidence-footer"]),
-  statement: new Set(["statement", "heading", "evidence-footer"]),
+  statement: new Set(["statement", "heading", "visualizer", "evidence-footer"]),
   comparison: new Set(["heading", "comparison", "table", "evidence-footer"]),
-  process: new Set(["heading", "process", "evidence-footer"]),
-  architecture: new Set(["heading", "architecture", "code", "insight", "evidence-footer"]),
-  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "evidence-footer"]),
-  split: new Set(["heading", "metric-grid", "code", "insight", "evidence-footer"]),
-  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "evidence-footer"]),
-  closing: new Set(["heading", "statement", "evidence-footer"])
+  process: new Set(["heading", "process", "team-showcase", "visualizer", "evidence-footer"]),
+  architecture: new Set(["heading", "architecture", "code", "insight", "team-showcase", "visualizer", "evidence-footer"]),
+  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "evidence-footer"]),
+  split: new Set(["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "evidence-footer"]),
+  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "evidence-footer"]),
+  closing: new Set(["heading", "statement", "team-showcase", "visualizer", "evidence-footer"])
 };
 
 export function validateDeck(input: unknown): DeckValidationResult {

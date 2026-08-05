@@ -382,4 +382,125 @@ describe("Deck document contract", () => {
       ])
     });
   });
+
+  it("accepts professional team showcases with optional member fields and local images", () => {
+    const result = validateDeck({
+      id: "team-story",
+      version: 1,
+      title: "Đội ngũ",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "team",
+        layout: "split",
+        components: [{
+          id: "project-team",
+          type: "team-showcase",
+          props: {
+            project: "Deckory",
+            variant: "editorial",
+            members: [
+              { id: "thai-van", name: "Nguyễn Thái Vân", role: "Product Lead", studentId: "PS00001", image: { src: "/team/thai-van.webp", alt: "Chân dung Nguyễn Thái Vân", position: "top" }, featured: true },
+              { id: "minh-anh", name: "Minh Anh", skills: ["Research", "Motion"] }
+            ]
+          }
+        }]
+      }]
+    });
+
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it("rejects remote team images and duplicate member identities", () => {
+    const result = validateDeck({
+      id: "invalid-team-story",
+      version: 1,
+      title: "Đội ngũ lỗi",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "team",
+        layout: "split",
+        components: [{
+          id: "project-team",
+          type: "team-showcase",
+          props: {
+            members: [
+              { id: "same-member", name: "Một", image: { src: "https://example.com/avatar.png", alt: "Ảnh một" }, featured: true },
+              { id: "same-member", name: "Hai", featured: true }
+            ]
+          }
+        }]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.members.0.image.src" }),
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.members.1.id" }),
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.members" })
+      ])
+    });
+  });
+
+  it("accepts semantic visualizers and rejects invalid parent references", () => {
+    const valid = validateDeck({
+      id: "growth-story",
+      version: 1,
+      title: "Hành trình phát triển",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "growth",
+        layout: "process",
+        components: [{
+          id: "growth-tree",
+          type: "visualizer",
+          props: {
+            variant: "growth-tree",
+            interaction: "inspect",
+            animation: "grow",
+            center: "Sản phẩm trưởng thành",
+            items: [
+              { id: "seed", label: "Hạt giống", description: "Ý tưởng ban đầu", icon: "seed" },
+              { id: "prototype", label: "Nguyên mẫu", parentId: "seed", tone: "teal" },
+              { id: "product", label: "Sản phẩm", parentId: "prototype", featured: true }
+            ]
+          }
+        }]
+      }]
+    });
+    const invalid = validateDeck({
+      id: "broken-growth-story",
+      version: 1,
+      title: "Hành trình lỗi",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "growth",
+        layout: "process",
+        components: [{
+          id: "growth-tree",
+          type: "visualizer",
+          props: {
+            variant: "network",
+            items: [
+              { id: "source", label: "Nguồn", parentId: "missing" },
+              { id: "sink", label: "Đích", parentId: "sink" }
+            ]
+          }
+        }]
+      }]
+    });
+
+    expect(valid).toMatchObject({ ok: true });
+    expect(invalid).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items.0.parentId" }),
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items.1.parentId" })
+      ])
+    });
+  });
 });
