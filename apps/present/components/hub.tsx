@@ -7,7 +7,9 @@ import {
   BarChart3,
   CheckCircle2,
   Clock3,
+  Eye,
   LayoutGrid,
+  Pencil,
   Play,
   Search,
   SlidersHorizontal,
@@ -48,47 +50,58 @@ export function Hub() {
           <DeckoryBrand />
         </Link>
         <nav className="hub-nav" aria-label="Điều hướng chính">
-          <a className="is-active" href="#library">Thư viện</a>
-          <a href="#visual-system">Visual system</a>
+          <a className="is-active" href="#library">Deck</a>
+          <a href="#slides">Slide</a>
+          <a href="#visual-system">Hệ thống</a>
         </nav>
-        <Link className="primary-action" href={`/studio?deck=${activeItem.deck.id}`}>
-          <Sparkles size={17} /> Mở Studio
+        <Link className="primary-action" href="/studio?deck=template-gallery">
+          <Sparkles size={17} /> Mở thư viện mẫu
         </Link>
       </header>
 
-      <section className="hub-hero" aria-labelledby="hub-title">
-        <div className="hub-hero-copy">
+      <section className="hub-workspace-intro" aria-labelledby="hub-title">
+        <div className="hub-workspace-copy">
           <span className="section-label">DECKORY WORKSPACE</span>
-          <h1 id="hub-title">Quản lý câu chuyện.<br /><em>Không chỉ quản lý file.</em></h1>
-          <p>Hub kết nối deck, slide, visual system và trạng thái sẵn sàng trong một workspace. Mọi bề mặt đều dùng chung document model đã validate.</p>
-          <div className="hero-actions">
-            <Link className="primary-action primary-action--large" href={`/studio?deck=${activeItem.deck.id}`}>Chỉnh deck đang chọn <ArrowRight size={18} /></Link>
-            <Link className="secondary-action" href={`/present?deck=${activeItem.deck.id}`}><Play size={17} /> Trình chiếu</Link>
+          <h1 id="hub-title">Không gian làm việc cho những deck cần được tin cậy.</h1>
+          <p>Chọn deck, kiểm tra trạng thái và đi thẳng vào chỉnh sửa hoặc trình chiếu. Hub giữ vai trò thư viện sản xuất, không phải một landing page.</p>
+
+          <div className="hub-active-deck" aria-label={`Deck đang chọn: ${activeItem.deck.title}`}>
+            <div>
+              <span>{activeItem.updatedLabel}</span>
+              <strong>{activeItem.deck.title}</strong>
+              <small>{activeItem.description}</small>
+            </div>
+            <div className="hub-active-actions">
+              <Link className="primary-action primary-action--large" href={`/studio?deck=${activeItem.deck.id}`}><Pencil size={17} /> Mở deck</Link>
+              <Link className="secondary-action" href={`/preview?deck=${activeItem.deck.id}`}><Eye size={17} /> Xem trước</Link>
+              <Link className="secondary-action" href={`/present?deck=${activeItem.deck.id}`}><Play size={17} /> Trình chiếu</Link>
+            </div>
+          </div>
+
+          <div className="hub-health-strip" aria-label="Tình trạng workspace">
+            <article><LayoutGrid size={17} /><strong>{deckCatalog.length}</strong><span>deck có cấu trúc</span></article>
+            <article><SlidersHorizontal size={17} /><strong>{totalSlides}</strong><span>slide có thể quản lý</span></article>
+            <article><BarChart3 size={17} /><strong>4</strong><span>kiểu biểu đồ</span></article>
+            <article><CheckCircle2 size={17} /><strong>{deckCatalog.length}</strong><span>deck hợp lệ</span></article>
           </div>
         </div>
-        <div className="hub-hero-stage" aria-label={`Deck nổi bật: ${activeItem.deck.title}`}>
+
+        <div className="hub-featured-stage" aria-label={`Bản xem trước ${activeItem.deck.title}`}>
           <div className="hero-stage-meta">
-            <span>{activeItem.updatedLabel}</span>
+            <span>DECK ĐANG CHỌN</span>
             <span>{activeItem.deck.slides.length} slide</span>
           </div>
           <DeckThumbnail slide={activeItem.deck.slides[0]!} themeClassName={deckThemeClassName(activeItem.deck)} />
           <div className="hero-stage-footer">
-            <div><strong>{activeItem.deck.title}</strong><span>{activeItem.description}</span></div>
-            <Link href={`/preview?deck=${activeItem.deck.id}`}>Preview <ArrowRight size={15} /></Link>
+            <div><strong>{slideTitle(activeItem.deck.slides[0]!)}</strong><span>{activeItem.tags.join(" · ")}</span></div>
+            <Link href={`/preview?deck=${activeItem.deck.id}`}>Mở preview <ArrowRight size={15} /></Link>
           </div>
         </div>
       </section>
 
-      <section className="hub-summary" aria-label="Tổng quan workspace">
-        <article><LayoutGrid size={18} /><strong>{deckCatalog.length}</strong><span>deck có cấu trúc</span></article>
-        <article><SlidersHorizontal size={18} /><strong>{totalSlides}</strong><span>slide có thể quản lý</span></article>
-        <article><BarChart3 size={18} /><strong>4</strong><span>kiểu chart có sẵn</span></article>
-        <article><CheckCircle2 size={18} /><strong>{deckCatalog.length}</strong><span>deck hợp lệ</span></article>
-      </section>
-
-      <section className="hub-section" id="library" aria-labelledby="library-title">
+      <section className="hub-section hub-library" id="library" aria-labelledby="library-title">
         <div className="section-heading-row">
-          <div><span className="section-label">DECK LIBRARY</span><h2 id="library-title">Tất cả deck trong workspace</h2></div>
+          <div><span className="section-label">THƯ VIỆN DECK</span><h2 id="library-title">Deck trong workspace</h2><p>Chọn một deck để cập nhật vùng làm việc phía trên hoặc mở trực tiếp vào chế độ cần dùng.</p></div>
           <label className="search-field"><Search size={17} /><span className="sr-only">Tìm deck</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm theo tên, mục đích hoặc visual…" /></label>
         </div>
 
@@ -113,9 +126,9 @@ export function Hub() {
                     <ul>{item.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
                   </div>
                   <footer>
-                    <Link href={`/studio?deck=${item.deck.id}`}>Chỉnh sửa</Link>
-                    <Link href={`/preview?deck=${item.deck.id}`}>Preview</Link>
-                    <Link className="deck-card-present" href={`/present?deck=${item.deck.id}`} aria-label={`Trình chiếu ${item.deck.title}`}><Play size={15} /></Link>
+                    <Link href={`/studio?deck=${item.deck.id}`}><Pencil size={14} /> Chỉnh sửa deck</Link>
+                    <Link href={`/preview?deck=${item.deck.id}`}><Eye size={14} /> Xem trước deck</Link>
+                    <Link className="deck-card-present" href={`/present?deck=${item.deck.id}`} aria-label={`Trình chiếu deck ${item.deck.title}`}><Play size={15} /><span>Trình chiếu deck</span></Link>
                   </footer>
                 </article>
               );
@@ -126,9 +139,9 @@ export function Hub() {
         )}
       </section>
 
-      <section className="hub-section slide-manager" aria-labelledby="slides-title">
+      <section className="hub-section slide-manager" id="slides" aria-labelledby="slides-title">
         <div className="section-heading-row">
-          <div><span className="section-label">SLIDE MANAGER</span><h2 id="slides-title">Cấu trúc của deck đang chọn</h2></div>
+          <div><span className="section-label">CẤU TRÚC DECK</span><h2 id="slides-title">Slide của deck đang chọn</h2></div>
           <div className="selected-deck-copy"><span>{activeItem.deck.title}</span><strong>{activeItem.deck.slides.length} slide</strong></div>
         </div>
         <div className="slide-strip">
@@ -137,7 +150,7 @@ export function Hub() {
               <span>{String(index + 1).padStart(2, "0")}</span>
               <DeckThumbnail slide={slide} themeClassName={deckThemeClassName(activeItem.deck)} />
               <strong>{slideTitle(slide)}</strong>
-              <small>{slide.layout} · {slide.components.length} component</small>
+              <small>{slide.layout} · {slide.components.length} thành phần</small>
             </Link>
           ))}
         </div>
@@ -145,9 +158,9 @@ export function Hub() {
 
       <section className="hub-section visual-system" id="visual-system" aria-labelledby="visual-title">
         <div className="visual-system-copy">
-          <span className="section-label">VISUAL SYSTEM</span>
-          <h2 id="visual-title">Đủ thành phần để kể một câu chuyện hoàn chỉnh.</h2>
-          <p>Không phải một gallery component rời rạc. Mỗi layout và visual được giới hạn để giữ hierarchy, khả năng đọc và tính nhất quán giữa editor với presenter.</p>
+          <span className="section-label">HỆ THỐNG TRÌNH BÀY</span>
+          <h2 id="visual-title">Một visual grammar đủ rộng nhưng không mất kiểm soát.</h2>
+          <p>Mỗi layout và thành phần đều có contract, giới hạn nội dung và kiểm tra trước khi trình chiếu. Agent có thể tái sử dụng template mà vẫn giữ hierarchy và độ chính xác.</p>
           <Link className="secondary-action" href="/studio?deck=visual-lab">Mở Visual Lab <ArrowRight size={16} /></Link>
         </div>
         <div className="coverage-list">

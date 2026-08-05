@@ -27,4 +27,35 @@ describe("Studio responsive inspector", () => {
     expect(html).toContain('class="icon-action inspector-close"');
     expect(html).toContain('aria-label="Đóng Inspector"');
   });
+
+  it("uses progressive inspector tabs and audience-facing Vietnamese copy", () => {
+    const html = renderToStaticMarkup(<Studio sourceDeck={deck} />);
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('aria-label="Khu vực Inspector"');
+    expect(html).toContain("Nội dung");
+    expect(html).toContain("Slide");
+    expect(html).toContain("Chuyển động");
+    expect(html).toContain("Kiểm tra");
+    expect(html).toContain("Xem trước");
+    expect(html).toContain("Trình chiếu");
+    expect(html).toContain("Thành phần");
+    expect(html).not.toContain(">Preview<");
+    expect(html).not.toContain(">Present<");
+    expect(html).not.toContain(">COMPONENTS<");
+  });
+
+  it("shows an explicit save state and a manual save action while supporting autosave", () => {
+    const html = renderToStaticMarkup(<Studio sourceDeck={deck} />);
+
+    expect(html).toContain('class="studio-save-state"');
+    expect(html).toContain("Chưa có thay đổi");
+    expect(html).toContain("Lưu ngay");
+    expect(html).toContain('aria-label="Lưu ngay"');
+    expect(html).toContain('aria-label="Xem trước"');
+    expect(html).toContain('aria-label="Trình chiếu"');
+    expect(html).toContain('href="/preview?deck=responsive-studio&amp;slide=cover"');
+    expect(html).toContain('href="/present?deck=responsive-studio&amp;slide=cover"');
+    expect(html).toContain('aria-live="polite"');
+  });
 });

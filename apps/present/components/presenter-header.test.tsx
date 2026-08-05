@@ -30,8 +30,9 @@ describe("Presenter header", () => {
       <Presenter deck={deck} returnHref="/" editHref="/studio?deck=presenter-header-a11y" />
     );
 
-    expect(html).toContain('aria-label="Về Deckory Hub"');
+    expect(html).toContain('aria-label="Về thư viện Deckory"');
     expect(html).toContain('aria-label="Chỉnh sửa deck"');
     expect(html).toContain('aria-label="Mở tổng quan slide"');
+    expect(html).toContain('class="toolbar-button toolbar-button--overview"');
   });
 });

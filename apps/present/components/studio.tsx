@@ -39,11 +39,20 @@ import {
 } from "../lib/studio-option-catalog";
 import { DeckoryBrand } from "./brand-mark";
 import { ComponentInspector } from "./component-inspector";
+import { StudioConfirmDialog } from "./studio-confirm-dialog";
 import { CommandGrid, IconChoiceGroup, StudioPopover } from "./studio-controls";
 import { DeckThumbnail, ScaledSlidePreview } from "./deck-thumbnail";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
-type SaveState = "clean" | "dirty" | "saved" | "error";
+const INSPECTOR_TABS = [
+  ["content", "Nội dung"],
+  ["slide", "Slide"],
+  ["motion", "Chuyển động"],
+  ["quality", "Kiểm tra"]
+] as const;
+type SaveState = "clean" | "dirty" | "saving" | "saved" | "error";
+type InspectorTab = (typeof INSPECTOR_TABS)[number][0];
+type DestructiveAction = "reset-draft" | "delete-slide" | "delete-component";
 
 export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocument; initialSlideId?: string }) {
   const [deck, setDeck] = useState(() => cloneDeck(sourceDeck));
@@ -54,8 +63,11 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const [slideMenuOpen, setSlideMenuOpen] = useState(false);
   const [componentMenuOpen, setComponentMenuOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("content");
   const [compactStudio, setCompactStudio] = useState(false);
+  const [pendingDestructiveAction, setPendingDestructiveAction] = useState<DestructiveAction | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement>(null);
+  const destructiveReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     try {
@@ -84,7 +96,10 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const selectedSlideIndex = Math.max(0, deck.slides.findIndex((slide) => slide.id === selectedSlideId));
   const selectedSlide = deck.slides[selectedSlideIndex] ?? deck.slides[0]!;
   const selectedComponent = selectedSlide.components.find((component) => component.id === selectedComponentId) ?? selectedSlide.components[0]!;
-  const readinessLabel = validation.ok ? "Sẵn sàng preview" : `${diagnostics.length} lỗi cấu trúc`;
+  const readinessLabel = validation.ok ? "Sẵn sàng xem trước" : `${diagnostics.length} lỗi cấu trúc`;
+  const saveStateLabel = getSaveStateLabel(saveState);
+  const layoutLabel = layoutOptions.find((option) => option.value === selectedSlide.layout)?.label ?? selectedSlide.layout;
+  const variantLabel = variantOptions.find((option) => option.value === (selectedSlide.variant ?? "default"))?.label ?? "Chuẩn";
 
   useEffect(() => {
     if (!selectedSlide.components.some((component) => component.id === selectedComponentId)) {
@@ -93,7 +108,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   }, [selectedComponentId, selectedSlide]);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 940px)");
+    const media = window.matchMedia("(max-width: 1040px)");
     const sync = () => {
       setCompactStudio(media.matches);
       if (!media.matches) setInspectorOpen(false);
@@ -102,6 +117,21 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     media.addEventListener("change", sync);
     return () => media.removeEventListener("change", sync);
   }, []);
+
+  useEffect(() => {
+    if (saveState !== "dirty") return;
+    const timer = window.setTimeout(() => {
+      setSaveState("saving");
+      try {
+        window.localStorage.setItem(`${DRAFT_KEY_PREFIX}${deck.id}`, JSON.stringify(deck));
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+        setStorageMessage("Trình duyệt không cho phép tự động lưu. Phiên chỉnh sửa hiện tại vẫn còn trong bộ nhớ.");
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [deck, saveState]);
 
   useEffect(() => {
     if (!inspectorOpen) return;
@@ -125,6 +155,20 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const closeInspector = () => {
     setInspectorOpen(false);
     requestAnimationFrame(() => inspectorTriggerRef.current?.focus());
+  };
+
+  const requestDestructiveAction = (action: DestructiveAction, trigger: HTMLElement) => {
+    destructiveReturnFocusRef.current = trigger;
+    setPendingDestructiveAction(action);
+  };
+
+  const closeDestructiveConfirmation = () => {
+    setPendingDestructiveAction(null);
+    requestAnimationFrame(() => {
+      const target = destructiveReturnFocusRef.current;
+      if (target?.isConnected) target.focus();
+      destructiveReturnFocusRef.current = null;
+    });
   };
 
   const updateDeck = (updater: (current: DeckDocument) => DeckDocument) => {
@@ -151,6 +195,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   };
 
   const saveDraft = () => {
+    setSaveState("saving");
     try {
       window.localStorage.setItem(`${DRAFT_KEY_PREFIX}${deck.id}`, JSON.stringify(deck));
       setSaveState("saved");
@@ -238,6 +283,21 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     updateSlide({ components: moveItem(selectedSlide.components, index, targetIndex) });
   };
 
+  const confirmDestructiveAction = () => {
+    const action = pendingDestructiveAction;
+    setPendingDestructiveAction(null);
+    if (action === "reset-draft") resetDraft();
+    else if (action === "delete-slide") deleteSlide();
+    else if (action === "delete-component") deleteComponent();
+    requestAnimationFrame(() => {
+      const target = destructiveReturnFocusRef.current;
+      if (target?.isConnected) target.focus();
+      destructiveReturnFocusRef.current = null;
+    });
+  };
+
+  const destructiveCopy = getDestructiveCopy(pendingDestructiveAction, selectedSlide, selectedComponent);
+
   return (
     <main className={`studio-shell ${deckThemeClassName(deck)}`}>
       <header className="studio-topbar">
@@ -246,12 +306,15 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
           <Link className="brand-lockup-link" href="/" aria-label="Deckory Hub"><DeckoryBrand /></Link>
           <div className="studio-document-title"><span>STUDIO</span><input aria-label="Tên deck" value={deck.title} onChange={(event) => updateDeck((current) => ({ ...current, title: event.target.value }))} /></div>
         </div>
-        <div className="studio-status" data-state={validation.ok ? "ready" : "error"}>{validation.ok ? <CheckCircle2 size={15} /> : <CircleAlert size={15} />}<span>{readinessLabel}</span></div>
+        <div className="studio-status-cluster">
+          <div className="studio-status" data-state={validation.ok ? "ready" : "error"}>{validation.ok ? <CheckCircle2 size={15} /> : <CircleAlert size={15} />}<span>{readinessLabel}</span></div>
+          <div className="studio-save-state" data-state={saveState} aria-live="polite"><Save size={14} /><span>{saveStateLabel}</span></div>
+        </div>
         <div className="studio-actions">
-          <button className="toolbar-button" onClick={resetDraft}><RotateCcw size={16} /> Khôi phục</button>
-          <button className="toolbar-button" onClick={saveDraft} data-state={saveState}><Save size={16} /> {saveState === "saved" ? "Đã lưu" : "Lưu draft"}</button>
-          <Link className="toolbar-button" href={`/preview?deck=${deck.id}&slide=${selectedSlide.id}`}><Eye size={16} /> Preview</Link>
-          <Link className="toolbar-button toolbar-button--strong" href={`/present?deck=${deck.id}&slide=${selectedSlide.id}`}><Play size={16} /> Present</Link>
+          <button className="toolbar-button studio-action--reset" onClick={(event) => requestDestructiveAction("reset-draft", event.currentTarget)}><RotateCcw size={16} /> Khôi phục</button>
+          <button className="toolbar-button studio-action--save" onClick={saveDraft} data-state={saveState} aria-label="Lưu ngay"><Save size={16} /><span>Lưu ngay</span></button>
+          <Link className="toolbar-button studio-action--preview" href={`/preview?deck=${deck.id}&slide=${selectedSlide.id}`} aria-label="Xem trước"><Eye size={16} /><span>Xem trước</span></Link>
+          <Link className="toolbar-button toolbar-button--strong studio-action--present" href={`/present?deck=${deck.id}&slide=${selectedSlide.id}`} aria-label="Trình chiếu"><Play size={16} /><span>Trình chiếu</span></Link>
         </div>
       </header>
 
@@ -286,18 +349,18 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
 
         <section className="studio-canvas-zone" aria-label="Canvas chỉnh sửa">
           <div className="canvas-toolbar">
-            <div><span>Slide {selectedSlideIndex + 1}</span><strong>{selectedSlide.layout} / {selectedSlide.variant ?? "default"}</strong></div>
+            <div><span>Slide {selectedSlideIndex + 1}</span><strong>{layoutLabel} · {variantLabel}</strong></div>
             <div>
               <button ref={inspectorTriggerRef} className="icon-action studio-inspector-toggle" hidden={!compactStudio} onClick={() => setInspectorOpen(true)} aria-label="Mở Inspector" aria-controls="studio-inspector" aria-expanded={inspectorOpen}><SlidersHorizontal size={16} /></button>
               <button className="icon-action" onClick={() => moveSlide(-1)} disabled={selectedSlideIndex === 0} aria-label="Đưa slide lên"><ArrowUp size={16} /></button>
               <button className="icon-action" onClick={() => moveSlide(1)} disabled={selectedSlideIndex === deck.slides.length - 1} aria-label="Đưa slide xuống"><ArrowDown size={16} /></button>
-              <button className="icon-action icon-action--danger" onClick={deleteSlide} disabled={deck.slides.length <= 1} aria-label="Xoá slide"><Trash2 size={16} /></button>
+              <button className="icon-action icon-action--danger" onClick={(event) => requestDestructiveAction("delete-slide", event.currentTarget)} disabled={deck.slides.length <= 1} aria-label="Xoá slide"><Trash2 size={16} /></button>
             </div>
           </div>
           <div className="studio-stage">
             <ScaledSlidePreview slide={selectedSlide} deckId={deck.id} sequenceStep={Number.MAX_SAFE_INTEGER} className="studio-slide-canvas" label={`Canvas slide ${selectedSlideIndex + 1}`} />
           </div>
-          <div className="canvas-footnote"><span>16:9 safe canvas</span><span>{selectedSlide.components.length} component · {selectedSlide.notes ? "có speaker notes" : "chưa có notes"}</span></div>
+          <div className="canvas-footnote"><span>Canvas an toàn 16:9</span><span>{selectedSlide.components.length} thành phần · {selectedSlide.notes ? "đã có ghi chú" : "chưa có ghi chú"}</span></div>
         </section>
 
         {compactStudio && inspectorOpen && <button className="inspector-backdrop" type="button" aria-label="Đóng Inspector" onClick={closeInspector} />}
@@ -310,75 +373,169 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
           inert={compactStudio && !inspectorOpen ? true : undefined}
         >
           <header className="inspector-header">
-            <div><Settings2 size={17} /><span>INSPECTOR</span></div>
+            <div><Settings2 size={17} /><span>THUỘC TÍNH</span></div>
             <div className="inspector-header-actions">
               <strong>{componentLabel(selectedComponent.type)}</strong>
               <button className="icon-action inspector-close" type="button" onClick={closeInspector} aria-label="Đóng Inspector"><X size={17} /></button>
             </div>
           </header>
+          <div className="inspector-tabs" role="tablist" aria-label="Khu vực Inspector">
+            {INSPECTOR_TABS.map(([tab, label], index) => (
+              <button
+                key={tab}
+                id={`inspector-tab-${tab}`}
+                type="button"
+                role="tab"
+                aria-selected={inspectorTab === tab}
+                aria-controls={`inspector-panel-${tab}`}
+                tabIndex={inspectorTab === tab ? 0 : -1}
+                className={inspectorTab === tab ? "is-active" : ""}
+                onClick={() => setInspectorTab(tab)}
+                onKeyDown={(event) => {
+                  let targetIndex: number | undefined;
+                  if (event.key === "ArrowRight" || event.key === "ArrowDown") targetIndex = (index + 1) % INSPECTOR_TABS.length;
+                  if (event.key === "ArrowLeft" || event.key === "ArrowUp") targetIndex = (index - 1 + INSPECTOR_TABS.length) % INSPECTOR_TABS.length;
+                  if (event.key === "Home") targetIndex = 0;
+                  if (event.key === "End") targetIndex = INSPECTOR_TABS.length - 1;
+                  if (targetIndex === undefined) return;
+                  event.preventDefault();
+                  const nextTab = INSPECTOR_TABS[targetIndex]![0];
+                  setInspectorTab(nextTab);
+                  requestAnimationFrame(() => document.getElementById(`inspector-tab-${nextTab}`)?.focus());
+                }}
+              >
+                {label}
+                {tab === "quality" && diagnostics.length > 0 && <span>{diagnostics.length}</span>}
+              </button>
+            ))}
+          </div>
           <div className="inspector-scroll">
-            <section className="inspector-section slide-settings-section">
-              <header><h3>Cài đặt slide</h3><p>Chọn visual grammar theo thông điệp thay vì điều chỉnh tọa độ thủ công.</p></header>
-              <IconChoiceGroup label="Bố cục" value={selectedSlide.layout} options={layoutOptions} compact onChange={(layout) => updateSlide({ layout })} />
-              <IconChoiceGroup label="Phong cách" value={selectedSlide.variant ?? "default"} options={variantOptions} compact onChange={(variant) => updateSlide({ variant })} />
-              <IconChoiceGroup label="Chuyển slide" value={selectedSlide.transition?.type ?? "fade"} options={transitionOptions} compact onChange={(type) => updateSlide({ transition: { ...(selectedSlide.transition ?? {}), type } })} />
-              <label className="inspector-field"><span>Thời lượng chuyển slide</span><div className="number-field-with-unit"><input type="number" min="0.1" max="1.2" step="0.1" value={selectedSlide.transition?.duration ?? 0.42} onChange={(event) => updateSlide({ transition: { type: selectedSlide.transition?.type ?? "fade", duration: Number(event.target.value) || 0.42, easing: selectedSlide.transition?.easing } })} /><span>giây</span></div></label>
-              <label className="inspector-field"><span>Ghi chú người thuyết trình</span><textarea rows={4} value={selectedSlide.notes ?? ""} onChange={(event) => updateSlide({ notes: event.target.value.trim() ? event.target.value : undefined })} placeholder="Điểm cần nói, ngữ cảnh hoặc chuyển ý…" /></label>
-            </section>
-
-            <section className="component-stack">
-              <header>
-                <div><Layers3 size={16} /><span>COMPONENTS</span></div>
-                <StudioPopover
-                  open={componentMenuOpen}
-                  onOpenChange={setComponentMenuOpen}
-                  label="Thêm component"
-                  description={`Các component phù hợp với layout ${selectedSlide.layout}.`}
-                  triggerIcon={Plus}
-                  triggerLabel="Thêm"
-                  triggerClassName="component-add-trigger"
-                  align="end"
-                >
-                  <CommandGrid label="Chọn component" options={compatibleComponentOptions} onSelect={addComponent} />
-                </StudioPopover>
-              </header>
-              <div className="component-stack-list">
-                {selectedSlide.components.map((component, index) => (
-                  <button key={component.id} className={component.id === selectedComponent.id ? "is-active" : ""} onClick={() => setSelectedComponentId(component.id)}>
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    <strong>{componentLabel(component.type)}</strong>
-                    <small>{component.id}</small>
-                  </button>
-                ))}
+            {inspectorTab === "content" && (
+              <div id="inspector-panel-content" role="tabpanel" aria-labelledby="inspector-tab-content">
+                <section className="component-stack">
+                  <header>
+                    <div><Layers3 size={16} /><span>Thành phần</span></div>
+                    <StudioPopover
+                      open={componentMenuOpen}
+                      onOpenChange={setComponentMenuOpen}
+                      label="Thêm thành phần"
+                      description={`Các thành phần phù hợp với bố cục ${layoutLabel}.`}
+                      triggerIcon={Plus}
+                      triggerLabel="Thêm"
+                      triggerClassName="component-add-trigger"
+                      align="end"
+                    >
+                      <CommandGrid label="Chọn thành phần" options={compatibleComponentOptions} onSelect={addComponent} />
+                    </StudioPopover>
+                  </header>
+                  <div className="component-stack-list">
+                    {selectedSlide.components.map((component, index) => (
+                      <button key={component.id} className={component.id === selectedComponent.id ? "is-active" : ""} onClick={() => setSelectedComponentId(component.id)}>
+                        <span>{String(index + 1).padStart(2, "0")}</span>
+                        <strong>{componentLabel(component.type)}</strong>
+                        <small>{component.id}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <footer>
+                    <button onClick={() => moveComponent(-1)} aria-label="Đưa thành phần lên"><ArrowUp size={15} /></button>
+                    <button onClick={() => moveComponent(1)} aria-label="Đưa thành phần xuống"><ArrowDown size={15} /></button>
+                    <button onClick={(event) => requestDestructiveAction("delete-component", event.currentTarget)} disabled={selectedSlide.components.length <= 1} aria-label="Xoá thành phần"><Trash2 size={15} /></button>
+                  </footer>
+                </section>
+                <ComponentInspector component={selectedComponent} onChange={updateComponent} />
               </div>
-              <footer>
-                <button onClick={() => moveComponent(-1)} aria-label="Đưa component lên"><ArrowUp size={15} /></button>
-                <button onClick={() => moveComponent(1)} aria-label="Đưa component xuống"><ArrowDown size={15} /></button>
-                <button onClick={deleteComponent} disabled={selectedSlide.components.length <= 1} aria-label="Xoá component"><Trash2 size={15} /></button>
-              </footer>
-            </section>
+            )}
 
-            <ComponentInspector component={selectedComponent} onChange={updateComponent} />
-
-            <section className="inspector-section motion-inspector">
-              <header><h3>Motion của component</h3><p>Hiệu ứng hỗ trợ thứ tự kể; không thay thế hierarchy hoặc nội dung.</p></header>
-              <IconChoiceGroup label="Hiệu ứng" value={selectedComponent.effect?.type ?? "rise"} options={effectOptions} compact onChange={(type) => updateComponent({ ...selectedComponent, effect: { ...(selectedComponent.effect ?? {}), type } })} />
-              <div className="inspector-field-grid inspector-field-grid--three motion-fields">
-                <label className="inspector-field"><span>Sequence</span><input type="number" min="1" value={selectedComponent.sequence ?? ""} placeholder="Tự động" onChange={(event) => updateComponent({ ...selectedComponent, sequence: event.target.value ? Number(event.target.value) : undefined })} /></label>
-                <label className="inspector-field"><span>Duration</span><input type="number" min="0.1" max="1.2" step="0.1" value={selectedComponent.effect?.duration ?? 0.34} onChange={(event) => updateComponent({ ...selectedComponent, effect: { type: selectedComponent.effect?.type ?? "rise", duration: Number(event.target.value) || 0.34, delay: selectedComponent.effect?.delay, easing: selectedComponent.effect?.easing } })} /></label>
-                <label className="inspector-field"><span>Delay</span><input type="number" min="0" max="1.5" step="0.05" value={selectedComponent.effect?.delay ?? 0} onChange={(event) => updateComponent({ ...selectedComponent, effect: { type: selectedComponent.effect?.type ?? "rise", duration: selectedComponent.effect?.duration, delay: Number(event.target.value) || 0, easing: selectedComponent.effect?.easing } })} /></label>
+            {inspectorTab === "slide" && (
+              <div id="inspector-panel-slide" role="tabpanel" aria-labelledby="inspector-tab-slide">
+                <section className="inspector-section slide-settings-section">
+                  <header><h3>Thiết lập slide</h3><p>Chọn visual grammar theo thông điệp thay vì điều chỉnh tọa độ thủ công.</p></header>
+                  <IconChoiceGroup label="Bố cục" value={selectedSlide.layout} options={layoutOptions} compact onChange={(layout) => updateSlide({ layout })} />
+                  <IconChoiceGroup label="Phong cách" value={selectedSlide.variant ?? "default"} options={variantOptions} compact onChange={(variant) => updateSlide({ variant })} />
+                  <IconChoiceGroup label="Chuyển slide" value={selectedSlide.transition?.type ?? "fade"} options={transitionOptions} compact onChange={(type) => updateSlide({ transition: { ...(selectedSlide.transition ?? {}), type } })} />
+                  <label className="inspector-field"><span>Thời lượng chuyển slide</span><div className="number-field-with-unit"><input type="number" min="0.1" max="1.2" step="0.1" value={selectedSlide.transition?.duration ?? 0.42} onChange={(event) => updateSlide({ transition: { type: selectedSlide.transition?.type ?? "fade", duration: Number(event.target.value) || 0.42, easing: selectedSlide.transition?.easing } })} /><span>giây</span></div></label>
+                  <label className="inspector-field"><span>Ghi chú người thuyết trình</span><textarea rows={5} value={selectedSlide.notes ?? ""} onChange={(event) => updateSlide({ notes: event.target.value.trim() ? event.target.value : undefined })} placeholder="Điểm cần nói, ngữ cảnh hoặc chuyển ý…" /></label>
+                </section>
               </div>
-            </section>
+            )}
 
-            <section className={`diagnostics ${validation.ok ? "diagnostics--ready" : "diagnostics--error"}`}>
-              <header>{validation.ok ? <CheckCircle2 size={17} /> : <CircleAlert size={17} />}<div><h3>{validation.ok ? "Document hợp lệ" : "Cần xử lý trước khi preview"}</h3><p>{validation.ok ? "Schema, layout và component contract đều hợp lệ." : `${diagnostics.length} diagnostics đang ảnh hưởng document.`}</p></div></header>
-              {!validation.ok && <ul>{diagnostics.slice(0, 6).map((diagnostic, index) => <li key={`${diagnostic.propertyPath}-${index}`}><strong>{diagnostic.message}</strong><span>{diagnostic.propertyPath}</span><small>{diagnostic.remediation}</small></li>)}</ul>}
-            </section>
+            {inspectorTab === "motion" && (
+              <div id="inspector-panel-motion" role="tabpanel" aria-labelledby="inspector-tab-motion">
+                <section className="inspector-section motion-inspector">
+                  <header><h3>Chuyển động của thành phần</h3><p>Hiệu ứng hỗ trợ thứ tự kể; không thay thế hierarchy hoặc nội dung.</p></header>
+                  <IconChoiceGroup label="Hiệu ứng" value={selectedComponent.effect?.type ?? "rise"} options={effectOptions} compact onChange={(type) => updateComponent({ ...selectedComponent, effect: { ...(selectedComponent.effect ?? {}), type } })} />
+                  <div className="inspector-field-grid inspector-field-grid--three motion-fields">
+                    <label className="inspector-field"><span>Thứ tự</span><input type="number" min="1" value={selectedComponent.sequence ?? ""} placeholder="Tự động" onChange={(event) => updateComponent({ ...selectedComponent, sequence: event.target.value ? Number(event.target.value) : undefined })} /></label>
+                    <label className="inspector-field"><span>Thời lượng</span><input type="number" min="0.1" max="1.2" step="0.1" value={selectedComponent.effect?.duration ?? 0.34} onChange={(event) => updateComponent({ ...selectedComponent, effect: { type: selectedComponent.effect?.type ?? "rise", duration: Number(event.target.value) || 0.34, delay: selectedComponent.effect?.delay, easing: selectedComponent.effect?.easing } })} /></label>
+                    <label className="inspector-field"><span>Độ trễ</span><input type="number" min="0" max="1.5" step="0.05" value={selectedComponent.effect?.delay ?? 0} onChange={(event) => updateComponent({ ...selectedComponent, effect: { type: selectedComponent.effect?.type ?? "rise", duration: selectedComponent.effect?.duration, delay: Number(event.target.value) || 0, easing: selectedComponent.effect?.easing } })} /></label>
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {inspectorTab === "quality" && (
+              <div id="inspector-panel-quality" role="tabpanel" aria-labelledby="inspector-tab-quality">
+                <section className={`diagnostics ${validation.ok ? "diagnostics--ready" : "diagnostics--error"}`}>
+                  <header>{validation.ok ? <CheckCircle2 size={17} /> : <CircleAlert size={17} />}<div><h3>{validation.ok ? "Document hợp lệ" : "Cần xử lý trước khi xem trước"}</h3><p>{validation.ok ? "Schema, bố cục và contract thành phần đều hợp lệ." : `${diagnostics.length} lỗi đang ảnh hưởng document.`}</p></div></header>
+                  {!validation.ok && <ul>{diagnostics.slice(0, 8).map((diagnostic, index) => <li key={`${diagnostic.propertyPath}-${index}`}><strong>{diagnostic.message}</strong><span>{diagnostic.propertyPath}</span><small>{diagnostic.remediation}</small></li>)}</ul>}
+                </section>
+              </div>
+            )}
           </div>
         </aside>
       </div>
+
+      {destructiveCopy && (
+        <StudioConfirmDialog
+          title={destructiveCopy.title}
+          description={destructiveCopy.description}
+          confirmLabel={destructiveCopy.confirmLabel}
+          onConfirm={confirmDestructiveAction}
+          onCancel={closeDestructiveConfirmation}
+        />
+      )}
     </main>
   );
+}
+
+function getDestructiveCopy(
+  action: DestructiveAction | null,
+  slide: Slide,
+  component: SlideComponent
+): { title: string; description: string; confirmLabel: string } | null {
+  if (action === "reset-draft") {
+    return {
+      title: "Khôi phục bản nguồn?",
+      description: "Mọi thay đổi trong bản nháp cục bộ sẽ bị xoá và Studio sẽ trở về nội dung nguồn đã kiểm chứng.",
+      confirmLabel: "Khôi phục bản nguồn"
+    };
+  }
+  if (action === "delete-slide") {
+    return {
+      title: "Xoá slide này?",
+      description: `Slide “${slideTitle(slide)}” và toàn bộ nội dung bên trong sẽ bị xoá khỏi bản nháp.`,
+      confirmLabel: "Xoá slide"
+    };
+  }
+  if (action === "delete-component") {
+    return {
+      title: "Xoá thành phần này?",
+      description: `Thành phần “${componentLabel(component.type)}” sẽ bị xoá khỏi slide hiện tại.`,
+      confirmLabel: "Xoá thành phần"
+    };
+  }
+  return null;
+}
+
+function getSaveStateLabel(state: SaveState): string {
+  switch (state) {
+    case "clean": return "Chưa có thay đổi";
+    case "dirty": return "Chờ tự động lưu";
+    case "saving": return "Đang lưu…";
+    case "saved": return "Đã lưu trên trình duyệt";
+    case "error": return "Chưa thể lưu";
+  }
 }
 
 function nextStableId(prefix: string, existing: string[]): string {

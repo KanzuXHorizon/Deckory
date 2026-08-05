@@ -112,7 +112,7 @@ export function Presenter({
     ? `Hiện tiếp ${nextPreviewCue.sequenceStep}/${currentSequenceCount} · ${labelForSlide(currentSlide)}`
     : nextPreviewSlide
       ? labelForSlide(nextPreviewSlide)
-      : "Kết thúc presentation";
+      : "Kết thúc trình chiếu";
   const nextPreviewIndex = nextPreviewCue.kind === "reveal"
     ? `${String(state.slideIndex + 1).padStart(2, "0")} · ${nextPreviewCue.sequenceStep}/${currentSequenceCount}`
     : nextPreviewCue.kind === "slide"
@@ -211,7 +211,7 @@ export function Presenter({
     url.searchParams.set("view", view);
     url.searchParams.set("slide", currentSlide.id);
     window.history.replaceState(null, "", url);
-    document.title = view === "audience" ? deck.title : `${deck.title} · Presenter`;
+    document.title = view === "audience" ? deck.title : `${deck.title} · Trình chiếu`;
   }, [currentSlide.id, deck.slides, deck.title, view]);
 
   useEffect(() => {
@@ -479,7 +479,7 @@ export function Presenter({
               {blackout && <div className="presenter-blackout-notice" role="status"><Square size={14} fill="currentColor" />Màn hình khán giả đang tạm ẩn</div>}
             </div>
             <div className="stage-meta-row">
-              <div className="reveal-status"><span>Reveal</span><div className="mini-progress" aria-hidden="true"><i /></div><strong>{state.sequenceStep}/{currentSequenceCount}</strong></div>
+              <div className="reveal-status"><span>Hiện dần</span><div className="mini-progress" aria-hidden="true"><i /></div><strong>{state.sequenceStep}/{currentSequenceCount}</strong></div>
               <div className="shortcut-hint"><kbd>←</kbd><kbd>→</kbd><span>điều hướng</span><kbd>B</kbd><span>ẩn màn hình</span><kbd>O</kbd><span>tổng quan</span></div>
             </div>
           </section>
@@ -544,7 +544,7 @@ function PresenterHeader({ deck, modeLabel, audienceStatus, audienceFullscreen, 
   const connected = audienceStatus === "connected";
   return (
     <header className="presenter-topbar">
-      <div className="presenter-brand"><DeckoryBrand /><span>Presenter Console</span></div>
+      <div className="presenter-brand"><DeckoryBrand /><span>Bảng điều khiển trình chiếu</span></div>
       <div className="deck-title-block"><span>{modeLabel}</span><h1>{deck.title}</h1></div>
       <div className="topbar-statuses">
         <div className={`status-chip status-chip--${offlineStatus}`} title={offlineDescription}>{offlineStatus === "ready" ? <Wifi size={14} /> : <WifiOff size={14} />}<span>{offlineLabel}</span></div>
@@ -554,11 +554,11 @@ function PresenterHeader({ deck, modeLabel, audienceStatus, audienceFullscreen, 
         ><span className="status-dot" /><span>{audienceStatusLabel(audienceStatus, audienceFullscreen)}</span></div>
       </div>
       <div className="topbar-actions">
-        <Link className="toolbar-button" href={returnHref} aria-label="Về Deckory Hub"><ArrowLeft size={17} /><span aria-hidden="true">Hub</span></Link>
-        {editHref && <Link className="toolbar-button" href={editHref} aria-label="Chỉnh sửa deck"><PencilLine size={16} /><span aria-hidden="true">Chỉnh sửa</span></Link>}
-        <button type="button" className="toolbar-button" onClick={onOverview} aria-label="Mở tổng quan slide"><Grid2X2 size={17} /><span aria-hidden="true">Tổng quan</span></button>
-        <button type="button" className="toolbar-button icon-only" onClick={onFullscreen} aria-label="Toàn màn hình cửa sổ presenter"><Expand size={17} /></button>
-        {connected ? <button type="button" className="toolbar-button" onClick={onCloseAudience}><X size={17} /><span>Đóng màn hình</span></button> : <button type="button" className="toolbar-button primary" onClick={onOpenAudience}><ScreenShare size={17} /><span>{audienceStatus === "blocked" ? "Thử mở lại" : "Mở màn hình khán giả"}</span></button>}
+        <Link className="toolbar-button toolbar-button--hub" href={returnHref} aria-label="Về thư viện Deckory"><ArrowLeft size={17} /><span aria-hidden="true">Thư viện</span></Link>
+        {editHref && <Link className="toolbar-button toolbar-button--edit" href={editHref} aria-label="Chỉnh sửa deck"><PencilLine size={16} /><span aria-hidden="true">Chỉnh sửa</span></Link>}
+        <button type="button" className="toolbar-button toolbar-button--overview" onClick={onOverview} aria-label="Mở tổng quan slide"><Grid2X2 size={17} /><span aria-hidden="true">Tổng quan</span></button>
+        <button type="button" className="toolbar-button toolbar-button--fullscreen icon-only" onClick={onFullscreen} aria-label="Toàn màn hình bảng điều khiển"><Expand size={17} /></button>
+        {connected ? <button type="button" className="toolbar-button toolbar-button--audience" onClick={onCloseAudience} aria-label="Đóng màn hình khán giả"><X size={17} /><span aria-hidden="true">Đóng màn hình</span></button> : <button type="button" className="toolbar-button toolbar-button--audience primary" onClick={onOpenAudience} aria-label={audienceStatus === "blocked" ? "Thử mở lại màn hình khán giả" : "Mở màn hình khán giả"}><ScreenShare size={17} /><span aria-hidden="true">{audienceStatus === "blocked" ? "Thử mở lại" : "Mở màn hình khán giả"}</span></button>}
       </div>
     </header>
   );
@@ -580,7 +580,7 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
   onOpenAudience: () => void;
 }) {
   return (
-    <footer className="presenter-transport" aria-label="Điều khiển presentation">
+    <footer className="presenter-transport" aria-label="Điều khiển trình chiếu">
       <div className="transport-progress"><div className="deck-progress-track" aria-hidden="true"><i /></div><span>{Math.round(((state.slideIndex + 1) / slideCount) * 100)}% hoàn thành</span></div>
       <div className="timer-cluster">
         <div className="clock-readout"><Clock3 size={17} /><div><span>Thời gian</span><strong>{formatElapsedTime(elapsedSeconds)}</strong></div></div>
@@ -697,6 +697,7 @@ export function AudienceView({
           type="button"
           onClick={() => void requestFullscreen()}
           disabled={!fullscreenSupported}
+          aria-label={fullscreenCopy.label}
           aria-pressed={isFullscreen}
           title={fullscreenCopy.hint}
         >
@@ -816,7 +817,7 @@ function SlideOverview({ slides, deckId, sequenceCounts, currentSlideIndex, onCl
             </button>
           ))}
         </div>
-        <footer className="overview-footer"><CircleHelp size={16} /><span>Dùng Tab để duyệt slide, Enter để chọn và Esc để trở lại Presenter.</span></footer>
+        <footer className="overview-footer"><CircleHelp size={16} /><span>Dùng Tab để duyệt slide, Enter để chọn và Esc để trở lại bảng điều khiển.</span></footer>
       </div>
     </div>
   );

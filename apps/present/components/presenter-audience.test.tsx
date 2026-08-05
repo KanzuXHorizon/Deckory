@@ -36,6 +36,7 @@ describe("AudienceView", () => {
     expect(html).toContain("audience-stage");
     expect(html).toContain("audience-utility");
     expect(html).toContain("Bật toàn màn hình");
+    expect(html).toContain('aria-label="Bật toàn màn hình"');
     expect(html).toContain(">F<");
     expect(html).not.toContain(slide.notes);
     expect(html).not.toContain("speaker-note-copy");

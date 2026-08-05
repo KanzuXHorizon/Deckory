@@ -57,7 +57,7 @@ const visualLab = defineDeck({
       components: [
         { id: "heading", type: "heading", props: { eyebrow: "SO SÁNH", title: "Bar chart làm rõ khoảng cách giữa các hạng mục." } },
         { id: "chart", type: "chart", props: { title: "Điểm chất lượng theo tiêu chí", unit: "điểm / 100", variant: "bar", values: [
-          { label: "Cấu trúc nội dung", value: 91, highlight: true },
+          { label: "Cấu trúc nội dung", value: 91 },
           { label: "Khả năng đọc", value: 84 },
           { label: "Visual hierarchy", value: 95, highlight: true },
           { label: "Khả năng tiếp cận", value: 88 }
@@ -67,7 +67,7 @@ const visualLab = defineDeck({
     },
     {
       id: "line-chart",
-      layout: "data",
+      layout: "dashboard",
       variant: "quiet",
       notes: "Line chart chỉ dùng khi thứ tự trên trục thể hiện tiến trình hoặc thời gian.",
       components: [
@@ -100,7 +100,7 @@ const visualLab = defineDeck({
     },
     {
       id: "donut-chart",
-      layout: "data",
+      layout: "dashboard",
       variant: "spotlight",
       notes: "Donut chart chỉ dùng cho thành phần của một tổng có ít nhóm.",
       components: [

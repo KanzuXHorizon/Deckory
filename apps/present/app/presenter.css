@@ -437,8 +437,55 @@
   }
 }
 
+@media (max-width: 620px) {
+  .presenter-shell .topbar-actions {
+    gap: 6px;
+  }
+
+  .presenter-shell .toolbar-button--hub,
+  .presenter-shell .toolbar-button--overview,
+  .presenter-shell .toolbar-button--audience {
+    display: inline-flex;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .presenter-shell .toolbar-button--edit,
+  .presenter-shell .toolbar-button--fullscreen {
+    display: none;
+  }
+
+  .presenter-shell .toolbar-button--hub span,
+  .presenter-shell .toolbar-button--overview span,
+  .presenter-shell .toolbar-button--audience span {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .presenter-shell .toolbar-button,
+  .presenter-shell .note-size-actions button,
+  .presenter-shell .transport-icon,
+  .presenter-shell .primary-navigation > button,
+  .presenter-shell .transport-action,
+  .audience-shell .audience-utility button {
+    min-height: 44px;
+  }
+
+  .presenter-shell .toolbar-button.icon-only,
+  .presenter-shell .note-size-actions button,
+  .presenter-shell .transport-icon,
+  .presenter-shell .primary-navigation > button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .audience-shell .audience-utility {
-    transition: opacity 0.01ms linear;
+    transition: opacity 80ms linear;
   }
 }
