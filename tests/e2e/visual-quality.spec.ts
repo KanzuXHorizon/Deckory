@@ -93,7 +93,7 @@ async function inspectSlide(slide: Locator) {
     const contentOverflow = visibleSlots.flatMap((slot) => {
       const candidates = [slot, ...slot.querySelectorAll<HTMLElement>("*")];
       return candidates.flatMap((candidate) => {
-        if (candidate.closest('[data-qa-allow-clip="true"]')) return [];
+        if (candidate.closest(".sr-only") || candidate.closest('[data-qa-allow-clip="true"]')) return [];
         const style = getComputedStyle(candidate);
         const clipsX = style.overflowX === "hidden" || style.overflowX === "clip";
         const clipsY = style.overflowY === "hidden" || style.overflowY === "clip";
