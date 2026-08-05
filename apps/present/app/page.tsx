@@ -1,4 +1,5 @@
-import { Presenter } from "../components/presenter";
-import { deckoryStory } from "@deckory/deckory-story";
+import { Hub } from "../components/hub";
 
-export default function PresentPage() { return <Presenter deck={deckoryStory} />; }
+export default function HubPage() {
+  return <Hub />;
+}
