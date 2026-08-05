@@ -195,9 +195,10 @@ function TeamProfileShowcase({
       data-deck-interactive
       data-motion-off={motionOff ? "true" : "false"}
       data-static={motionDisabled ? "true" : "false"}
+      data-has-heading={title || subtitle ? "true" : "false"}
       aria-label={`${title ?? "Hồ sơ thành viên"}. ${summary}`}
     >
-      {(title || subtitle || project) && (
+      {(title || subtitle) && (
         <header className="team-showcase-heading">
           <div>
             {project && <span>{project}</span>}

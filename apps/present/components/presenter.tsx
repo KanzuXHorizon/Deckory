@@ -554,9 +554,9 @@ function PresenterHeader({ deck, modeLabel, audienceStatus, audienceFullscreen, 
         ><span className="status-dot" /><span>{audienceStatusLabel(audienceStatus, audienceFullscreen)}</span></div>
       </div>
       <div className="topbar-actions">
-        <Link className="toolbar-button" href={returnHref}><ArrowLeft size={17} /><span>Hub</span></Link>
-        {editHref && <Link className="toolbar-button" href={editHref}><PencilLine size={16} /><span>Chỉnh sửa</span></Link>}
-        <button type="button" className="toolbar-button" onClick={onOverview}><Grid2X2 size={17} /><span>Tổng quan</span></button>
+        <Link className="toolbar-button" href={returnHref} aria-label="Về Deckory Hub"><ArrowLeft size={17} /><span aria-hidden="true">Hub</span></Link>
+        {editHref && <Link className="toolbar-button" href={editHref} aria-label="Chỉnh sửa deck"><PencilLine size={16} /><span aria-hidden="true">Chỉnh sửa</span></Link>}
+        <button type="button" className="toolbar-button" onClick={onOverview} aria-label="Mở tổng quan slide"><Grid2X2 size={17} /><span aria-hidden="true">Tổng quan</span></button>
         <button type="button" className="toolbar-button icon-only" onClick={onFullscreen} aria-label="Toàn màn hình cửa sổ presenter"><Expand size={17} /></button>
         {connected ? <button type="button" className="toolbar-button" onClick={onCloseAudience}><X size={17} /><span>Đóng màn hình</span></button> : <button type="button" className="toolbar-button primary" onClick={onOpenAudience}><ScreenShare size={17} /><span>{audienceStatus === "blocked" ? "Thử mở lại" : "Mở màn hình khán giả"}</span></button>}
       </div>
