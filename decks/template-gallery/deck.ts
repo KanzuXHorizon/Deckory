@@ -63,7 +63,7 @@ const input = {
             { label: "Visual styles", value: 6 },
             { label: "Slide recipes", value: 44, highlight: true },
             { label: "Deck blueprints", value: 10 },
-            { label: "Blueprint integration", value: 10, highlight: true }
+            { label: "Blueprint integration", value: 10 }
           ]
         },
         insight: {
