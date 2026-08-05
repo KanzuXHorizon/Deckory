@@ -12,7 +12,6 @@ import {
   Copy,
   Eye,
   Layers3,
-  LayoutTemplate,
   Play,
   Plus,
   RotateCcw,
@@ -29,6 +28,7 @@ import {
   type SlideComponent
 } from "@deckory/schema";
 import { cloneDeck, slideTitle } from "../lib/deck-catalog";
+import { DeckoryBrand } from "./brand-mark";
 import { ComponentInspector } from "./component-inspector";
 import { DeckThumbnail } from "./deck-thumbnail";
 import { SlideFrame } from "./slide-frame";
@@ -197,7 +197,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
       <header className="studio-topbar">
         <div className="studio-topbar-left">
           <Link className="icon-action" href="/" aria-label="Về Deckory Hub"><ArrowLeft size={18} /></Link>
-          <Link className="brand-lockup brand-lockup--link" href="/"><span className="brand-mark" aria-hidden="true"><i /><i /><i /></span><span>deckory</span></Link>
+          <Link className="brand-lockup-link" href="/" aria-label="Deckory Hub"><DeckoryBrand /></Link>
           <div className="studio-document-title"><span>STUDIO</span><input aria-label="Tên deck" value={deck.title} onChange={(event) => updateDeck((current) => ({ ...current, title: event.target.value }))} /></div>
         </div>
         <div className="studio-status" data-state={validation.ok ? "ready" : "error"}>{validation.ok ? <CheckCircle2 size={15} /> : <CircleAlert size={15} />}<span>{readinessLabel}</span></div>

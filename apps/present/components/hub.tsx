@@ -14,6 +14,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { deckCatalog, slideTitle, visualCoverage } from "../lib/deck-catalog";
+import { DeckoryBrand } from "./brand-mark";
 import { DeckThumbnail } from "./deck-thumbnail";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
@@ -42,9 +43,8 @@ export function Hub() {
   return (
     <main className="hub-shell">
       <header className="hub-topbar">
-        <Link className="brand-lockup brand-lockup--link" href="/" aria-label="Deckory Hub">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
-          <span>deckory</span>
+        <Link className="brand-lockup-link" href="/" aria-label="Deckory Hub">
+          <DeckoryBrand />
         </Link>
         <nav className="hub-nav" aria-label="Điều hướng chính">
           <a className="is-active" href="#library">Thư viện</a>

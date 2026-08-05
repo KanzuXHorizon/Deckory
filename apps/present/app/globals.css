@@ -1640,6 +1640,12 @@ button:disabled {
   box-shadow: 0 28px 68px rgba(0, 0, 0, 0.4);
 }
 
+.animated-slide {
+  grid-area: 1 / 1;
+  transform-origin: center;
+  contain: layout paint;
+}
+
 .animated-slide,
 .animated-slide > .slide {
   width: 100%;
