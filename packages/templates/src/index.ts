@@ -7,6 +7,12 @@ export {
   visualStyleById,
   visualStyles
 } from "./catalog/index.js";
+export {
+  createDeckFromTemplate,
+  getDeckBlueprint,
+  getSlideRecipe,
+  getVisualStyle
+} from "./instantiate.js";
 export { recommendTemplate } from "./recommend.js";
 export { searchSlideRecipes } from "./search.js";
 export { validateTemplateInput } from "./validate-input.js";
