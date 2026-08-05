@@ -6,11 +6,13 @@ import {
   describeOfflineStatus,
   formatElapsedTime,
   getNavigationDirection,
+  getNextPreviewCue,
   isAudiencePresenceFresh,
   isDeckInteractiveTarget,
   isEditableTarget,
   isPresenterSyncMessage,
   resolvePresentationView,
+  resolvePresenterKeyboardAction,
   resolveRequestedSlideIndex,
   shouldPrepareOfflineCache,
   toggleFullscreenMode,
@@ -77,6 +79,15 @@ describe("presenter runtime helpers", () => {
     expect(resolvePresentationView("?view=presenter")).toBe("presenter");
     expect(resolvePresentationView("?view=audience")).toBe("audience");
     expect(resolvePresentationView("?view=unknown")).toBe("presenter");
+  });
+
+  it("blocks presentation shortcuts behind the overview dialog", () => {
+    expect(resolvePresenterKeyboardAction("ArrowRight", { overviewOpen: true, presenterView: true })).toBeNull();
+    expect(resolvePresenterKeyboardAction("b", { overviewOpen: true, presenterView: true })).toBeNull();
+    expect(resolvePresenterKeyboardAction("Escape", { overviewOpen: true, presenterView: true })).toBe("close-overview");
+    expect(resolvePresenterKeyboardAction("ArrowRight", { overviewOpen: false, presenterView: true })).toBe("next");
+    expect(resolvePresenterKeyboardAction("o", { overviewOpen: false, presenterView: true })).toBe("toggle-overview");
+    expect(resolvePresenterKeyboardAction("o", { overviewOpen: false, presenterView: false })).toBeNull();
   });
 
   it("creates and validates the cross-window presentation state contract", () => {
@@ -159,6 +170,22 @@ describe("presenter runtime helpers", () => {
     expect(formatElapsedTime(0)).toBe("00:00");
     expect(formatElapsedTime(65)).toBe("01:05");
     expect(formatElapsedTime(3_723)).toBe("1:02:03");
+  });
+
+  it("previews the next reveal before advancing to the next slide", () => {
+    const sequenceCounts = [2, 1, 0];
+
+    expect(getNextPreviewCue(0, 0, sequenceCounts)).toEqual({
+      kind: "reveal",
+      slideIndex: 0,
+      sequenceStep: 1
+    });
+    expect(getNextPreviewCue(0, 2, sequenceCounts)).toEqual({
+      kind: "slide",
+      slideIndex: 1,
+      sequenceStep: 0
+    });
+    expect(getNextPreviewCue(2, 0, sequenceCounts)).toEqual({ kind: "end" });
   });
 
   it("derives stable forward and backward navigation directions", () => {

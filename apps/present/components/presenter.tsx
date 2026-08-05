@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -37,11 +37,13 @@ import {
   describeOfflineStatus,
   formatElapsedTime,
   getNavigationDirection,
+  getNextPreviewCue,
   isAudiencePresenceFresh,
   isDeckInteractiveTarget,
   isEditableTarget,
   isPresenterSyncMessage,
   prepareOfflineCache,
+  resolvePresenterKeyboardAction,
   resolveRequestedSlideIndex,
   toggleFullscreenMode,
   PRESENTER_CHANNEL_NAME,
@@ -98,12 +100,24 @@ export function Presenter({
   const audienceLastSeenRef = useRef(0);
   const revisionRef = useRef(0);
   const previousSlideIndexRef = useRef(state.slideIndex);
+  const overviewReturnFocusRef = useRef<HTMLElement | null>(null);
   const locationResolvedRef = useRef(false);
   const sourceIdRef = useRef(`${view}-${Math.random().toString(36).slice(2)}`);
 
   const currentSlide = deck.slides[state.slideIndex] ?? deck.slides[0]!;
-  const nextSlide = deck.slides[state.slideIndex + 1];
   const currentSequenceCount = sequenceCounts[state.slideIndex] ?? 0;
+  const nextPreviewCue = getNextPreviewCue(state.slideIndex, state.sequenceStep, sequenceCounts);
+  const nextPreviewSlide = nextPreviewCue.kind === "end" ? undefined : deck.slides[nextPreviewCue.slideIndex];
+  const nextPreviewTitle = nextPreviewCue.kind === "reveal"
+    ? `Hiện tiếp ${nextPreviewCue.sequenceStep}/${currentSequenceCount} · ${labelForSlide(currentSlide)}`
+    : nextPreviewSlide
+      ? labelForSlide(nextPreviewSlide)
+      : "Kết thúc presentation";
+  const nextPreviewIndex = nextPreviewCue.kind === "reveal"
+    ? `${String(state.slideIndex + 1).padStart(2, "0")} · ${nextPreviewCue.sequenceStep}/${currentSequenceCount}`
+    : nextPreviewCue.kind === "slide"
+      ? String(nextPreviewCue.slideIndex + 1).padStart(2, "0")
+      : null;
   const navigationDirection = getNavigationDirection(previousSlideIndexRef.current, state.slideIndex);
   const offlineCopy = describeOfflineStatus(offlineStatus, isOnline);
   const storageKey = `${PRESENTER_STORAGE_KEY}:${deck.id}`;
@@ -117,6 +131,22 @@ export function Presenter({
 
   const dispatch = useCallback((command: PresenterCommand) => {
     setState((current) => present(current, command));
+  }, []);
+
+  const openOverview = useCallback(() => {
+    overviewReturnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    setOverviewOpen(true);
+  }, []);
+
+  const closeOverview = useCallback(() => {
+    setOverviewOpen(false);
+    window.requestAnimationFrame(() => {
+      const target = overviewReturnFocusRef.current;
+      if (target?.isConnected) target.focus();
+      overviewReturnFocusRef.current = null;
+    });
   }, []);
 
   const applyRemoteState = useCallback((message: PresenterSyncMessage) => {
@@ -319,38 +349,42 @@ export function Presenter({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target as HTMLElement) || isDeckInteractiveTarget(event.target as HTMLElement)) return;
-      const key = event.key.toLowerCase();
+      const action = resolvePresenterKeyboardAction(event.key, {
+        overviewOpen,
+        presenterView: view === "presenter"
+      });
+      if (!action) return;
 
-      if (view === "audience") return;
-
-      if (["arrowright", "pagedown", " "].includes(key)) {
-        event.preventDefault();
-        dispatch({ type: "NEXT" });
-      } else if (["arrowleft", "pageup"].includes(key)) {
-        event.preventDefault();
-        dispatch({ type: "PREVIOUS" });
-      } else if (key === "home") {
-        event.preventDefault();
-        dispatch({ type: "HOME" });
-      } else if (key === "end") {
-        event.preventDefault();
-        dispatch({ type: "END" });
-      } else if (key === "b") {
-        event.preventDefault();
-        setBlackout((value) => !value);
-      } else if (key === "f") {
-        event.preventDefault();
-        void handleToggleFullscreen();
-      } else if (view === "presenter" && key === "o") {
-        event.preventDefault();
-        setOverviewOpen((value) => !value);
-      } else if (key === "escape") {
-        setOverviewOpen(false);
+      event.preventDefault();
+      switch (action) {
+        case "next":
+          dispatch({ type: "NEXT" });
+          return;
+        case "previous":
+          dispatch({ type: "PREVIOUS" });
+          return;
+        case "home":
+          dispatch({ type: "HOME" });
+          return;
+        case "end":
+          dispatch({ type: "END" });
+          return;
+        case "toggle-blackout":
+          setBlackout((value) => !value);
+          return;
+        case "toggle-fullscreen":
+          void handleToggleFullscreen();
+          return;
+        case "toggle-overview":
+          openOverview();
+          return;
+        case "close-overview":
+          closeOverview();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dispatch, handleToggleFullscreen, view]);
+  }, [closeOverview, dispatch, handleToggleFullscreen, openOverview, overviewOpen, view]);
 
   const openAudienceView = () => {
     const url = new URL(window.location.href);
@@ -424,7 +458,7 @@ export function Presenter({
           editHref={editHref}
           onOpenAudience={openAudienceView}
           onCloseAudience={closeAudienceView}
-          onOverview={() => setOverviewOpen(true)}
+          onOverview={openOverview}
           onFullscreen={() => void handleToggleFullscreen()}
         />
 
@@ -452,9 +486,11 @@ export function Presenter({
 
           <aside className="presenter-side-column" aria-label="Thông tin hỗ trợ người thuyết trình">
             <section className="presenter-panel next-panel">
-              <div className="panel-heading compact"><div><span className="section-label">TIẾP THEO</span><strong>{nextSlide ? labelForSlide(nextSlide) : "Kết thúc presentation"}</strong></div>{nextSlide && <span className="next-index">{String(state.slideIndex + 2).padStart(2, "0")}</span>}</div>
+              <div className="panel-heading compact"><div><span className="section-label">TIẾP THEO</span><strong>{nextPreviewTitle}</strong></div>{nextPreviewIndex && <span className="next-index">{nextPreviewIndex}</span>}</div>
               <div className="next-slide-preview">
-                {nextSlide ? <ScaledSlidePreview slide={nextSlide} deckId={deck.id} sequenceStep={0} className="next-slide-preview-canvas" /> : <div className="end-preview"><CheckCircle2 size={28} /><strong>Đã đến slide cuối</strong><span>Sẵn sàng kết thúc và chuyển sang phần trao đổi.</span></div>}
+                {nextPreviewSlide && nextPreviewCue.kind !== "end"
+                  ? <ScaledSlidePreview slide={nextPreviewSlide} deckId={deck.id} sequenceStep={nextPreviewCue.sequenceStep} className="next-slide-preview-canvas" />
+                  : <div className="end-preview"><CheckCircle2 size={28} /><strong>Đã đến slide cuối</strong><span>Sẵn sàng kết thúc và chuyển sang phần trao đổi.</span></div>}
               </div>
             </section>
 
@@ -484,7 +520,7 @@ export function Presenter({
           onOpenAudience={openAudienceView}
         />
 
-        {overviewOpen && <SlideOverview slides={deck.slides} deckId={deck.id} sequenceCounts={sequenceCounts} currentSlideIndex={state.slideIndex} onClose={() => setOverviewOpen(false)} onSelect={(slideIndex) => { dispatch({ type: "GOTO", slideIndex }); setOverviewOpen(false); }} />}
+        {overviewOpen && <SlideOverview slides={deck.slides} deckId={deck.id} sequenceCounts={sequenceCounts} currentSlideIndex={state.slideIndex} onClose={closeOverview} onSelect={(slideIndex) => { dispatch({ type: "GOTO", slideIndex }); closeOverview(); }} />}
       </main>
     </MotionConfig>
   );
@@ -692,21 +728,95 @@ function AnimatedSlide({ slide, deckId, sequenceStep, reducedMotion, direction }
         exit={slideMotion.exit}
         transition={slideMotion.transition}
       >
-        <SlideFrame slide={slide} deckId={deckId} sequenceStep={sequenceStep} reducedMotion={reducedMotion} />
+        <div className="animated-slide-canvas">
+          <SlideFrame slide={slide} deckId={deckId} sequenceStep={sequenceStep} reducedMotion={reducedMotion} />
+        </div>
       </motion.div>
     </AnimatePresence>
   );
 }
 
 function SlideOverview({ slides, deckId, sequenceCounts, currentSlideIndex, onClose, onSelect }: { slides: Slide[]; deckId: string; sequenceCounts: readonly number[]; currentSlideIndex: number; onClose: () => void; onSelect: (slideIndex: number) => void }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const currentCard = panel.querySelector<HTMLElement>('[data-overview-current="true"]');
+    const closeButton = panel.querySelector<HTMLElement>(".overview-close");
+    window.requestAnimationFrame(() => (currentCard ?? closeButton ?? panel).focus());
+  }, []);
+
+  const onDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusable = [...panel.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    )].filter((element) => element.getAttribute("aria-hidden") !== "true");
+    if (focusable.length === 0) {
+      event.preventDefault();
+      panel.focus();
+      return;
+    }
+
+    const first = focusable[0]!;
+    const last = focusable.at(-1)!;
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !panel.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
-    <div className="overview-backdrop" role="dialog" aria-modal="true" aria-label="Tổng quan slide">
-      <div className="overview-panel">
-        <header className="overview-header"><div><span className="section-label">SLIDE OVERVIEW</span><h2>Chọn nơi bạn muốn tiếp tục</h2><p>Xem toàn bộ mạch kể chuyện mà không làm gián đoạn màn hình khán giả.</p></div><button type="button" className="overview-close" onClick={onClose} aria-label="Đóng tổng quan"><X size={20} /></button></header>
+    <div className="overview-backdrop">
+      <div
+        ref={panelRef}
+        className="overview-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="overview-title"
+        aria-describedby="overview-description"
+        tabIndex={-1}
+        onKeyDown={onDialogKeyDown}
+      >
+        <header className="overview-header">
+          <div>
+            <span className="section-label">SLIDE OVERVIEW</span>
+            <h2 id="overview-title">Chọn nơi bạn muốn tiếp tục</h2>
+            <p id="overview-description">Xem toàn bộ mạch kể chuyện mà không làm gián đoạn màn hình khán giả.</p>
+          </div>
+          <button type="button" className="overview-close" onClick={onClose} aria-label="Đóng tổng quan"><X size={20} /></button>
+        </header>
         <div className="overview-grid">
-          {slides.map((slide, index) => <button type="button" key={slide.id} className={`overview-card ${index === currentSlideIndex ? "is-current" : ""}`} onClick={() => onSelect(index)} aria-label={`Mở slide ${index + 1}: ${labelForSlide(slide)}`}><span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span><div className="overview-preview"><ScaledSlidePreview slide={slide} deckId={deckId} sequenceStep={sequenceCounts[index] ?? 0} className="overview-preview-canvas" /></div><div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div></button>)}
+          {slides.map((slide, index) => (
+            <button
+              type="button"
+              key={slide.id}
+              className={`overview-card ${index === currentSlideIndex ? "is-current" : ""}`}
+              data-overview-current={index === currentSlideIndex ? "true" : undefined}
+              onClick={() => onSelect(index)}
+              aria-label={`Mở slide ${index + 1}: ${labelForSlide(slide)}`}
+              aria-current={index === currentSlideIndex ? "page" : undefined}
+            >
+              <span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span>
+              <div className="overview-preview"><ScaledSlidePreview slide={slide} deckId={deckId} sequenceStep={sequenceCounts[index] ?? 0} className="overview-preview-canvas" /></div>
+              <div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div>
+            </button>
+          ))}
         </div>
-        <footer className="overview-footer"><CircleHelp size={16} /><span>Dùng phím mũi tên để điều hướng, <kbd>B</kbd> để tạm ẩn màn hình và <kbd>F</kbd> để bật toàn màn hình.</span></footer>
+        <footer className="overview-footer"><CircleHelp size={16} /><span>Dùng Tab để duyệt slide, Enter để chọn và Esc để trở lại Presenter.</span></footer>
       </div>
     </div>
   );

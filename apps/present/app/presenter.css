@@ -42,6 +42,26 @@
   aspect-ratio: 16 / 9;
 }
 
+.presenter-shell .animated-slide,
+.audience-shell .animated-slide {
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+.presenter-shell .animated-slide-canvas,
+.audience-shell .animated-slide-canvas {
+  width: 1280px;
+  height: 720px;
+  transform: scale(calc(100cqw / 1280px));
+  transform-origin: top left;
+}
+
+.presenter-shell .animated-slide-canvas > .slide,
+.audience-shell .animated-slide-canvas > .slide {
+  width: 1280px;
+  height: 720px;
+}
+
 .presenter-shell .presenter-side-column {
   height: 100%;
   grid-template-rows: minmax(230px, 0.95fr) minmax(180px, 1.05fr);
@@ -217,6 +237,17 @@
     height: auto;
   }
 
+  .presenter-shell .presenter-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .presenter-shell .presenter-side-column {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(220px, auto);
+    gap: 12px;
+  }
+
   .presenter-shell .presenter-stage-canvas {
     min-height: min(54vw, 500px);
   }
@@ -227,6 +258,10 @@
 }
 
 @media (max-width: 620px) {
+  .presenter-shell .presenter-side-column {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .presenter-shell .presenter-stage-canvas {
     min-height: 52vw;
     padding: 6px;

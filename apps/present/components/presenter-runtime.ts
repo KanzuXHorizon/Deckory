@@ -5,6 +5,15 @@ export type PerformanceResourceLike = { name: string };
 export type EditableTargetLike = { tagName?: string; isContentEditable?: boolean } | null;
 export type InteractiveTargetLike = { closest?: (selector: string) => unknown } | null;
 export type FullscreenResult = "entered" | "exited" | "unsupported" | "error";
+export type PresenterKeyboardAction =
+  | "next"
+  | "previous"
+  | "home"
+  | "end"
+  | "toggle-blackout"
+  | "toggle-fullscreen"
+  | "toggle-overview"
+  | "close-overview";
 export type FullscreenElementLike = { requestFullscreen?: () => Promise<void> | void };
 export type FullscreenDocumentLike = {
   fullscreenElement: unknown | null;
@@ -28,6 +37,11 @@ export type PresenterSyncMessage = PresenterSyncState & {
   type: "DECKORY_PRESENTATION_STATE";
   sentAt: number;
 };
+
+export type NextPreviewCue =
+  | { kind: "reveal"; slideIndex: number; sequenceStep: number }
+  | { kind: "slide"; slideIndex: number; sequenceStep: 0 }
+  | { kind: "end" };
 
 export const PRESENTER_CHANNEL_NAME = "deckory-presentation";
 export const PRESENTER_STORAGE_KEY = "deckory:presentation-state";
@@ -89,6 +103,27 @@ export function resolveRequestedSlideIndex(search: string, slideIds: readonly st
 
 export function resolvePresentationView(search: string): PresentationView {
   return new URLSearchParams(search).get("view") === "audience" ? "audience" : "presenter";
+}
+
+export function resolvePresenterKeyboardAction(
+  key: string,
+  context: { overviewOpen: boolean; presenterView: boolean }
+): PresenterKeyboardAction | null {
+  const normalizedKey = key.toLocaleLowerCase("en-US");
+
+  if (context.overviewOpen) {
+    return normalizedKey === "escape" ? "close-overview" : null;
+  }
+  if (!context.presenterView) return null;
+
+  if (["arrowright", "pagedown", " "].includes(normalizedKey)) return "next";
+  if (["arrowleft", "pageup"].includes(normalizedKey)) return "previous";
+  if (normalizedKey === "home") return "home";
+  if (normalizedKey === "end") return "end";
+  if (normalizedKey === "b") return "toggle-blackout";
+  if (normalizedKey === "f") return "toggle-fullscreen";
+  if (normalizedKey === "o") return "toggle-overview";
+  return null;
 }
 
 export function isAudiencePresenceFresh(lastSeenAt: number, now = Date.now(), timeoutMs = 8_000): boolean {
@@ -154,6 +189,22 @@ export function isPresenterSyncMessage(value: unknown): value is PresenterSyncMe
     && (message.audienceFullscreen === undefined || typeof message.audienceFullscreen === "boolean")
     && typeof message.sentAt === "number"
     && Number.isFinite(message.sentAt);
+}
+
+export function getNextPreviewCue(
+  slideIndex: number,
+  sequenceStep: number,
+  sequenceCounts: readonly number[]
+): NextPreviewCue {
+  const currentSequenceCount = Math.max(0, sequenceCounts[slideIndex] ?? 0);
+  if (sequenceStep < currentSequenceCount) {
+    return { kind: "reveal", slideIndex, sequenceStep: sequenceStep + 1 };
+  }
+
+  const nextSlideIndex = slideIndex + 1;
+  return nextSlideIndex < sequenceCounts.length
+    ? { kind: "slide", slideIndex: nextSlideIndex, sequenceStep: 0 }
+    : { kind: "end" };
 }
 
 export function getNavigationDirection(previousIndex: number, nextIndex: number): -1 | 1 {
