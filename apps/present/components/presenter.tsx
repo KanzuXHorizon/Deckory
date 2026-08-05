@@ -13,6 +13,7 @@ import {
   Expand,
   ExternalLink,
   Grid2X2,
+  Minimize2,
   MonitorPlay,
   Pause,
   PencilLine,
@@ -29,21 +30,29 @@ import {
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { initialPresenterState, present, type PresenterCommand, type PresenterState } from "@deckory/core";
 import type { DeckDocument, Slide } from "@deckory/schema";
+import { deckThemeClassName } from "../lib/deck-theme";
 import {
   createPresenterSyncMessage,
+  describeAudienceFullscreen,
   describeOfflineStatus,
   formatElapsedTime,
   getNavigationDirection,
+  isAudiencePresenceFresh,
+  isDeckInteractiveTarget,
   isEditableTarget,
   isPresenterSyncMessage,
   prepareOfflineCache,
+  resolveRequestedSlideIndex,
+  toggleFullscreenMode,
   PRESENTER_CHANNEL_NAME,
   PRESENTER_STORAGE_KEY,
+  type FullscreenResult,
   type OfflineStatus,
   type PresentationView,
   type PresenterSyncMessage
 } from "./presenter-runtime";
 import { DeckoryBrand } from "./brand-mark";
+import { ScaledSlidePreview } from "./deck-thumbnail";
 import { getSlideMotion, type NavigationDirection } from "./motion-system";
 import { SlideFrame } from "./slide-frame";
 
@@ -75,6 +84,9 @@ export function Presenter({
   const [offlineStatus, setOfflineStatus] = useState<OfflineStatus>("checking");
   const [isOnline, setIsOnline] = useState(true);
   const [audienceStatus, setAudienceStatus] = useState<AudienceStatus>("closed");
+  const [audienceFullscreen, setAudienceFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenSupported, setFullscreenSupported] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [noteScale, setNoteScale] = useState(1);
@@ -83,8 +95,10 @@ export function Presenter({
   const blackoutRef = useRef(blackout);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const audienceWindowRef = useRef<Window | null>(null);
+  const audienceLastSeenRef = useRef(0);
   const revisionRef = useRef(0);
   const previousSlideIndexRef = useRef(state.slideIndex);
+  const locationResolvedRef = useRef(false);
   const sourceIdRef = useRef(`${view}-${Math.random().toString(36).slice(2)}`);
 
   const currentSlide = deck.slides[state.slideIndex] ?? deck.slides[0]!;
@@ -112,7 +126,11 @@ export function Presenter({
     setBlackout(message.blackout);
   }, [sequenceCounts]);
 
-  const createCurrentMessage = useCallback((sender: PresentationView) => {
+  const createCurrentMessage = useCallback((
+    sender: PresentationView,
+    audienceAvailable?: boolean,
+    audienceFullscreenState?: boolean
+  ) => {
     const current = stateRef.current;
     revisionRef.current += 1;
     return createPresenterSyncMessage({
@@ -121,33 +139,50 @@ export function Presenter({
       slideIndex: current.slideIndex,
       sequenceStep: current.sequenceStep,
       blackout: blackoutRef.current,
-      revision: revisionRef.current
+      revision: revisionRef.current,
+      ...(sender === "audience" ? {
+        audienceAvailable: audienceAvailable ?? true,
+        audienceFullscreen: audienceFullscreenState ?? Boolean(document.fullscreenElement)
+      } : {})
     });
   }, []);
 
-  const publishPresenterState = useCallback(() => {
-    const message = createCurrentMessage("presenter");
+  const publishSyncMessage = useCallback((message: PresenterSyncMessage) => {
     channelRef.current?.postMessage(message);
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(message));
     } catch {
       // BroadcastChannel remains available when storage is restricted.
     }
-  }, [createCurrentMessage, storageKey]);
+  }, [storageKey]);
+
+  const publishPresenterState = useCallback(() => {
+    publishSyncMessage(createCurrentMessage("presenter"));
+  }, [createCurrentMessage, publishSyncMessage]);
+
+  const publishAudiencePresence = useCallback((available = true) => {
+    publishSyncMessage(createCurrentMessage("audience", available, Boolean(document.fullscreenElement)));
+  }, [createCurrentMessage, publishSyncMessage]);
 
   useEffect(() => {
-    const slideId = new URLSearchParams(window.location.search).get("slide");
-    const slideIndex = deck.slides.findIndex((slide) => slide.id === slideId);
-    if (slideIndex >= 0) setState((current) => present(current, { type: "GOTO", slideIndex }));
-  }, [deck.slides]);
+    if (!locationResolvedRef.current) {
+      locationResolvedRef.current = true;
+      const slideIndex = resolveRequestedSlideIndex(
+        window.location.search,
+        deck.slides.map((slide) => slide.id)
+      );
+      if (slideIndex >= 0 && slideIndex !== stateRef.current.slideIndex) {
+        setState((current) => present(current, { type: "GOTO", slideIndex }));
+        return;
+      }
+    }
 
-  useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.set("view", view);
     url.searchParams.set("slide", currentSlide.id);
     window.history.replaceState(null, "", url);
     document.title = view === "audience" ? deck.title : `${deck.title} · Presenter`;
-  }, [currentSlide.id, deck.title, view]);
+  }, [currentSlide.id, deck.slides, deck.title, view]);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -163,10 +198,42 @@ export function Presenter({
   }, []);
 
   useEffect(() => {
+    const updateFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    setFullscreenSupported(
+      document.fullscreenEnabled !== false
+      && typeof document.documentElement.requestFullscreen === "function"
+    );
+    updateFullscreenState();
+    document.addEventListener("fullscreenchange", updateFullscreenState);
+    return () => document.removeEventListener("fullscreenchange", updateFullscreenState);
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async (): Promise<FullscreenResult> => {
+    const result = await toggleFullscreenMode(document);
+    setIsFullscreen(
+      result === "entered"
+        ? true
+        : result === "exited"
+          ? false
+          : Boolean(document.fullscreenElement)
+    );
+    if (result === "unsupported") setFullscreenSupported(false);
+    return result;
+  }, []);
+
+  useEffect(() => {
     const handleMessage = (message: PresenterSyncMessage) => {
       if (message.sourceId === sourceIdRef.current) return;
       if (view === "presenter" && message.sender === "audience") {
+        if (message.audienceAvailable === false) {
+          audienceLastSeenRef.current = 0;
+          setAudienceStatus("closed");
+          setAudienceFullscreen(false);
+          return;
+        }
+        audienceLastSeenRef.current = Date.now();
         setAudienceStatus("connected");
+        setAudienceFullscreen(Boolean(message.audienceFullscreen));
         publishPresenterState();
         return;
       }
@@ -174,10 +241,10 @@ export function Presenter({
     };
 
     const handleStorage = (event: StorageEvent) => {
-      if (view !== "audience" || event.key !== storageKey || !event.newValue) return;
+      if (event.key !== storageKey || !event.newValue) return;
       try {
         const message: unknown = JSON.parse(event.newValue);
-        if (isPresenterSyncMessage(message) && message.sender === "presenter") applyRemoteState(message);
+        if (isPresenterSyncMessage(message)) handleMessage(message);
       } catch {
         // Ignore malformed stale state.
       }
@@ -200,7 +267,6 @@ export function Presenter({
       } catch {
         // The next broadcast restores the state.
       }
-      channelRef.current?.postMessage(createCurrentMessage("audience"));
     }
 
     return () => {
@@ -208,11 +274,28 @@ export function Presenter({
       channelRef.current?.close();
       channelRef.current = null;
     };
-  }, [applyRemoteState, createCurrentMessage, deck.id, publishPresenterState, storageKey, view]);
+  }, [applyRemoteState, deck.id, publishPresenterState, storageKey, view]);
 
   useEffect(() => {
     if (view === "presenter") publishPresenterState();
   }, [blackout, publishPresenterState, state.sequenceStep, state.slideIndex, view]);
+
+  useEffect(() => {
+    if (view !== "audience") return;
+
+    const publishPresence = () => publishAudiencePresence(true);
+    const publishUnavailable = () => publishAudiencePresence(false);
+    publishPresence();
+    const heartbeat = window.setInterval(publishPresence, 2_500);
+    window.addEventListener("pagehide", publishUnavailable);
+    window.addEventListener("beforeunload", publishUnavailable);
+
+    return () => {
+      window.clearInterval(heartbeat);
+      window.removeEventListener("pagehide", publishUnavailable);
+      window.removeEventListener("beforeunload", publishUnavailable);
+    };
+  }, [isFullscreen, publishAudiencePresence, view]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -220,7 +303,14 @@ export function Presenter({
       if (timerRunning) setElapsedSeconds((seconds) => seconds + 1);
       if (audienceWindowRef.current?.closed) {
         audienceWindowRef.current = null;
+        audienceLastSeenRef.current = 0;
         setAudienceStatus("closed");
+        setAudienceFullscreen(false);
+        return;
+      }
+      if (!isAudiencePresenceFresh(audienceLastSeenRef.current)) {
+        setAudienceStatus((current) => current === "connected" || current === "connecting" ? "closed" : current);
+        setAudienceFullscreen(false);
       }
     }, 1_000);
     return () => window.clearInterval(interval);
@@ -228,16 +318,10 @@ export function Presenter({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target as HTMLElement)) return;
+      if (isEditableTarget(event.target as HTMLElement) || isDeckInteractiveTarget(event.target as HTMLElement)) return;
       const key = event.key.toLowerCase();
 
-      if (view === "audience") {
-        if (key === "f") {
-          event.preventDefault();
-          void toggleFullscreen();
-        }
-        return;
-      }
+      if (view === "audience") return;
 
       if (["arrowright", "pagedown", " "].includes(key)) {
         event.preventDefault();
@@ -256,7 +340,7 @@ export function Presenter({
         setBlackout((value) => !value);
       } else if (key === "f") {
         event.preventDefault();
-        void toggleFullscreen();
+        void handleToggleFullscreen();
       } else if (view === "presenter" && key === "o") {
         event.preventDefault();
         setOverviewOpen((value) => !value);
@@ -266,7 +350,7 @@ export function Presenter({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dispatch, view]);
+  }, [dispatch, handleToggleFullscreen, view]);
 
   const openAudienceView = () => {
     const url = new URL(window.location.href);
@@ -278,11 +362,16 @@ export function Presenter({
       "popup=yes,width=1600,height=900,menubar=no,toolbar=no,location=no,status=no"
     );
     if (!audienceWindow) {
+      audienceLastSeenRef.current = 0;
+      setAudienceFullscreen(false);
       setAudienceStatus("blocked");
       return;
     }
     audienceWindowRef.current = audienceWindow;
+    audienceLastSeenRef.current = Date.now();
     audienceWindow.focus();
+    publishPresenterState();
+    setAudienceFullscreen(false);
     setAudienceStatus("connecting");
     if (elapsedSeconds === 0) setTimerRunning(true);
   };
@@ -290,6 +379,8 @@ export function Presenter({
   const closeAudienceView = () => {
     audienceWindowRef.current?.close();
     audienceWindowRef.current = null;
+    audienceLastSeenRef.current = 0;
+    setAudienceFullscreen(false);
     setAudienceStatus("closed");
   };
 
@@ -303,24 +394,29 @@ export function Presenter({
           blackout={blackout}
           reducedMotion={Boolean(reducedMotion)}
           direction={navigationDirection}
+          themeClassName={deckThemeClassName(deck)}
+          isFullscreen={isFullscreen}
+          fullscreenSupported={fullscreenSupported}
+          onToggleFullscreen={handleToggleFullscreen}
         />
       </MotionConfig>
     );
   }
 
   const progressStyle = {
-    "--deck-progress": `${((state.slideIndex + 1) / deck.slides.length) * 100}%`,
-    "--reveal-progress": `${currentSequenceCount === 0 ? 100 : (state.sequenceStep / currentSequenceCount) * 100}%`,
+    "--deck-progress-scale": String((state.slideIndex + 1) / deck.slides.length),
+    "--reveal-progress-scale": String(currentSequenceCount === 0 ? 1 : state.sequenceStep / currentSequenceCount),
     "--note-scale": String(noteScale)
   } as CSSProperties;
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? "always" : "user"}>
-      <main className="presenter-shell" style={progressStyle}>
+      <main className={`presenter-shell ${deckThemeClassName(deck)}`} style={progressStyle}>
         <PresenterHeader
           deck={deck}
           modeLabel={modeLabel}
           audienceStatus={audienceStatus}
+          audienceFullscreen={audienceFullscreen}
           offlineStatus={offlineStatus}
           offlineLabel={offlineCopy.label}
           offlineDescription={offlineCopy.description}
@@ -329,7 +425,7 @@ export function Presenter({
           onOpenAudience={openAudienceView}
           onCloseAudience={closeAudienceView}
           onOverview={() => setOverviewOpen(true)}
-          onFullscreen={() => void toggleFullscreen()}
+          onFullscreen={() => void handleToggleFullscreen()}
         />
 
         <div className="presenter-workspace">
@@ -358,7 +454,7 @@ export function Presenter({
             <section className="presenter-panel next-panel">
               <div className="panel-heading compact"><div><span className="section-label">TIẾP THEO</span><strong>{nextSlide ? labelForSlide(nextSlide) : "Kết thúc presentation"}</strong></div>{nextSlide && <span className="next-index">{String(state.slideIndex + 2).padStart(2, "0")}</span>}</div>
               <div className="next-slide-preview">
-                {nextSlide ? <SlideFrame slide={nextSlide} deckId={deck.id} sequenceStep={0} reducedMotion motionDisabled /> : <div className="end-preview"><CheckCircle2 size={28} /><strong>Đã đến slide cuối</strong><span>Sẵn sàng kết thúc và chuyển sang phần trao đổi.</span></div>}
+                {nextSlide ? <ScaledSlidePreview slide={nextSlide} deckId={deck.id} sequenceStep={0} className="next-slide-preview-canvas" /> : <div className="end-preview"><CheckCircle2 size={28} /><strong>Đã đến slide cuối</strong><span>Sẵn sàng kết thúc và chuyển sang phần trao đổi.</span></div>}
               </div>
             </section>
 
@@ -394,10 +490,11 @@ export function Presenter({
   );
 }
 
-function PresenterHeader({ deck, modeLabel, audienceStatus, offlineStatus, offlineLabel, offlineDescription, returnHref, editHref, onOpenAudience, onCloseAudience, onOverview, onFullscreen }: {
+function PresenterHeader({ deck, modeLabel, audienceStatus, audienceFullscreen, offlineStatus, offlineLabel, offlineDescription, returnHref, editHref, onOpenAudience, onCloseAudience, onOverview, onFullscreen }: {
   deck: DeckDocument;
   modeLabel: string;
   audienceStatus: AudienceStatus;
+  audienceFullscreen: boolean;
   offlineStatus: OfflineStatus;
   offlineLabel: string;
   offlineDescription: string;
@@ -415,14 +512,17 @@ function PresenterHeader({ deck, modeLabel, audienceStatus, offlineStatus, offli
       <div className="deck-title-block"><span>{modeLabel}</span><h1>{deck.title}</h1></div>
       <div className="topbar-statuses">
         <div className={`status-chip status-chip--${offlineStatus}`} title={offlineDescription}>{offlineStatus === "ready" ? <Wifi size={14} /> : <WifiOff size={14} />}<span>{offlineLabel}</span></div>
-        <div className={`status-chip status-chip--audience ${connected ? "is-connected" : ""}`}><span className="status-dot" /><span>{audienceStatusLabel(audienceStatus)}</span></div>
+        <div
+          className={`status-chip status-chip--audience ${connected ? "is-connected" : ""} ${audienceFullscreen ? "is-fullscreen" : ""}`}
+          title={audienceStatusDescription(audienceStatus, audienceFullscreen)}
+        ><span className="status-dot" /><span>{audienceStatusLabel(audienceStatus, audienceFullscreen)}</span></div>
       </div>
       <div className="topbar-actions">
         <Link className="toolbar-button" href={returnHref}><ArrowLeft size={17} /><span>Hub</span></Link>
         {editHref && <Link className="toolbar-button" href={editHref}><PencilLine size={16} /><span>Chỉnh sửa</span></Link>}
         <button type="button" className="toolbar-button" onClick={onOverview}><Grid2X2 size={17} /><span>Tổng quan</span></button>
         <button type="button" className="toolbar-button icon-only" onClick={onFullscreen} aria-label="Toàn màn hình cửa sổ presenter"><Expand size={17} /></button>
-        {connected ? <button type="button" className="toolbar-button" onClick={onCloseAudience}><X size={17} /><span>Đóng màn hình</span></button> : <button type="button" className="toolbar-button primary" onClick={onOpenAudience}><ScreenShare size={17} /><span>Mở màn hình khán giả</span></button>}
+        {connected ? <button type="button" className="toolbar-button" onClick={onCloseAudience}><X size={17} /><span>Đóng màn hình</span></button> : <button type="button" className="toolbar-button primary" onClick={onOpenAudience}><ScreenShare size={17} /><span>{audienceStatus === "blocked" ? "Thử mở lại" : "Mở màn hình khán giả"}</span></button>}
       </div>
     </header>
   );
@@ -459,16 +559,118 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
       </div>
       <div className="transport-actions">
         <button type="button" className={`transport-action ${blackout ? "is-active" : ""}`} onClick={onToggleBlackout} aria-pressed={blackout}><Square size={16} fill={blackout ? "currentColor" : "none"} /><span>{blackout ? "Hiện màn hình" : "Ẩn màn hình"}</span><kbd>B</kbd></button>
-        {audienceStatus !== "connected" && <button type="button" className="transport-action audience-action" onClick={onOpenAudience}><MonitorPlay size={17} /><span>Kết nối khán giả</span><ExternalLink size={13} /></button>}
+        {audienceStatus !== "connected" && <button type="button" className="transport-action audience-action" onClick={onOpenAudience}><MonitorPlay size={17} /><span>{audienceStatus === "blocked" ? "Thử kết nối lại" : "Kết nối khán giả"}</span><ExternalLink size={13} /></button>}
       </div>
     </footer>
   );
 }
 
-function AudienceView({ slide, deckId, sequenceStep, blackout, reducedMotion, direction }: { slide: Slide; deckId: string; sequenceStep: number; blackout: boolean; reducedMotion: boolean; direction: NavigationDirection }) {
+export function AudienceView({
+  slide,
+  deckId,
+  sequenceStep,
+  blackout,
+  reducedMotion,
+  direction,
+  themeClassName,
+  isFullscreen,
+  fullscreenSupported,
+  onToggleFullscreen
+}: {
+  slide: Slide;
+  deckId: string;
+  sequenceStep: number;
+  blackout: boolean;
+  reducedMotion: boolean;
+  direction: NavigationDirection;
+  themeClassName: string;
+  isFullscreen: boolean;
+  fullscreenSupported: boolean;
+  onToggleFullscreen: () => Promise<FullscreenResult>;
+}) {
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const hideControlsTimerRef = useRef<number | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
+  const fullscreenCopy = describeAudienceFullscreen(isFullscreen, fullscreenSupported);
+
+  const revealControls = useCallback((duration = 2_800) => {
+    if (hideControlsTimerRef.current !== null) window.clearTimeout(hideControlsTimerRef.current);
+    setControlsVisible(true);
+    hideControlsTimerRef.current = window.setTimeout(() => setControlsVisible(false), duration);
+  }, []);
+
+  const announceFeedback = useCallback((message: string) => {
+    if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current);
+    setFeedback(message);
+    feedbackTimerRef.current = window.setTimeout(() => setFeedback(null), 3_600);
+  }, []);
+
+  const requestFullscreen = useCallback(async () => {
+    const result = await onToggleFullscreen();
+    const message = result === "entered"
+      ? "Đã bật toàn màn hình. Nhấn F hoặc Esc để thoát."
+      : result === "exited"
+        ? "Đã trở lại chế độ cửa sổ."
+        : result === "unsupported"
+          ? "Trình duyệt này không hỗ trợ toàn màn hình cho cửa sổ trình chiếu."
+          : "Không thể bật toàn màn hình. Hãy cho phép quyền trình duyệt rồi thử lại.";
+    announceFeedback(message);
+    revealControls(result === "error" || result === "unsupported" ? 5_000 : 3_200);
+  }, [announceFeedback, onToggleFullscreen, revealControls]);
+
+  useEffect(() => {
+    revealControls(4_800);
+    return () => {
+      if (hideControlsTimerRef.current !== null) window.clearTimeout(hideControlsTimerRef.current);
+      if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current);
+    };
+  }, [revealControls]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target as HTMLElement) || isDeckInteractiveTarget(event.target as HTMLElement)) return;
+      if (event.key.toLowerCase() !== "f") return;
+      event.preventDefault();
+      void requestFullscreen();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [requestFullscreen]);
+
   return (
-    <main className={`audience-shell ${blackout ? "is-blackout" : ""}`} aria-label={`Màn hình trình chiếu: ${labelForSlide(slide)}`}>
+    <main
+      className={`audience-shell ${themeClassName} ${blackout ? "is-blackout" : ""} ${controlsVisible ? "" : "is-idle"} ${isFullscreen ? "is-fullscreen" : ""}`}
+      aria-label={`Màn hình trình chiếu: ${labelForSlide(slide)}`}
+      onPointerMove={() => revealControls()}
+      onPointerDown={() => revealControls(4_000)}
+      onFocusCapture={() => revealControls(5_000)}
+      onDoubleClick={(event) => {
+        if ((event.target as HTMLElement).closest("button")) return;
+        void requestFullscreen();
+      }}
+    >
       <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} /></div>
+
+      <div className="audience-utility" role="group" aria-label="Điều khiển màn hình khán giả">
+        <div className="audience-utility-copy">
+          <span className="audience-live-dot" aria-hidden="true" />
+          <div><strong>Màn hình khán giả</strong><span>{fullscreenCopy.hint}</span></div>
+        </div>
+        <button
+          type="button"
+          onClick={() => void requestFullscreen()}
+          disabled={!fullscreenSupported}
+          aria-pressed={isFullscreen}
+          title={fullscreenCopy.hint}
+        >
+          {isFullscreen ? <Minimize2 size={17} /> : <Expand size={17} />}
+          <span>{fullscreenCopy.label}</span>
+          <kbd>F</kbd>
+        </button>
+      </div>
+
+      <AnimatePresence>{feedback && <motion.div className="audience-feedback" role="status" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}>{feedback}</motion.div>}</AnimatePresence>
       <AnimatePresence>{blackout && <motion.div className="audience-blackout" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}</AnimatePresence>
       <span className="sr-only" aria-live="polite">{labelForSlide(slide)}</span>
     </main>
@@ -502,7 +704,7 @@ function SlideOverview({ slides, deckId, sequenceCounts, currentSlideIndex, onCl
       <div className="overview-panel">
         <header className="overview-header"><div><span className="section-label">SLIDE OVERVIEW</span><h2>Chọn nơi bạn muốn tiếp tục</h2><p>Xem toàn bộ mạch kể chuyện mà không làm gián đoạn màn hình khán giả.</p></div><button type="button" className="overview-close" onClick={onClose} aria-label="Đóng tổng quan"><X size={20} /></button></header>
         <div className="overview-grid">
-          {slides.map((slide, index) => <button type="button" key={slide.id} className={`overview-card ${index === currentSlideIndex ? "is-current" : ""}`} onClick={() => onSelect(index)} aria-label={`Mở slide ${index + 1}: ${labelForSlide(slide)}`}><span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span><div className="overview-preview"><SlideFrame slide={slide} deckId={deckId} sequenceStep={sequenceCounts[index] ?? 0} reducedMotion motionDisabled /></div><div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div></button>)}
+          {slides.map((slide, index) => <button type="button" key={slide.id} className={`overview-card ${index === currentSlideIndex ? "is-current" : ""}`} onClick={() => onSelect(index)} aria-label={`Mở slide ${index + 1}: ${labelForSlide(slide)}`}><span className="overview-card-index">{String(index + 1).padStart(2, "0")}</span><div className="overview-preview"><ScaledSlidePreview slide={slide} deckId={deckId} sequenceStep={sequenceCounts[index] ?? 0} className="overview-preview-canvas" /></div><div className="overview-card-copy"><strong>{labelForSlide(slide)}</strong><span>{slide.layout}</span></div></button>)}
         </div>
         <footer className="overview-footer"><CircleHelp size={16} /><span>Dùng phím mũi tên để điều hướng, <kbd>B</kbd> để tạm ẩn màn hình và <kbd>F</kbd> để bật toàn màn hình.</span></footer>
       </div>
@@ -510,12 +712,23 @@ function SlideOverview({ slides, deckId, sequenceCounts, currentSlideIndex, onCl
   );
 }
 
-function audienceStatusLabel(status: AudienceStatus) {
+function audienceStatusLabel(status: AudienceStatus, fullscreen = false) {
   switch (status) {
-    case "connected": return "Màn hình đã kết nối";
+    case "connected": return fullscreen ? "Khán giả · Toàn màn hình" : "Màn hình đã kết nối";
     case "connecting": return "Đang kết nối";
     case "blocked": return "Popup bị chặn";
     case "closed": return "Chưa mở màn hình";
+  }
+}
+
+function audienceStatusDescription(status: AudienceStatus, fullscreen: boolean) {
+  switch (status) {
+    case "connected": return fullscreen
+      ? "Màn hình khán giả đang kết nối và hiển thị toàn màn hình."
+      : "Màn hình khán giả đang kết nối ở chế độ cửa sổ. Nhấn F trên màn hình đó để bật toàn màn hình.";
+    case "connecting": return "Đang chờ cửa sổ khán giả phản hồi.";
+    case "blocked": return "Trình duyệt đã chặn popup. Hãy cho phép popup cho Deckory rồi thử lại.";
+    case "closed": return "Chưa có màn hình khán giả đang hoạt động.";
   }
 }
 
@@ -525,9 +738,4 @@ function labelForSlide(slide: Slide) {
   const statement = slide.components.find((component) => component.type === "statement");
   if (statement?.type === "statement") return statement.props.quote;
   return slide.id;
-}
-
-async function toggleFullscreen() {
-  if (document.fullscreenElement) await document.exitFullscreen();
-  else await document.documentElement.requestFullscreen?.();
 }

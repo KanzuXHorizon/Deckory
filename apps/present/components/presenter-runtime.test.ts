@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   buildRequiredAssetList,
   createPresenterSyncMessage,
+  describeAudienceFullscreen,
   describeOfflineStatus,
   formatElapsedTime,
   getNavigationDirection,
+  isAudiencePresenceFresh,
+  isDeckInteractiveTarget,
   isEditableTarget,
   isPresenterSyncMessage,
   resolvePresentationView,
+  resolveRequestedSlideIndex,
   shouldPrepareOfflineCache,
+  toggleFullscreenMode,
+  type FullscreenDocumentLike,
   type PerformanceResourceLike
 } from "./presenter-runtime";
 
@@ -50,6 +56,22 @@ describe("presenter runtime helpers", () => {
     expect(isEditableTarget({ tagName: "BUTTON", isContentEditable: false })).toBe(false);
   });
 
+  it("keeps keyboard events inside semantic slide interactions", () => {
+    const interactiveTarget = { closest: (selector: string) => selector === "[data-deck-interactive]" ? { dataset: {} } : null };
+    const regularTarget = { closest: () => null };
+
+    expect(isDeckInteractiveTarget(interactiveTarget)).toBe(true);
+    expect(isDeckInteractiveTarget(regularTarget)).toBe(false);
+    expect(isDeckInteractiveTarget(null)).toBe(false);
+  });
+
+  it("resolves direct slide URLs without falling back to the cover slide", () => {
+    const slides = ["cover", "data-story", "closing"];
+    expect(resolveRequestedSlideIndex("?slide=data-story", slides)).toBe(1);
+    expect(resolveRequestedSlideIndex("?slide=unknown", slides)).toBe(-1);
+    expect(resolveRequestedSlideIndex("", slides)).toBe(-1);
+  });
+
   it("defaults to presenter view and only accepts the audience view explicitly", () => {
     expect(resolvePresentationView("")).toBe("presenter");
     expect(resolvePresentationView("?view=presenter")).toBe("presenter");
@@ -72,6 +94,65 @@ describe("presenter runtime helpers", () => {
     expect(isPresenterSyncMessage({ ...message, slideIndex: -1 })).toBe(false);
     expect(isPresenterSyncMessage({ ...message, sender: "remote" })).toBe(false);
     expect(isPresenterSyncMessage({ ...message, type: "UNKNOWN" })).toBe(false);
+  });
+
+  it("validates optional audience presence and fullscreen state", () => {
+    const message = createPresenterSyncMessage({
+      sourceId: "audience-1",
+      sender: "audience",
+      slideIndex: 1,
+      sequenceStep: 0,
+      blackout: false,
+      revision: 3,
+      audienceAvailable: true,
+      audienceFullscreen: true
+    });
+
+    expect(isPresenterSyncMessage(message)).toBe(true);
+    expect(isPresenterSyncMessage({ ...message, audienceAvailable: "yes" })).toBe(false);
+    expect(isPresenterSyncMessage({ ...message, audienceFullscreen: 1 })).toBe(false);
+  });
+
+  it("expires audience presence only after the reliability window", () => {
+    expect(isAudiencePresenceFresh(1_000, 8_999, 8_000)).toBe(true);
+    expect(isAudiencePresenceFresh(1_000, 9_001, 8_000)).toBe(false);
+    expect(isAudiencePresenceFresh(0, 1_000, 8_000)).toBe(false);
+  });
+
+  it("describes audience fullscreen controls with actionable copy", () => {
+    expect(describeAudienceFullscreen(false, true).label).toBe("Bật toàn màn hình");
+    expect(describeAudienceFullscreen(true, true).label).toBe("Thoát toàn màn hình");
+    expect(describeAudienceFullscreen(false, false).label).toBe("Không hỗ trợ toàn màn hình");
+  });
+
+  it("toggles fullscreen safely and reports unsupported or rejected requests", async () => {
+    let requested = false;
+    const enterDocument: FullscreenDocumentLike = {
+      fullscreenElement: null,
+      fullscreenEnabled: true,
+      documentElement: {
+        requestFullscreen: async () => { requested = true; }
+      }
+    };
+    expect(await toggleFullscreenMode(enterDocument)).toBe("entered");
+    expect(requested).toBe(true);
+
+    let exited = false;
+    const exitDocument: FullscreenDocumentLike = {
+      fullscreenElement: {},
+      fullscreenEnabled: true,
+      documentElement: {},
+      exitFullscreen: async () => { exited = true; }
+    };
+    expect(await toggleFullscreenMode(exitDocument)).toBe("exited");
+    expect(exited).toBe(true);
+
+    expect(await toggleFullscreenMode({ fullscreenElement: null, fullscreenEnabled: false, documentElement: {} })).toBe("unsupported");
+    expect(await toggleFullscreenMode({
+      fullscreenElement: null,
+      fullscreenEnabled: true,
+      documentElement: { requestFullscreen: async () => { throw new Error("denied"); } }
+    })).toBe("error");
   });
 
   it("formats presenter elapsed time without dropping hour precision", () => {

@@ -3,6 +3,15 @@ export type PresentationView = "presenter" | "audience";
 
 export type PerformanceResourceLike = { name: string };
 export type EditableTargetLike = { tagName?: string; isContentEditable?: boolean } | null;
+export type InteractiveTargetLike = { closest?: (selector: string) => unknown } | null;
+export type FullscreenResult = "entered" | "exited" | "unsupported" | "error";
+export type FullscreenElementLike = { requestFullscreen?: () => Promise<void> | void };
+export type FullscreenDocumentLike = {
+  fullscreenElement: unknown | null;
+  fullscreenEnabled?: boolean;
+  documentElement: FullscreenElementLike;
+  exitFullscreen?: () => Promise<void> | void;
+};
 
 export type PresenterSyncState = {
   sourceId: string;
@@ -11,6 +20,8 @@ export type PresenterSyncState = {
   sequenceStep: number;
   blackout: boolean;
   revision: number;
+  audienceAvailable?: boolean;
+  audienceFullscreen?: boolean;
 };
 
 export type PresenterSyncMessage = PresenterSyncState & {
@@ -67,8 +78,53 @@ export function isEditableTarget(target: EditableTargetLike): boolean {
   return target.isContentEditable === true || tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT";
 }
 
+export function isDeckInteractiveTarget(target: InteractiveTargetLike): boolean {
+  return Boolean(target && typeof target.closest === "function" && target.closest("[data-deck-interactive]"));
+}
+
+export function resolveRequestedSlideIndex(search: string, slideIds: readonly string[]): number {
+  const requestedId = new URLSearchParams(search).get("slide");
+  return requestedId ? slideIds.indexOf(requestedId) : -1;
+}
+
 export function resolvePresentationView(search: string): PresentationView {
   return new URLSearchParams(search).get("view") === "audience" ? "audience" : "presenter";
+}
+
+export function isAudiencePresenceFresh(lastSeenAt: number, now = Date.now(), timeoutMs = 8_000): boolean {
+  return lastSeenAt > 0 && timeoutMs > 0 && now >= lastSeenAt && now - lastSeenAt < timeoutMs;
+}
+
+export function describeAudienceFullscreen(isFullscreen: boolean, supported: boolean) {
+  if (!supported) {
+    return {
+      label: "Không hỗ trợ toàn màn hình",
+      hint: "Trình duyệt này không cung cấp Fullscreen API cho cửa sổ trình chiếu."
+    };
+  }
+
+  return isFullscreen
+    ? { label: "Thoát toàn màn hình", hint: "Nhấn F hoặc Esc để trở lại chế độ cửa sổ." }
+    : { label: "Bật toàn màn hình", hint: "Nhấn F hoặc nhấp đúp để lấp đầy màn hình trình chiếu." };
+}
+
+export async function toggleFullscreenMode(targetDocument: FullscreenDocumentLike): Promise<FullscreenResult> {
+  try {
+    if (targetDocument.fullscreenElement) {
+      if (typeof targetDocument.exitFullscreen !== "function") return "unsupported";
+      await targetDocument.exitFullscreen();
+      return "exited";
+    }
+
+    if (targetDocument.fullscreenEnabled === false || typeof targetDocument.documentElement.requestFullscreen !== "function") {
+      return "unsupported";
+    }
+
+    await targetDocument.documentElement.requestFullscreen();
+    return "entered";
+  } catch {
+    return "error";
+  }
 }
 
 export function createPresenterSyncMessage(state: PresenterSyncState): PresenterSyncMessage {
@@ -94,6 +150,8 @@ export function isPresenterSyncMessage(value: unknown): value is PresenterSyncMe
     && typeof message.blackout === "boolean"
     && Number.isInteger(message.revision)
     && (message.revision ?? -1) >= 0
+    && (message.audienceAvailable === undefined || typeof message.audienceAvailable === "boolean")
+    && (message.audienceFullscreen === undefined || typeof message.audienceFullscreen === "boolean")
     && typeof message.sentAt === "number"
     && Number.isFinite(message.sentAt);
 }
