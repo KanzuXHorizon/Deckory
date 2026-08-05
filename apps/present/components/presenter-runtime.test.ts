@@ -87,6 +87,7 @@ describe("presenter runtime helpers", () => {
     expect(resolvePresenterKeyboardAction("Escape", { overviewOpen: true, presenterView: true })).toBe("close-overview");
     expect(resolvePresenterKeyboardAction("ArrowRight", { overviewOpen: false, presenterView: true })).toBe("next");
     expect(resolvePresenterKeyboardAction("o", { overviewOpen: false, presenterView: true })).toBe("toggle-overview");
+    expect(resolvePresenterKeyboardAction("l", { overviewOpen: false, presenterView: true })).toBe("toggle-laser");
     expect(resolvePresenterKeyboardAction("o", { overviewOpen: false, presenterView: false })).toBeNull();
   });
 
@@ -97,7 +98,8 @@ describe("presenter runtime helpers", () => {
       slideIndex: 2,
       sequenceStep: 1,
       blackout: true,
-      revision: 7
+      revision: 7,
+      laser: { enabled: true, visible: true, x: 0.25, y: 0.75 }
     });
 
     expect(message.type).toBe("DECKORY_PRESENTATION_STATE");
@@ -105,6 +107,7 @@ describe("presenter runtime helpers", () => {
     expect(isPresenterSyncMessage({ ...message, slideIndex: -1 })).toBe(false);
     expect(isPresenterSyncMessage({ ...message, sender: "remote" })).toBe(false);
     expect(isPresenterSyncMessage({ ...message, type: "UNKNOWN" })).toBe(false);
+    expect(isPresenterSyncMessage({ ...message, laser: { enabled: true, visible: true, x: 1.2, y: 0.4 } })).toBe(false);
   });
 
   it("validates optional audience presence and fullscreen state", () => {

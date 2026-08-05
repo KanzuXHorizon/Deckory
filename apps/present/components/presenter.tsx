@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   Grid2X2,
   Minimize2,
   MonitorPlay,
+  MousePointer2,
   Pause,
   PencilLine,
   Play,
@@ -50,11 +51,13 @@ import {
   PRESENTER_CHANNEL_NAME,
   PRESENTER_STORAGE_KEY,
   type FullscreenResult,
+  type LaserPointerState,
   type OfflineStatus,
   type PresentationView,
   type PresenterSyncMessage
 } from "./presenter-runtime";
 import { DeckoryBrand } from "./brand-mark";
+import { LaserPointer } from "./laser-pointer";
 import { ScaledSlidePreview } from "./deck-thumbnail";
 import { getSlideMotion, type NavigationDirection } from "./motion-system";
 import { SlideFrame } from "./slide-frame";
@@ -95,9 +98,14 @@ export function Presenter({
   const [noteScale, setNoteScale] = useState(1);
   const [wallClock, setWallClock] = useState(() => new Date());
   const [interactionState, setInteractionState] = useState<Record<string, string>>({});
+  const [laser, setLaser] = useState<LaserPointerState>({ enabled: false, visible: false, x: 0.5, y: 0.5 });
   const stateRef = useRef(state);
   const blackoutRef = useRef(blackout);
   const interactionStateRef = useRef(interactionState);
+  const laserRef = useRef(laser);
+  const laserFrameRef = useRef<number | null>(null);
+  const pendingLaserPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const lastLaserStorageWriteRef = useRef(0);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const audienceWindowRef = useRef<Window | null>(null);
   const audienceLastSeenRef = useRef(0);
@@ -128,10 +136,15 @@ export function Presenter({
   stateRef.current = state;
   blackoutRef.current = blackout;
   interactionStateRef.current = interactionState;
+  laserRef.current = laser;
 
   useEffect(() => {
     previousSlideIndexRef.current = state.slideIndex;
   }, [state.slideIndex]);
+
+  useEffect(() => () => {
+    if (laserFrameRef.current !== null) window.cancelAnimationFrame(laserFrameRef.current);
+  }, []);
 
   const dispatch = useCallback((command: PresenterCommand) => {
     setState((current) => present(current, command));
@@ -159,6 +172,7 @@ export function Presenter({
     setState((current) => ({ ...current, slideIndex, sequenceStep }));
     setBlackout(message.blackout);
     setInteractionState(message.interactionState ?? {});
+    setLaser(message.laser ?? { enabled: false, visible: false, x: 0.5, y: 0.5 });
   }, [sequenceCounts]);
 
   const createCurrentMessage = useCallback((
@@ -176,6 +190,7 @@ export function Presenter({
       blackout: blackoutRef.current,
       revision: revisionRef.current,
       interactionState: interactionStateRef.current,
+      laser: laserRef.current,
       ...(sender === "audience" ? {
         audienceAvailable: audienceAvailable ?? true,
         audienceFullscreen: audienceFullscreenState ?? Boolean(document.fullscreenElement)
@@ -183,8 +198,9 @@ export function Presenter({
     });
   }, []);
 
-  const publishSyncMessage = useCallback((message: PresenterSyncMessage) => {
+  const publishSyncMessage = useCallback((message: PresenterSyncMessage, persist = true) => {
     channelRef.current?.postMessage(message);
+    if (!persist) return;
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(message));
     } catch {
@@ -192,8 +208,8 @@ export function Presenter({
     }
   }, [storageKey]);
 
-  const publishPresenterState = useCallback(() => {
-    publishSyncMessage(createCurrentMessage("presenter"));
+  const publishPresenterState = useCallback((persist = true) => {
+    publishSyncMessage(createCurrentMessage("presenter"), persist);
   }, [createCurrentMessage, publishSyncMessage]);
 
   const publishAudiencePresence = useCallback((available = true) => {
@@ -317,6 +333,14 @@ export function Presenter({
   }, [blackout, interactionState, publishPresenterState, state.sequenceStep, state.slideIndex, view]);
 
   useEffect(() => {
+    if (view !== "presenter") return;
+    const now = Date.now();
+    const persist = !laser.visible || now - lastLaserStorageWriteRef.current >= 100;
+    if (persist) lastLaserStorageWriteRef.current = now;
+    publishPresenterState(persist);
+  }, [laser, publishPresenterState, view]);
+
+  useEffect(() => {
     if (view !== "audience") return;
 
     const publishPresence = () => publishAudiencePresence(true);
@@ -384,6 +408,9 @@ export function Presenter({
         case "toggle-overview":
           openOverview();
           return;
+        case "toggle-laser":
+          setLaser((current) => ({ ...current, enabled: !current.enabled, visible: false }));
+          return;
         case "close-overview":
           closeOverview();
       }
@@ -424,6 +451,35 @@ export function Presenter({
     setAudienceStatus("closed");
   };
 
+  const handleLaserPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!laser.enabled) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    pendingLaserPositionRef.current = {
+      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
+    };
+    if (laserFrameRef.current !== null) return;
+    laserFrameRef.current = window.requestAnimationFrame(() => {
+      laserFrameRef.current = null;
+      const position = pendingLaserPositionRef.current;
+      pendingLaserPositionRef.current = null;
+      if (!position) return;
+      setLaser((current) => current.enabled
+        ? { ...current, visible: true, x: position.x, y: position.y }
+        : current);
+    });
+  };
+
+  const hideLaserPointer = () => {
+    pendingLaserPositionRef.current = null;
+    if (laserFrameRef.current !== null) {
+      window.cancelAnimationFrame(laserFrameRef.current);
+      laserFrameRef.current = null;
+    }
+    setLaser((current) => current.visible ? { ...current, visible: false } : current);
+  };
+
   if (view === "audience") {
     return (
       <MotionConfig reducedMotion={reducedMotion ? "always" : "user"}>
@@ -440,6 +496,7 @@ export function Presenter({
           fullscreenSupported={fullscreenSupported}
           onToggleFullscreen={handleToggleFullscreen}
           interactionState={interactionState}
+          laser={laser}
         />
       </MotionConfig>
     );
@@ -476,7 +533,11 @@ export function Presenter({
               <div><span className="section-label">ĐANG TRÌNH CHIẾU</span><strong>{labelForSlide(currentSlide)}</strong></div>
               <div className="slide-position" aria-label={`Slide ${state.slideIndex + 1} trên ${deck.slides.length}`}><span>{String(state.slideIndex + 1).padStart(2, "0")}</span><i /><span>{String(deck.slides.length).padStart(2, "0")}</span></div>
             </div>
-            <div className="presenter-stage-canvas">
+            <div
+              className={`presenter-stage-canvas${laser.enabled ? " is-laser-enabled" : ""}`}
+              onPointerMove={handleLaserPointerMove}
+              onPointerLeave={hideLaserPointer}
+            >
               <AnimatedSlide
                 slide={currentSlide}
                 deckId={deck.id}
@@ -489,6 +550,7 @@ export function Presenter({
                   setInteractionState((current) => ({ ...current, [componentId]: selectedId }));
                 }}
               />
+              <LaserPointer state={laser} />
               {blackout && <div className="presenter-blackout-notice" role="status"><Square size={14} fill="currentColor" />Màn hình khán giả đang tạm ẩn</div>}
             </div>
             <div className="stage-meta-row">
@@ -525,11 +587,13 @@ export function Presenter({
           timerRunning={timerRunning}
           blackout={blackout}
           audienceStatus={audienceStatus}
+          laserEnabled={laser.enabled}
           onPrevious={() => dispatch({ type: "PREVIOUS" })}
           onNext={() => dispatch({ type: "NEXT" })}
           onToggleTimer={() => setTimerRunning((value) => !value)}
           onResetTimer={() => { setElapsedSeconds(0); setTimerRunning(false); }}
           onToggleBlackout={() => setBlackout((value) => !value)}
+          onToggleLaser={() => setLaser((current) => ({ ...current, enabled: !current.enabled, visible: false }))}
           onOpenAudience={openAudienceView}
         />
 
@@ -577,7 +641,7 @@ function PresenterHeader({ deck, modeLabel, audienceStatus, audienceFullscreen, 
   );
 }
 
-function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, timerRunning, blackout, audienceStatus, onPrevious, onNext, onToggleTimer, onResetTimer, onToggleBlackout, onOpenAudience }: {
+function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, timerRunning, blackout, audienceStatus, laserEnabled, onPrevious, onNext, onToggleTimer, onResetTimer, onToggleBlackout, onToggleLaser, onOpenAudience }: {
   state: PresenterState;
   slideCount: number;
   elapsedSeconds: number;
@@ -585,11 +649,13 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
   timerRunning: boolean;
   blackout: boolean;
   audienceStatus: AudienceStatus;
+  laserEnabled: boolean;
   onPrevious: () => void;
   onNext: () => void;
   onToggleTimer: () => void;
   onResetTimer: () => void;
   onToggleBlackout: () => void;
+  onToggleLaser: () => void;
   onOpenAudience: () => void;
 }) {
   return (
@@ -607,6 +673,7 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
         <button type="button" className="next" onClick={onNext} disabled={state.slideIndex === slideCount - 1 && state.sequenceStep === (state.sequenceCounts[state.slideIndex] ?? 0)} aria-label="Tiếp theo"><ChevronRight size={23} /></button>
       </div>
       <div className="transport-actions">
+        <button type="button" className={`transport-action ${laserEnabled ? "is-active" : ""}`} onClick={onToggleLaser} aria-pressed={laserEnabled} aria-label={laserEnabled ? "Tắt con trỏ laser" : "Bật con trỏ laser"}><MousePointer2 size={16} /><span>{laserEnabled ? "Tắt laser" : "Bật laser"}</span><kbd>L</kbd></button>
         <button type="button" className={`transport-action ${blackout ? "is-active" : ""}`} onClick={onToggleBlackout} aria-pressed={blackout}><Square size={16} fill={blackout ? "currentColor" : "none"} /><span>{blackout ? "Hiện màn hình" : "Ẩn màn hình"}</span><kbd>B</kbd></button>
         {audienceStatus !== "connected" && <button type="button" className="transport-action audience-action" onClick={onOpenAudience}><MonitorPlay size={17} /><span>{audienceStatus === "blocked" ? "Thử kết nối lại" : "Kết nối khán giả"}</span><ExternalLink size={13} /></button>}
       </div>
@@ -626,7 +693,8 @@ export function AudienceView({
   isFullscreen,
   fullscreenSupported,
   onToggleFullscreen,
-  interactionState
+  interactionState,
+  laser = { enabled: false, visible: false, x: 0.5, y: 0.5 }
 }: {
   slide: Slide;
   deckId: string;
@@ -640,6 +708,7 @@ export function AudienceView({
   fullscreenSupported: boolean;
   onToggleFullscreen: () => Promise<FullscreenResult>;
   interactionState?: Record<string, string>;
+  laser?: LaserPointerState;
 }) {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -703,7 +772,7 @@ export function AudienceView({
         void requestFullscreen();
       }}
     >
-      <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} interactionState={interactionState ?? {}} /></div>
+      <div className="audience-stage"><AnimatedSlide slide={slide} deckId={deckId} assets={assets} sequenceStep={sequenceStep} reducedMotion={reducedMotion} direction={direction} interactionState={interactionState ?? {}} /><LaserPointer state={laser} audience /></div>
 
       <div className="audience-utility" role="group" aria-label="Điều khiển màn hình khán giả">
         <div className="audience-utility-copy">

@@ -129,6 +129,32 @@ test.describe("Deckory production presentation surfaces", () => {
     await context.close();
   });
 
+  test("synchronizes the laser pointer from presenter to audience", async ({ browser }) => {
+    const context = await browser.newContext({ baseURL: e2eBaseURL, viewport: { width: 1440, height: 900 } });
+    const presenter = await context.newPage();
+    const audience = await context.newPage();
+    const presenterRuntime = watchRuntimeErrors(presenter);
+    const audienceRuntime = watchRuntimeErrors(audience);
+
+    await presenter.goto("/present?deck=visual-lab");
+    await audience.goto("/present?deck=visual-lab&view=audience");
+    await Promise.all([waitForFonts(presenter), waitForFonts(audience)]);
+
+    await presenter.getByRole("button", { name: "Bật con trỏ laser" }).click();
+    const stage = presenter.locator(".presenter-stage-canvas");
+    const box = await stage.boundingBox();
+    expect(box).toBeTruthy();
+    await presenter.mouse.move(box!.x + box!.width * 0.7, box!.y + box!.height * 0.35);
+
+    await expect(presenter.locator('[data-laser-visible="true"]')).toBeVisible();
+    await expect(audience.locator('[data-laser-visible="true"]')).toBeVisible();
+    await expect(presenter.getByRole("button", { name: "Tắt con trỏ laser" })).toBeVisible();
+
+    presenterRuntime.assertClean();
+    audienceRuntime.assertClean();
+    await context.close();
+  });
+
   test("keeps speaker notes private in audience view", async ({ page }) => {
     const runtime = watchRuntimeErrors(page);
     await page.goto("/present?deck=template-gallery&slide=shared-contract&view=audience");

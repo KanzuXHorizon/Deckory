@@ -13,6 +13,7 @@ export type PresenterKeyboardAction =
   | "toggle-blackout"
   | "toggle-fullscreen"
   | "toggle-overview"
+  | "toggle-laser"
   | "close-overview";
 export type FullscreenElementLike = { requestFullscreen?: () => Promise<void> | void };
 export type FullscreenDocumentLike = {
@@ -20,6 +21,13 @@ export type FullscreenDocumentLike = {
   fullscreenEnabled?: boolean;
   documentElement: FullscreenElementLike;
   exitFullscreen?: () => Promise<void> | void;
+};
+
+export type LaserPointerState = {
+  enabled: boolean;
+  visible: boolean;
+  x: number;
+  y: number;
 };
 
 export type PresenterSyncState = {
@@ -32,6 +40,7 @@ export type PresenterSyncState = {
   audienceAvailable?: boolean;
   audienceFullscreen?: boolean;
   interactionState?: Record<string, string>;
+  laser?: LaserPointerState;
 };
 
 export type PresenterSyncMessage = PresenterSyncState & {
@@ -127,6 +136,7 @@ export function resolvePresenterKeyboardAction(
   if (normalizedKey === "b") return "toggle-blackout";
   if (normalizedKey === "f") return "toggle-fullscreen";
   if (normalizedKey === "o") return "toggle-overview";
+  if (normalizedKey === "l") return "toggle-laser";
   return null;
 }
 
@@ -192,8 +202,24 @@ export function isPresenterSyncMessage(value: unknown): value is PresenterSyncMe
     && (message.audienceAvailable === undefined || typeof message.audienceAvailable === "boolean")
     && (message.audienceFullscreen === undefined || typeof message.audienceFullscreen === "boolean")
     && (message.interactionState === undefined || isValidInteractionState(message.interactionState))
+    && (message.laser === undefined || isValidLaserPointerState(message.laser))
     && typeof message.sentAt === "number"
     && Number.isFinite(message.sentAt);
+}
+
+function isValidLaserPointerState(value: unknown): value is LaserPointerState {
+  if (!value || typeof value !== "object") return false;
+  const laser = value as Partial<LaserPointerState>;
+  return typeof laser.enabled === "boolean"
+    && typeof laser.visible === "boolean"
+    && typeof laser.x === "number"
+    && Number.isFinite(laser.x)
+    && laser.x >= 0
+    && laser.x <= 1
+    && typeof laser.y === "number"
+    && Number.isFinite(laser.y)
+    && laser.y >= 0
+    && laser.y <= 1;
 }
 
 function isValidInteractionState(value: unknown): value is Record<string, string> {
