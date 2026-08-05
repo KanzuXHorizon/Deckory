@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+  - decks/*
+
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - framer-motion@13.0.0
+  - motion-dom@13.0.0
+  - motion-utils@13.0.0
+  - motion@13.0.0
