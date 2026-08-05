@@ -86,6 +86,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `pnpm typecheck` | Validate TypeScript contracts. |
 | `pnpm test` | Run workspace test suites. |
 | `pnpm audit:decks -- --strict` | Audit every registered deck and fail on warnings or errors. |
+| `pnpm export:deck -- --deck=<id> --format=pdf` | Export a registered deck through the production browser renderer. |
 | `pnpm test:e2e` | Build an isolated production artifact and run Chromium presentation flows. |
 | `pnpm build` | Create the production Next.js build. |
 
@@ -134,7 +135,7 @@ Deckory conventions:
 - label illustrative data clearly and cite real evidence;
 - validate, test and inspect representative slides before presenting.
 
-See [`AGENTS.md`](AGENTS.md) for the complete repository rules, [`docs/AUDIT.md`](docs/AUDIT.md) for quality diagnostics and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
+See [`AGENTS.md`](AGENTS.md) for the complete repository rules, [`docs/AUDIT.md`](docs/AUDIT.md) for quality diagnostics, [`docs/EXPORT.md`](docs/EXPORT.md) for PNG/PDF export and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
 
 ## Architecture
 
@@ -173,13 +174,14 @@ Deckory is an actively developed early-stage project. The current repository inc
 - local draft persistence;
 - deterministic deck audit with human-readable and JSON reports;
 - isolated Chromium E2E coverage for production CSS, focus, privacy, reduced motion and narrow viewports;
+- browser-native PNG/PDF export through the shared slide renderer;
 - automated lint, typecheck, test, audit, build and CodeQL workflows.
 
 The following remain outside the current product boundary:
 
 - real-time collaboration;
 - cloud persistence and user accounts;
-- PDF, PNG and PPTX export.
+- editable PPTX export;
 
 The README intentionally distinguishes implemented behavior from future product direction.
 

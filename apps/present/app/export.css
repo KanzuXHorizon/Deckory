@@ -1,0 +1,175 @@
+.export-shell {
+  min-height: 100vh;
+  overflow-x: auto;
+  color: var(--ink);
+  background: #e9e9e4;
+}
+
+.export-toolbar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+  min-width: 1280px;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(248, 248, 245, 0.96);
+  backdrop-filter: blur(16px);
+}
+
+.export-toolbar-brand,
+.export-toolbar-actions,
+.export-toolbar-copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.export-toolbar-brand {
+  gap: 16px;
+}
+
+.export-toolbar-brand > a {
+  display: inline-flex;
+  border-radius: 9px;
+}
+
+.export-toolbar-brand > span {
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.export-toolbar-copy {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.export-toolbar-copy strong,
+.export-toolbar-copy span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-toolbar-copy strong {
+  font-size: 13px;
+}
+
+.export-toolbar-copy span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.export-toolbar-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.export-intro {
+  width: 1280px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px auto 0;
+  padding: 0 2px;
+  color: #5f625f;
+  font-size: 12px;
+}
+
+.export-intro svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.export-intro p {
+  margin: 0;
+}
+
+.export-pages {
+  width: max-content;
+  display: grid;
+  gap: 32px;
+  margin: 16px auto 64px;
+}
+
+.export-page {
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 24px 58px rgba(24, 26, 30, 0.16);
+  contain: layout paint;
+}
+
+.export-page > .slide {
+  width: 1280px;
+  height: 720px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .export-shell *,
+  .export-shell *::before,
+  .export-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  @page {
+    size: 13.333333in 7.5in;
+    margin: 0;
+  }
+
+  html,
+  body,
+  .export-shell {
+    width: 13.333333in;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .export-toolbar,
+  .export-intro {
+    display: none !important;
+  }
+
+  .export-pages {
+    width: 13.333333in;
+    display: block;
+    margin: 0;
+  }
+
+  .export-page {
+    width: 13.333333in;
+    height: 7.5in;
+    margin: 0;
+    overflow: hidden;
+    break-after: page;
+    page-break-after: always;
+    box-shadow: none;
+  }
+
+  .export-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .export-page > .slide {
+    width: 13.333333in;
+    height: 7.5in;
+  }
+}

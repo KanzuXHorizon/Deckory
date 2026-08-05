@@ -25,6 +25,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint",
     "audit:decks": "node --experimental-strip-types --import ./scripts/register-typescript-loader.mjs scripts/audit-decks.ts",
+    "export:deck": "node scripts/export-deck.mjs",
     "test:e2e": "node scripts/run-e2e.mjs"
   },
   "devDependencies": {

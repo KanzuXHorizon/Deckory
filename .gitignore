@@ -17,6 +17,7 @@ blob-report/
 playwright/.cache/
 .cache/ms-playwright/
 output/playwright/
+output/exports/
 .playwright-cli/
 
 # Visual audit artifacts generated during local review

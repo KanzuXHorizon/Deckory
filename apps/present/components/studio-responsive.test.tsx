@@ -53,8 +53,10 @@ describe("Studio responsive inspector", () => {
     expect(html).toContain("Lưu ngay");
     expect(html).toContain('aria-label="Lưu ngay"');
     expect(html).toContain('aria-label="Xem trước"');
+    expect(html).toContain('aria-label="Xuất deck"');
     expect(html).toContain('aria-label="Trình chiếu"');
     expect(html).toContain('href="/preview?deck=responsive-studio&amp;slide=cover"');
+    expect(html).toContain('href="/export?deck=responsive-studio"');
     expect(html).toContain('href="/present?deck=responsive-studio&amp;slide=cover"');
     expect(html).toContain('aria-live="polite"');
   });

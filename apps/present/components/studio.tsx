@@ -10,6 +10,7 @@ import {
   CircleAlert,
   Copy,
   Eye,
+  FileDown,
   Layers3,
   Play,
   Plus,
@@ -314,6 +315,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
           <button className="toolbar-button studio-action--reset" onClick={(event) => requestDestructiveAction("reset-draft", event.currentTarget)}><RotateCcw size={16} /> Khôi phục</button>
           <button className="toolbar-button studio-action--save" onClick={saveDraft} data-state={saveState} aria-label="Lưu ngay"><Save size={16} /><span>Lưu ngay</span></button>
           <Link className="toolbar-button studio-action--preview" href={`/preview?deck=${deck.id}&slide=${selectedSlide.id}`} aria-label="Xem trước"><Eye size={16} /><span>Xem trước</span></Link>
+          <Link className="toolbar-button studio-action--export" href={`/export?deck=${deck.id}`} aria-label="Xuất deck"><FileDown size={16} /><span>Xuất</span></Link>
           <Link className="toolbar-button toolbar-button--strong studio-action--present" href={`/present?deck=${deck.id}&slide=${selectedSlide.id}`} aria-label="Trình chiếu"><Play size={16} /><span>Trình chiếu</span></Link>
         </div>
       </header>
