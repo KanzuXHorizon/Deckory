@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro, Geist_Mono, Noto_Serif } from "next/font/google";
 import "./globals.css";
+import "./slide-components.css";
+import "./semantic-visuals.css";
+import "./presenter.css";
+import "./workspace.css";
 
 const deckSans = Be_Vietnam_Pro({
   weight: ["400", "500", "600", "700", "800"],

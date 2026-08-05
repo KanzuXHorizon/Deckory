@@ -1,0 +1,347 @@
+/* Hub and Studio hardening. Keep selectors rooted to workspace surfaces. */
+
+.hub-shell,
+.studio-shell {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.hub-hero,
+.hub-hero > *,
+.deck-library-grid,
+.deck-library-grid > *,
+.section-heading-row,
+.visual-system,
+.visual-system > * {
+  min-width: 0;
+}
+
+.hub-hero h1 {
+  max-width: 13ch;
+  font-size: clamp(46px, 5.55vw, 84px);
+  line-height: 1;
+}
+
+.hub-hero-stage,
+.deck-card,
+.slide-strip-item {
+  isolation: isolate;
+}
+
+.hero-stage-footer > div,
+.deck-card-content,
+.selected-deck-copy {
+  min-width: 0;
+}
+
+.studio-shell {
+  height: 100dvh;
+  min-height: 640px;
+  overflow: hidden;
+}
+
+.studio-topbar,
+.studio-workspace,
+.slide-rail,
+.studio-canvas-zone,
+.inspector {
+  min-width: 0;
+  min-height: 0;
+}
+
+.studio-topbar {
+  grid-template-columns: minmax(300px, 1fr) auto auto;
+}
+
+.studio-topbar-left,
+.studio-document-title,
+.studio-actions {
+  min-width: 0;
+}
+
+.studio-document-title input {
+  max-width: 100%;
+}
+
+.studio-actions {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.studio-actions .toolbar-button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.studio-workspace {
+  grid-template-columns: clamp(210px, 16vw, 244px) minmax(0, 1fr) clamp(320px, 25vw, 380px);
+}
+
+.studio-canvas-zone {
+  position: relative;
+}
+
+.studio-stage {
+  container-name: studio-stage;
+  container-type: size;
+  overflow: hidden;
+  padding: clamp(14px, 2vw, 28px);
+}
+
+.studio-slide-canvas {
+  width: min(100cqw, calc(100cqh * 1.7777778));
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  box-shadow: var(--shadow-stage);
+}
+
+.studio-slide-canvas > .slide {
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-toolbar,
+.canvas-footnote,
+.inspector-header,
+.component-stack > header {
+  min-width: 0;
+}
+
+.canvas-toolbar > div:first-child,
+.inspector-header > div,
+.inspector-header-actions {
+  min-width: 0;
+}
+
+.canvas-toolbar strong,
+.inspector-header strong,
+.component-stack-list strong,
+.component-stack-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector {
+  overflow: hidden;
+}
+
+.inspector-scroll {
+  min-width: 0;
+  min-height: 0;
+}
+
+.inspector-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.studio-inspector-toggle,
+.inspector-close,
+.inspector-backdrop {
+  display: none;
+}
+
+@media (max-width: 1380px) {
+  .studio-status {
+    display: none;
+  }
+
+  .studio-topbar {
+    grid-template-columns: minmax(260px, 1fr) auto;
+  }
+
+  .studio-workspace {
+    grid-template-columns: 210px minmax(0, 1fr) 330px;
+  }
+
+  .studio-actions .toolbar-button:nth-child(-n + 2) {
+    width: 36px;
+    padding: 0;
+    font-size: 0;
+  }
+}
+
+@media (max-width: 1040px) {
+  .studio-topbar {
+    gap: 10px;
+  }
+
+  .studio-document-title input {
+    width: min(34vw, 300px);
+  }
+
+  .studio-workspace {
+    grid-template-columns: 176px minmax(0, 1fr);
+  }
+
+  .studio-inspector-toggle,
+  .inspector-close {
+    display: inline-grid;
+  }
+
+  .inspector-backdrop {
+    position: fixed;
+    z-index: 39;
+    inset: 66px 0 0;
+    display: block;
+    width: 100%;
+    border: 0;
+    background: rgba(18, 20, 24, 0.42);
+    backdrop-filter: blur(3px);
+  }
+
+  .studio-shell .inspector {
+    position: fixed;
+    z-index: 40;
+    inset: 66px 0 0 auto;
+    display: grid;
+    width: min(390px, 92vw);
+    max-width: 100%;
+    border-left: 1px solid var(--line);
+    background: #f7f7f4;
+    box-shadow: -24px 0 60px rgba(20, 22, 28, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateX(102%);
+    transition:
+      transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 160ms ease,
+      visibility 0s linear 220ms;
+  }
+
+  .studio-shell .inspector[data-open="true"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(0);
+    transition-delay: 0s;
+  }
+
+  .inspector-close {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 760px) {
+  .studio-shell {
+    min-height: 560px;
+  }
+
+  .studio-topbar {
+    min-height: 58px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-inline: 8px;
+  }
+
+  .studio-topbar .brand-lockup-link,
+  .studio-document-title span {
+    display: none;
+  }
+
+  .studio-document-title {
+    margin-left: 0;
+    padding-left: 4px;
+    border-left: 0;
+  }
+
+  .studio-document-title input {
+    width: min(38vw, 180px);
+    min-width: 90px;
+  }
+
+  .studio-actions {
+    gap: 4px;
+  }
+
+  .studio-actions .toolbar-button {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .studio-actions > :first-child {
+    display: none;
+  }
+
+  .studio-workspace,
+  .studio-notice + .studio-workspace {
+    height: calc(100dvh - 58px);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 140px minmax(0, 1fr);
+  }
+
+  .slide-rail {
+    grid-template-rows: 38px minmax(0, 1fr);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .slide-rail-list {
+    grid-auto-columns: 132px;
+  }
+
+  .studio-stage {
+    padding: 12px 9px;
+  }
+
+  .canvas-toolbar,
+  .canvas-footnote {
+    padding-inline: 10px;
+  }
+
+  .canvas-toolbar > div:last-child {
+    gap: 3px;
+  }
+
+  .canvas-toolbar .icon-action {
+    width: 32px;
+    height: 32px;
+  }
+
+  .canvas-footnote span:last-child {
+    display: none;
+  }
+
+  .studio-shell .inspector {
+    inset-block-start: 58px;
+    width: min(400px, 100vw);
+  }
+
+  .inspector-backdrop {
+    inset-block-start: 58px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hub-hero h1 {
+    max-width: 11ch;
+    font-size: clamp(42px, 13vw, 62px);
+  }
+
+  .studio-document-title input {
+    width: 32vw;
+  }
+
+  .studio-actions .toolbar-button:nth-last-child(2) {
+    display: none;
+  }
+
+  .slide-rail-list {
+    grid-auto-columns: 118px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-shell .inspector {
+    transition: none;
+  }
+}
