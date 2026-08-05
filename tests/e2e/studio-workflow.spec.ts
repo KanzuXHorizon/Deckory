@@ -143,7 +143,7 @@ test.describe("Deckory Studio production workflow", () => {
 
     await page.goto("/preview?deck=deckory-story");
     await waitForReady(page);
-    await expect(page.getByRole("status")).toContainText("Không thể đọc draft cục bộ");
+    await expect(page.getByRole("status")).toContainText("Không thể đọc bản nháp cục bộ");
     await expect(page.locator('[data-slide-id="cover"]')).toBeVisible();
   });
 
@@ -164,6 +164,57 @@ test.describe("Deckory Studio production workflow", () => {
     await expect(page.locator(".studio-save-state")).toContainText("Chưa thể lưu", { timeout: 5_000 });
     await expect(page.getByRole("status")).toContainText("Phiên chỉnh sửa hiện tại vẫn còn trong bộ nhớ");
     await expect(title).toHaveValue("Deckory — phiên chỉnh sửa trong bộ nhớ");
+  });
+
+  test("operates the agent-first command, history, search, zoom and replay controls", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/studio?deck=deckory-story");
+    await waitForReady(page);
+
+    const title = page.getByRole("textbox", { name: "Tên deck" });
+    const undo = page.getByRole("button", { name: "Hoàn tác" });
+    const redo = page.getByRole("button", { name: "Làm lại" });
+    await expect(undo).toBeDisabled();
+    await expect(redo).toBeDisabled();
+
+    await title.fill("Deckory — kiểm tra control layer");
+    await expect(undo).toBeEnabled();
+    await undo.click();
+    await expect(title).toHaveValue("Deckory — biến dữ liệu thành một câu chuyện rõ");
+    await expect(redo).toBeEnabled();
+    await redo.click();
+    await expect(title).toHaveValue("Deckory — kiểm tra control layer");
+
+    await page.keyboard.press("Control+K");
+    const palette = page.getByRole("dialog", { name: /Đi đến đúng thao tác/ });
+    await expect(palette).toBeVisible();
+    const commandSearch = page.getByRole("textbox", { name: "Tìm lệnh hoặc slide" });
+    await expect(commandSearch).toBeFocused();
+    await commandSearch.fill("phat lai chuyen dong");
+    await expect(palette.getByRole("option", { name: /Phát lại chuyển động/ })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(palette).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Mở bảng lệnh" })).toBeFocused();
+
+    const slideSearch = page.getByRole("textbox", { name: "Tìm slide" });
+    await slideSearch.fill("architecture");
+    await expect.poll(() => page.locator(".slide-rail-item").count()).toBeGreaterThan(0);
+    await expect(page.locator(".slide-rail-item")).toHaveCount(1);
+    await page.getByRole("button", { name: "Xoá tìm kiếm slide" }).click();
+    await expect(page.locator(".slide-rail-item")).toHaveCount(12);
+
+    await page.getByRole("button", { name: "Thu phóng 100%" }).click();
+    await expect(page.getByRole("button", { name: "Thu phóng 100%" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".studio-stage")).toHaveClass(/is-manual/);
+    await expect(page.locator(".studio-stage-canvas")).toHaveAttribute("style", /width: 1280px/);
+    await page.getByRole("button", { name: "Vừa khung" }).click();
+    await expect(page.locator(".studio-stage")).toHaveClass(/is-fit/);
+
+    const replay = page.getByRole("button", { name: "Phát lại chuyển động" });
+    await expect(replay).toBeEnabled();
+    await replay.click();
+    await expect(replay).toHaveClass(/is-replaying/);
+    await page.screenshot({ path: join(screenshotRoot, "studio-agent-control-layer.png"), animations: "disabled" });
   });
 
   test("supports the complete keyboard pattern for Inspector tabs", async ({ page }) => {

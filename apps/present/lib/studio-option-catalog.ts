@@ -69,6 +69,12 @@ export const transitionOptions: readonly StudioChoiceOption<NonNullable<Slide["t
   { value: "morph", label: "Morph", description: "Giữ liên tục giữa đối tượng", icon: Sparkles }
 ];
 
+export const easingOptions: readonly StudioChoiceOption<NonNullable<NonNullable<SlideComponent["effect"]>["easing"]>>[] = [
+  { value: "standard", label: "Chuẩn", description: "Nhịp chuyển cân bằng", icon: MoveRight },
+  { value: "emphasized", label: "Nhấn mạnh", description: "Tăng độ dứt khoát ở điểm kết", icon: Sparkles },
+  { value: "linear", label: "Tuyến tính", description: "Tốc độ đều cho dữ liệu hoặc kỹ thuật", icon: ScanLine }
+];
+
 export const effectOptions: readonly StudioChoiceOption<NonNullable<SlideComponent["effect"]>["type"]>[] = [
   { value: "none", label: "Không", description: "Hiển thị ngay", icon: Ban },
   { value: "fade", label: "Fade", description: "Xuất hiện nhẹ", icon: Blend },

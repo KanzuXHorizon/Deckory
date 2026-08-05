@@ -20,6 +20,9 @@ type ScaledSlidePreviewProps = {
   sequenceStep?: number;
   className?: string;
   label?: string;
+  motionDisabled?: boolean;
+  reducedMotion?: boolean;
+  previewKey?: string | number;
 };
 
 export function ScaledSlidePreview({
@@ -28,7 +31,10 @@ export function ScaledSlidePreview({
   assets,
   sequenceStep = Number.MAX_SAFE_INTEGER,
   className = "",
-  label
+  label,
+  motionDisabled = true,
+  reducedMotion = true,
+  previewKey = "static"
 }: ScaledSlidePreviewProps) {
   return (
     <ScaledCanvas
@@ -37,6 +43,9 @@ export function ScaledSlidePreview({
       assets={assets}
       sequenceStep={sequenceStep}
       className={`scaled-slide-preview${className ? ` ${className}` : ""}`}
+      motionDisabled={motionDisabled}
+      reducedMotion={reducedMotion}
+      previewKey={previewKey}
       {...(label ? { label } : {})}
     />
   );
@@ -63,6 +72,9 @@ export function DeckThumbnail({
       sequenceStep={Number.MAX_SAFE_INTEGER}
       className={classes}
       label={label ?? `Xem trước slide ${slide.id}`}
+      motionDisabled
+      reducedMotion
+      previewKey="thumbnail"
     />
   );
 }
@@ -73,7 +85,10 @@ function ScaledCanvas({
   assets,
   sequenceStep,
   className,
-  label
+  label,
+  motionDisabled,
+  reducedMotion,
+  previewKey
 }: {
   slide: Slide;
   deckId: string;
@@ -81,6 +96,9 @@ function ScaledCanvas({
   sequenceStep: number;
   className: string;
   label?: string;
+  motionDisabled: boolean;
+  reducedMotion: boolean;
+  previewKey: string | number;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
@@ -112,12 +130,13 @@ function ScaledCanvas({
     >
       <div className="scaled-slide-preview-canvas">
         <SlideFrame
+          key={previewKey}
           slide={slide}
           deckId={deckId}
           assets={assets}
           sequenceStep={sequenceStep}
-          reducedMotion
-          motionDisabled
+          reducedMotion={reducedMotion}
+          motionDisabled={motionDisabled}
         />
       </div>
     </div>

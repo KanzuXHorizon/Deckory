@@ -61,4 +61,21 @@ describe("Studio responsive inspector", () => {
     expect(html).toContain('href="/present?deck=responsive-studio&amp;slide=cover"');
     expect(html).toContain('aria-live="polite"');
   });
+
+  it("exposes professional navigation, history, zoom and motion controls", () => {
+    const html = renderToStaticMarkup(<Studio sourceDeck={deck} />);
+
+    expect(html).toContain('aria-label="Hoàn tác"');
+    expect(html).toContain('aria-label="Làm lại"');
+    expect(html).toContain('aria-label="Mở bảng lệnh"');
+    expect(html).toContain('aria-label="Tìm slide"');
+    expect(html).toContain('aria-label="Vừa khung"');
+    expect(html).toContain('aria-label="Thu phóng 75%"');
+    expect(html).toContain('aria-label="Thu phóng 100%"');
+    expect(html).toContain('aria-label="Thu phóng 125%"');
+    expect(html).toContain('aria-label="Phát lại chuyển động"');
+    expect(html).toMatch(/aria-label="Hoàn tác"[^>]*disabled/);
+    expect(html).toMatch(/aria-label="Làm lại"[^>]*disabled/);
+    expect(html).toMatch(/aria-label="Phát lại chuyển động"[^>]*disabled/);
+  });
 });
