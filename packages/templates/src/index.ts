@@ -6,17 +6,17 @@ export {
   slideRecipes,
   visualStyleById,
   visualStyles
-} from "./catalog/index.js";
+} from "./catalog/index";
 export {
   createDeckFromTemplate,
   getDeckBlueprint,
   getSlideRecipe,
   getVisualStyle
-} from "./instantiate.js";
-export { recommendTemplate } from "./recommend.js";
-export { searchSlideRecipes } from "./search.js";
-export { createTeamShowcaseSlides } from "./team-showcase.js";
-export { validateTemplateInput } from "./validate-input.js";
+} from "./instantiate";
+export { recommendTemplate } from "./recommend";
+export { searchSlideRecipes } from "./search";
+export { createTeamShowcaseSlides } from "./team-showcase";
+export { validateTemplateInput } from "./validate-input";
 export type {
   BlueprintStep,
   ContentIntensity,
@@ -42,10 +42,10 @@ export type {
   TemplateSlotKind,
   TemplateTone,
   VisualStylePreset
-} from "./types.js";
+} from "./types";
 export type {
   CreateTeamShowcaseSlidesInput,
   TeamShowcaseMember,
   TeamShowcaseRosterVariant,
   TeamShowcaseSlideMode
-} from "./team-showcase.js";
+} from "./team-showcase";

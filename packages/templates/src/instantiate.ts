@@ -1,11 +1,11 @@
 import { validateDeck, type DeckDocument, type Slide, type SlideComponent } from "@deckory/schema";
-import { deckBlueprintById, slideRecipeById, visualStyleById } from "./catalog/index.js";
+import { deckBlueprintById, slideRecipeById, visualStyleById } from "./catalog/index";
 import type {
   CreateDeckFromTemplateInput,
   TemplateDiagnostic,
   TemplateResult
-} from "./types.js";
-import { validateTemplateInput } from "./validate-input.js";
+} from "./types";
+import { validateTemplateInput } from "./validate-input";
 
 function slug(value: string): string {
   const normalized = value

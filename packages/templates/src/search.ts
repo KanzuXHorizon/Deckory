@@ -1,5 +1,5 @@
-import { slideRecipes } from "./catalog/index.js";
-import type { SlideRecipe } from "./types.js";
+import { slideRecipes } from "./catalog/index";
+import type { SlideRecipe } from "./types";
 
 export function searchSlideRecipes(query: string, limit = 12): SlideRecipe[] {
   const normalizedQuery = normalize(query);

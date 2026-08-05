@@ -1,10 +1,10 @@
-import { deckBlueprints, visualStyles } from "./catalog/index.js";
+import { deckBlueprints, visualStyles } from "./catalog/index";
 import type {
   DeckBlueprint,
   TemplateRecommendation,
   TemplateRequest,
   VisualStylePreset
-} from "./types.js";
+} from "./types";
 
 export function recommendTemplate(request: TemplateRequest): TemplateRecommendation {
   const blueprint = rankBlueprints(request)[0] ?? deckBlueprints[0]!;

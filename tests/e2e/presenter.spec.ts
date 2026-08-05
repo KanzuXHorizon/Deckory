@@ -2,8 +2,10 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
-const e2eBaseURL = process.env.DECKORY_E2E_BASE_URL ?? "http://127.0.0.1:43217";
-const screenshotRoot = join(process.cwd(), "output", "playwright", "screenshots");
+const e2ePort = process.env.DECKORY_E2E_PORT ?? "43217";
+const e2eBaseURL = process.env.DECKORY_E2E_BASE_URL ?? `http://127.0.0.1:${e2ePort}`;
+const e2eRunId = process.env.DECKORY_E2E_RUN_ID ?? "manual";
+const screenshotRoot = join(process.cwd(), "output", "playwright", "screenshots", e2eRunId);
 mkdirSync(screenshotRoot, { recursive: true });
 
 test.describe("Deckory production presentation surfaces", () => {
@@ -13,11 +15,11 @@ test.describe("Deckory production presentation surfaces", () => {
     await page.goto("/");
     await waitForFonts(page);
     await expect(page.locator(".hub-shell")).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Quản lý câu chuyện/i })).toBeVisible();
+    await expect(page.locator("#hub-title")).toHaveText(/Không gian làm việc cho những deck cần được tin cậy/i);
     await expect(page.getByRole("heading", { name: /Deckory Template Intelligence/i })).toBeVisible();
     await expectNoHorizontalOverflow(page);
-    expect(await page.locator(".hub-hero").evaluate((element) => getComputedStyle(element).display)).toBe("grid");
-    await page.screenshot({ path: join(screenshotRoot, "hub-template-library.png"), fullPage: true });
+    expect(await page.locator(".hub-workspace-intro").evaluate((element) => getComputedStyle(element).display)).toBe("grid");
+    await page.screenshot({ path: join(screenshotRoot, "hub-template-library.png"), animations: "disabled" });
 
     await page.goto("/present?deck=template-gallery&slide=opening");
     await waitForFonts(page);

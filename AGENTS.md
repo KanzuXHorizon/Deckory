@@ -15,7 +15,8 @@ Before selecting or creating reusable styles, slide recipes or deck blueprints, 
 5. Write Vietnamese copy for the audience, not implementation details. Cite the source or label fixture data as illustrative.
 6. Give each meaningful slide concise `notes`; audience mode must never render them.
 7. Inspect representative slides in a real browser at full-size and thumbnail scale; fix overflow, contrast, density, motion, and evidence defects.
-8. Run `pnpm test`, `pnpm typecheck`, and `pnpm build` before claiming success.
+8. Run `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm audit:decks -- --strict`, and `pnpm build` before claiming success.
+9. For Presenter, Hub, Studio, slide renderer or responsive changes, run `pnpm test:e2e` and review the new screenshots under `output/playwright/screenshots/<run-id>/`.
 
 ## Readability rules
 

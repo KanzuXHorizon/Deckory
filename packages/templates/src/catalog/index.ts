@@ -1,8 +1,8 @@
 import { SUPPORTED_COMPONENT_TYPES, SUPPORTED_LAYOUTS, DeckThemeSchema } from "@deckory/schema";
-import type { DeckBlueprint, SlideRecipe, VisualStylePreset } from "../types.js";
-import { deckBlueprints } from "./blueprints.js";
-import { slideRecipes } from "./recipes.js";
-import { visualStyles } from "./styles.js";
+import type { DeckBlueprint, SlideRecipe, VisualStylePreset } from "../types";
+import { deckBlueprints } from "./blueprints";
+import { slideRecipes } from "./recipes";
+import { visualStyles } from "./styles";
 
 export { deckBlueprints, slideRecipes, visualStyles };
 

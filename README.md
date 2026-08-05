@@ -85,6 +85,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `pnpm lint` | Run repository lint checks. |
 | `pnpm typecheck` | Validate TypeScript contracts. |
 | `pnpm test` | Run workspace test suites. |
+| `pnpm audit:decks -- --strict` | Audit every registered deck and fail on warnings or errors. |
+| `pnpm test:e2e` | Build an isolated production artifact and run Chromium presentation flows. |
 | `pnpm build` | Create the production Next.js build. |
 
 The same quality gates run on every push and pull request through GitHub Actions.
@@ -132,7 +134,7 @@ Deckory conventions:
 - label illustrative data clearly and cite real evidence;
 - validate, test and inspect representative slides before presenting.
 
-See [`AGENTS.md`](AGENTS.md) for the complete repository rules and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
+See [`AGENTS.md`](AGENTS.md) for the complete repository rules, [`docs/AUDIT.md`](docs/AUDIT.md) for quality diagnostics and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
 
 ## Architecture
 
@@ -140,6 +142,8 @@ See [`AGENTS.md`](AGENTS.md) for the complete repository rules and [`decks/decko
 apps/present       Hub, Studio, Preview and Presenter
 packages/schema    Typed deck contract and validation
 packages/core      Presentation runtime and navigation behavior
+packages/audit     Deterministic deck quality diagnostics and reports
+packages/templates Reusable styles, slide recipes and deck blueprints
 decks              Versioned deck packages and reference content
 .agents/skills     Deckory-specific design and completion guidance
 ```
@@ -167,7 +171,9 @@ Deckory is an actively developed early-stage project. The current repository inc
 - semantic charts, tables, code, metrics, comparisons and process visuals;
 - speaker notes, sequence reveals and presentation navigation;
 - local draft persistence;
-- automated lint, typecheck, test, build and CodeQL workflows.
+- deterministic deck audit with human-readable and JSON reports;
+- isolated Chromium E2E coverage for production CSS, focus, privacy, reduced motion and narrow viewports;
+- automated lint, typecheck, test, audit, build and CodeQL workflows.
 
 The following remain outside the current product boundary:
 

@@ -3,7 +3,7 @@ import type {
   TemplateScenario,
   TemplateTone,
   VisualStylePreset
-} from "../types.js";
+} from "../types";
 
 const sharedProhibitedPatterns = [
   "Generic AI-purple gradients or neon glow used as default decoration.",

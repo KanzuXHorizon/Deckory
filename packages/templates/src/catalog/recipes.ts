@@ -3,7 +3,7 @@ import type {
   SlideRecipe,
   SlideRecipeCategory,
   TemplateSlot
-} from "../types.js";
+} from "../types";
 
 type RecipeSeed = {
   id: string;

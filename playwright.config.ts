@@ -1,18 +1,18 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = process.env.DECKORY_E2E_PORT ?? "3210";
-const distDir = process.env.DECKORY_NEXT_DIST_DIR ?? ".next-e2e";
+const port = Number(process.env.DECKORY_E2E_PORT ?? "43217");
+const runId = process.env.DECKORY_E2E_RUN_ID ?? "manual";
 const baseURL = process.env.DECKORY_E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  outputDir: "output/playwright/test-results",
+  outputDir: `output/playwright/test-results/${runId}`,
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [
     ["list"],
-    ["html", { outputFolder: "output/playwright/report", open: "never" }]
+    ["html", { outputFolder: `output/playwright/report/${runId}`, open: "never" }]
   ],
   use: {
     baseURL,
@@ -28,7 +28,7 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: `cross-env DECKORY_NEXT_DIST_DIR=${distDir} pnpm --filter @deckory/present exec next start -p ${port}`,
+    command: `pnpm --filter @deckory/present exec next start -p ${port}`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,

@@ -1,4 +1,4 @@
-import type { BlueprintStep, DeckBlueprint, TemplateAudience, TemplateScenario } from "../types.js";
+import type { BlueprintStep, DeckBlueprint, TemplateAudience, TemplateScenario } from "../types";
 
 function step(
   id: string,
