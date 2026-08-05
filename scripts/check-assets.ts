@@ -78,9 +78,13 @@ function collectAssetReferences(deck: DeckDocument): Set<string> {
   const references = new Set<string>();
   for (const slide of deck.slides) {
     for (const component of slide.components) {
-      if (component.type !== "team-showcase") continue;
-      for (const member of component.props.members) {
-        if (member.image?.assetId) references.add(member.image.assetId);
+      if (component.type === "team-showcase") {
+        for (const member of component.props.members) {
+          if (member.image?.assetId) references.add(member.image.assetId);
+        }
+      }
+      if (component.type === "evidence-footer" && component.props.logoAssetId) {
+        references.add(component.props.logoAssetId);
       }
     }
   }

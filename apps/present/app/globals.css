@@ -336,10 +336,10 @@ button:disabled {
 
 .slide[data-background="grid"]::before {
   background:
-    linear-gradient(to right, color-mix(in srgb, var(--accent) 5%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--accent) 5%, transparent) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(135deg, black, transparent 78%);
+    linear-gradient(90deg, transparent 0 8.15%, color-mix(in srgb, var(--accent) 8%, transparent) 8.15% 8.23%, transparent 8.23%),
+    linear-gradient(180deg, transparent 0 18%, color-mix(in srgb, var(--accent) 6%, transparent) 18% 18.12%, transparent 18.12%),
+    radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 30%);
+  mask-image: linear-gradient(135deg, black, transparent 86%);
 }
 
 .slide[data-background="spotlight"]::before {
