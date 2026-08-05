@@ -20,6 +20,7 @@ describe("Studio responsive inspector", () => {
   it("exposes an accessible drawer trigger and close control without removing the inspector", () => {
     const html = renderToStaticMarkup(<Studio sourceDeck={deck} />);
 
+    expect(html).toContain("scaled-slide-preview studio-slide-canvas");
     expect(html).toContain('class="icon-action studio-inspector-toggle"');
     expect(html).toContain('aria-controls="studio-inspector"');
     expect(html).toContain('id="studio-inspector"');

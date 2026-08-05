@@ -40,8 +40,7 @@ import {
 import { DeckoryBrand } from "./brand-mark";
 import { ComponentInspector } from "./component-inspector";
 import { CommandGrid, IconChoiceGroup, StudioPopover } from "./studio-controls";
-import { DeckThumbnail } from "./deck-thumbnail";
-import { SlideFrame } from "./slide-frame";
+import { DeckThumbnail, ScaledSlidePreview } from "./deck-thumbnail";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
 type SaveState = "clean" | "dirty" | "saved" | "error";
@@ -296,7 +295,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
             </div>
           </div>
           <div className="studio-stage">
-            <div className="studio-slide-canvas"><SlideFrame slide={selectedSlide} deckId={deck.id} sequenceStep={Number.MAX_SAFE_INTEGER} reducedMotion motionDisabled /></div>
+            <ScaledSlidePreview slide={selectedSlide} deckId={deck.id} sequenceStep={Number.MAX_SAFE_INTEGER} className="studio-slide-canvas" label={`Canvas slide ${selectedSlideIndex + 1}`} />
           </div>
           <div className="canvas-footnote"><span>16:9 safe canvas</span><span>{selectedSlide.components.length} component · {selectedSlide.notes ? "có speaker notes" : "chưa có notes"}</span></div>
         </section>

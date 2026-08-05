@@ -5,6 +5,7 @@ import "./slide-components.css";
 import "./semantic-visuals.css";
 import "./presenter.css";
 import "./workspace.css";
+import "./slide-quality.css";
 
 const deckSans = Be_Vietnam_Pro({
   weight: ["400", "500", "600", "700", "800"],

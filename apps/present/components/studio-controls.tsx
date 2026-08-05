@@ -42,9 +42,26 @@ export function IconChoiceGroup<Value extends string>({
               aria-checked={selected}
               aria-label={`${option.label}${supportingCopy ? `: ${supportingCopy}` : ""}`}
               className={selected ? "is-selected" : ""}
+              data-value={option.value}
               disabled={option.disabled}
+              tabIndex={selected ? 0 : -1}
               title={supportingCopy}
               onClick={() => onChange(option.value)}
+              onKeyDown={(event) => {
+                if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"].includes(event.key)) return;
+                const options = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
+                const currentIndex = options.indexOf(event.currentTarget);
+                if (currentIndex < 0 || options.length === 0) return;
+                event.preventDefault();
+                const nextIndex = event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? options.length - 1
+                    : (currentIndex + (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1) + options.length) % options.length;
+                const next = options[nextIndex];
+                next?.focus();
+                next?.click();
+              }}
             >
               <Icon size={compact ? 16 : 17} aria-hidden="true" />
               <span>
@@ -152,6 +169,7 @@ export function StudioPopover({
   const TriggerIcon = triggerIcon;
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const previousOpenRef = useRef(open);
   const panelId = useId();
 
@@ -176,6 +194,9 @@ export function StudioPopover({
   }, [onOpenChange, open]);
 
   useEffect(() => {
+    if (open && !previousOpenRef.current) {
+      requestAnimationFrame(() => panelRef.current?.querySelector<HTMLButtonElement>(".studio-command-grid > button:not(:disabled)")?.focus());
+    }
     if (previousOpenRef.current && !open) triggerRef.current?.focus();
     previousOpenRef.current = open;
   }, [open]);
@@ -186,6 +207,8 @@ export function StudioPopover({
         ref={triggerRef}
         type="button"
         className={triggerClassName ?? "studio-popover-trigger"}
+        aria-label={triggerLabel}
+        title={triggerLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
@@ -195,7 +218,7 @@ export function StudioPopover({
         <span>{triggerLabel}</span>
       </button>
       {open && (
-        <div id={panelId} className="studio-popover-panel" role="dialog" aria-label={label}>
+        <div ref={panelRef} id={panelId} className="studio-popover-panel" role="dialog" aria-label={label}>
           <header>
             <div>
               <strong>{label}</strong>
