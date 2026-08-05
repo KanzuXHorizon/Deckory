@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
   CheckCircle2,
-  ChevronDown,
   CircleAlert,
   Copy,
   Eye,
@@ -17,25 +16,34 @@ import {
   RotateCcw,
   Save,
   Settings2,
-  Trash2
+  SlidersHorizontal,
+  Trash2,
+  X
 } from "lucide-react";
 import {
-  SUPPORTED_COMPONENT_TYPES,
-  SUPPORTED_LAYOUTS,
   validateDeck,
   type DeckDocument,
   type Slide,
   type SlideComponent
 } from "@deckory/schema";
 import { cloneDeck, slideTitle } from "../lib/deck-catalog";
+import { deckThemeClassName } from "../lib/deck-theme";
+import { createComponent, isCompatible } from "../lib/component-catalog";
+import {
+  componentLabel,
+  componentOptions,
+  effectOptions,
+  layoutOptions,
+  transitionOptions,
+  variantOptions
+} from "../lib/studio-option-catalog";
 import { DeckoryBrand } from "./brand-mark";
 import { ComponentInspector } from "./component-inspector";
+import { CommandGrid, IconChoiceGroup, StudioPopover } from "./studio-controls";
 import { DeckThumbnail } from "./deck-thumbnail";
 import { SlideFrame } from "./slide-frame";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
-const variants = ["default", "spotlight", "quiet", "technical"] as const;
-
 type SaveState = "clean" | "dirty" | "saved" | "error";
 
 export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocument; initialSlideId?: string }) {
@@ -44,8 +52,11 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   const [selectedComponentId, setSelectedComponentId] = useState(() => sourceDeck.slides[0]!.components[0]!.id);
   const [saveState, setSaveState] = useState<SaveState>("clean");
   const [storageMessage, setStorageMessage] = useState("");
-  const [newLayout, setNewLayout] = useState<Slide["layout"]>("data");
+  const [slideMenuOpen, setSlideMenuOpen] = useState(false);
   const [componentMenuOpen, setComponentMenuOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [compactStudio, setCompactStudio] = useState(false);
+  const inspectorTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     try {
@@ -81,6 +92,41 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
       setSelectedComponentId(selectedSlide.components[0]!.id);
     }
   }, [selectedComponentId, selectedSlide]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 940px)");
+    const sync = () => {
+      setCompactStudio(media.matches);
+      if (!media.matches) setInspectorOpen(false);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!inspectorOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setInspectorOpen(false);
+      requestAnimationFrame(() => inspectorTriggerRef.current?.focus());
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [inspectorOpen]);
+
+  const compatibleComponentOptions = useMemo(
+    () => componentOptions.map((option) => isCompatible(selectedSlide.layout, option.value)
+      ? option
+      : { ...option, disabled: true, disabledReason: `Không dùng được trong layout ${selectedSlide.layout}.` }),
+    [selectedSlide.layout]
+  );
+
+  const closeInspector = () => {
+    setInspectorOpen(false);
+    requestAnimationFrame(() => inspectorTriggerRef.current?.focus());
+  };
 
   const updateDeck = (updater: (current: DeckDocument) => DeckDocument) => {
     setDeck((current) => updater(current));
@@ -135,12 +181,13 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     setSelectedComponentId(slide.components[0]!.id);
   };
 
-  const addSlide = () => {
-    const id = nextStableId(newLayout, deck.slides.map((slide) => slide.id));
-    const slide = createSlideTemplate(newLayout, id, deck.slides.length + 1);
+  const addSlide = (layout: Slide["layout"]) => {
+    const id = nextStableId(layout, deck.slides.map((slide) => slide.id));
+    const slide = createSlideTemplate(layout, id, deck.slides.length + 1);
     updateDeck((current) => ({ ...current, slides: [...current.slides, slide] }));
     setSelectedSlideId(slide.id);
     setSelectedComponentId(slide.components[0]!.id);
+    setSlideMenuOpen(false);
   };
 
   const duplicateSlide = () => {
@@ -193,7 +240,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   };
 
   return (
-    <main className="studio-shell">
+    <main className={`studio-shell ${deckThemeClassName(deck)}`}>
       <header className="studio-topbar">
         <div className="studio-topbar-left">
           <Link className="icon-action" href="/" aria-label="Về Deckory Hub"><ArrowLeft size={18} /></Link>
@@ -224,8 +271,17 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
             ))}
           </div>
           <div className="slide-add-control">
-            <select aria-label="Layout cho slide mới" value={newLayout} onChange={(event) => setNewLayout(event.target.value as Slide["layout"])}>{SUPPORTED_LAYOUTS.map((layout) => <option key={layout} value={layout}>{layout}</option>)}</select>
-            <button onClick={addSlide}><Plus size={16} /> Thêm slide</button>
+            <StudioPopover
+              open={slideMenuOpen}
+              onOpenChange={setSlideMenuOpen}
+              label="Thêm slide"
+              description="Chọn bố cục theo điều bạn muốn khán giả hiểu."
+              triggerIcon={Plus}
+              triggerLabel="Thêm slide"
+              triggerClassName="slide-add-trigger"
+            >
+              <CommandGrid label="Chọn layout cho slide mới" options={layoutOptions} onSelect={addSlide} />
+            </StudioPopover>
           </div>
         </aside>
 
@@ -233,35 +289,67 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
           <div className="canvas-toolbar">
             <div><span>Slide {selectedSlideIndex + 1}</span><strong>{selectedSlide.layout} / {selectedSlide.variant ?? "default"}</strong></div>
             <div>
+              <button ref={inspectorTriggerRef} className="icon-action studio-inspector-toggle" hidden={!compactStudio} onClick={() => setInspectorOpen(true)} aria-label="Mở Inspector" aria-controls="studio-inspector" aria-expanded={inspectorOpen}><SlidersHorizontal size={16} /></button>
               <button className="icon-action" onClick={() => moveSlide(-1)} disabled={selectedSlideIndex === 0} aria-label="Đưa slide lên"><ArrowUp size={16} /></button>
               <button className="icon-action" onClick={() => moveSlide(1)} disabled={selectedSlideIndex === deck.slides.length - 1} aria-label="Đưa slide xuống"><ArrowDown size={16} /></button>
               <button className="icon-action icon-action--danger" onClick={deleteSlide} disabled={deck.slides.length <= 1} aria-label="Xoá slide"><Trash2 size={16} /></button>
             </div>
           </div>
           <div className="studio-stage">
-            <div className="studio-slide-canvas"><SlideFrame slide={selectedSlide} sequenceStep={Number.MAX_SAFE_INTEGER} reducedMotion /></div>
+            <div className="studio-slide-canvas"><SlideFrame slide={selectedSlide} deckId={deck.id} sequenceStep={Number.MAX_SAFE_INTEGER} reducedMotion motionDisabled /></div>
           </div>
           <div className="canvas-footnote"><span>16:9 safe canvas</span><span>{selectedSlide.components.length} component · {selectedSlide.notes ? "có speaker notes" : "chưa có notes"}</span></div>
         </section>
 
-        <aside className="inspector" aria-label="Inspector">
-          <header className="inspector-header"><div><Settings2 size={17} /><span>INSPECTOR</span></div><strong>{selectedComponent.type}</strong></header>
+        {compactStudio && inspectorOpen && <button className="inspector-backdrop" type="button" aria-label="Đóng Inspector" onClick={closeInspector} />}
+        <aside
+          id="studio-inspector"
+          className="inspector"
+          aria-label="Inspector"
+          data-open={!compactStudio || inspectorOpen ? "true" : "false"}
+          aria-hidden={compactStudio && !inspectorOpen ? true : undefined}
+          inert={compactStudio && !inspectorOpen ? true : undefined}
+        >
+          <header className="inspector-header">
+            <div><Settings2 size={17} /><span>INSPECTOR</span></div>
+            <div className="inspector-header-actions">
+              <strong>{componentLabel(selectedComponent.type)}</strong>
+              <button className="icon-action inspector-close" type="button" onClick={closeInspector} aria-label="Đóng Inspector"><X size={17} /></button>
+            </div>
+          </header>
           <div className="inspector-scroll">
-            <section className="inspector-section">
-              <header><h3>Cài đặt slide</h3><p>Layout và variant điều khiển visual grammar, không phải tọa độ tự do.</p></header>
-              <div className="inspector-field-grid inspector-field-grid--two">
-                <label className="inspector-field"><span>Layout</span><select value={selectedSlide.layout} onChange={(event) => updateSlide({ layout: event.target.value as Slide["layout"] })}>{SUPPORTED_LAYOUTS.map((layout) => <option key={layout}>{layout}</option>)}</select></label>
-                <label className="inspector-field"><span>Variant</span><select value={selectedSlide.variant ?? "default"} onChange={(event) => updateSlide({ variant: event.target.value as Slide["variant"] })}>{variants.map((variant) => <option key={variant}>{variant}</option>)}</select></label>
-              </div>
-              <label className="inspector-field"><span>Speaker notes</span><textarea rows={4} value={selectedSlide.notes ?? ""} onChange={(event) => updateSlide({ notes: event.target.value.trim() ? event.target.value : undefined })} placeholder="Điểm cần nói, ngữ cảnh hoặc chuyển ý…" /></label>
+            <section className="inspector-section slide-settings-section">
+              <header><h3>Cài đặt slide</h3><p>Chọn visual grammar theo thông điệp thay vì điều chỉnh tọa độ thủ công.</p></header>
+              <IconChoiceGroup label="Bố cục" value={selectedSlide.layout} options={layoutOptions} compact onChange={(layout) => updateSlide({ layout })} />
+              <IconChoiceGroup label="Phong cách" value={selectedSlide.variant ?? "default"} options={variantOptions} compact onChange={(variant) => updateSlide({ variant })} />
+              <IconChoiceGroup label="Chuyển slide" value={selectedSlide.transition?.type ?? "fade"} options={transitionOptions} compact onChange={(type) => updateSlide({ transition: { ...(selectedSlide.transition ?? {}), type } })} />
+              <label className="inspector-field"><span>Thời lượng chuyển slide</span><div className="number-field-with-unit"><input type="number" min="0.1" max="1.2" step="0.1" value={selectedSlide.transition?.duration ?? 0.42} onChange={(event) => updateSlide({ transition: { type: selectedSlide.transition?.type ?? "fade", duration: Number(event.target.value) || 0.42, easing: selectedSlide.transition?.easing } })} /><span>giây</span></div></label>
+              <label className="inspector-field"><span>Ghi chú người thuyết trình</span><textarea rows={4} value={selectedSlide.notes ?? ""} onChange={(event) => updateSlide({ notes: event.target.value.trim() ? event.target.value : undefined })} placeholder="Điểm cần nói, ngữ cảnh hoặc chuyển ý…" /></label>
             </section>
 
             <section className="component-stack">
-              <header><div><Layers3 size={16} /><span>COMPONENTS</span></div><button onClick={() => setComponentMenuOpen((open) => !open)}><Plus size={15} /> Thêm <ChevronDown size={14} /></button></header>
-              {componentMenuOpen && <div className="component-palette">{SUPPORTED_COMPONENT_TYPES.map((type) => <button key={type} disabled={!isCompatible(selectedSlide.layout, type)} onClick={() => addComponent(type)}>{type}</button>)}</div>}
+              <header>
+                <div><Layers3 size={16} /><span>COMPONENTS</span></div>
+                <StudioPopover
+                  open={componentMenuOpen}
+                  onOpenChange={setComponentMenuOpen}
+                  label="Thêm component"
+                  description={`Các component phù hợp với layout ${selectedSlide.layout}.`}
+                  triggerIcon={Plus}
+                  triggerLabel="Thêm"
+                  triggerClassName="component-add-trigger"
+                  align="end"
+                >
+                  <CommandGrid label="Chọn component" options={compatibleComponentOptions} onSelect={addComponent} />
+                </StudioPopover>
+              </header>
               <div className="component-stack-list">
                 {selectedSlide.components.map((component, index) => (
-                  <button key={component.id} className={component.id === selectedComponent.id ? "is-active" : ""} onClick={() => setSelectedComponentId(component.id)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{component.type}</strong><small>{component.id}</small></button>
+                  <button key={component.id} className={component.id === selectedComponent.id ? "is-active" : ""} onClick={() => setSelectedComponentId(component.id)}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <strong>{componentLabel(component.type)}</strong>
+                    <small>{component.id}</small>
+                  </button>
                 ))}
               </div>
               <footer>
@@ -272,6 +360,16 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
             </section>
 
             <ComponentInspector component={selectedComponent} onChange={updateComponent} />
+
+            <section className="inspector-section motion-inspector">
+              <header><h3>Motion của component</h3><p>Hiệu ứng hỗ trợ thứ tự kể; không thay thế hierarchy hoặc nội dung.</p></header>
+              <IconChoiceGroup label="Hiệu ứng" value={selectedComponent.effect?.type ?? "rise"} options={effectOptions} compact onChange={(type) => updateComponent({ ...selectedComponent, effect: { ...(selectedComponent.effect ?? {}), type } })} />
+              <div className="inspector-field-grid inspector-field-grid--three motion-fields">
+                <label className="inspector-field"><span>Sequence</span><input type="number" min="1" value={selectedComponent.sequence ?? ""} placeholder="Tự động" onChange={(event) => updateComponent({ ...selectedComponent, sequence: event.target.value ? Number(event.target.value) : undefined })} /></label>
+                <label className="inspector-field"><span>Duration</span><input type="number" min="0.1" max="1.2" step="0.1" value={selectedComponent.effect?.duration ?? 0.34} onChange={(event) => updateComponent({ ...selectedComponent, effect: { type: selectedComponent.effect?.type ?? "rise", duration: Number(event.target.value) || 0.34, delay: selectedComponent.effect?.delay, easing: selectedComponent.effect?.easing } })} /></label>
+                <label className="inspector-field"><span>Delay</span><input type="number" min="0" max="1.5" step="0.05" value={selectedComponent.effect?.delay ?? 0} onChange={(event) => updateComponent({ ...selectedComponent, effect: { type: selectedComponent.effect?.type ?? "rise", duration: selectedComponent.effect?.duration, delay: Number(event.target.value) || 0, easing: selectedComponent.effect?.easing } })} /></label>
+              </div>
+            </section>
 
             <section className={`diagnostics ${validation.ok ? "diagnostics--ready" : "diagnostics--error"}`}>
               <header>{validation.ok ? <CheckCircle2 size={17} /> : <CircleAlert size={17} />}<div><h3>{validation.ok ? "Document hợp lệ" : "Cần xử lý trước khi preview"}</h3><p>{validation.ok ? "Schema, layout và component contract đều hợp lệ." : `${diagnostics.length} diagnostics đang ảnh hưởng document.`}</p></div></header>
@@ -297,22 +395,6 @@ function moveItem<T>(items: T[], from: number, to: number): T[] {
   const [item] = next.splice(from, 1);
   if (item !== undefined) next.splice(to, 0, item);
   return next;
-}
-
-const compatibleComponents: Record<Slide["layout"], SlideComponent["type"][]> = {
-  cover: ["heading", "evidence-footer"],
-  statement: ["statement", "heading", "evidence-footer"],
-  split: ["heading", "metric-grid", "insight", "evidence-footer"],
-  dashboard: ["heading", "metric-grid", "chart", "insight", "evidence-footer"],
-  comparison: ["heading", "comparison", "evidence-footer"],
-  process: ["heading", "process", "evidence-footer"],
-  architecture: ["heading", "architecture", "insight", "evidence-footer"],
-  data: ["heading", "chart", "metric-grid", "insight", "evidence-footer"],
-  closing: ["heading", "statement", "evidence-footer"]
-};
-
-function isCompatible(layout: Slide["layout"], type: SlideComponent["type"]): boolean {
-  return compatibleComponents[layout].includes(type);
 }
 
 function createSlideTemplate(layout: Slide["layout"], id: string, page: number): Slide {
@@ -352,39 +434,4 @@ function createSlideTemplate(layout: Slide["layout"], id: string, page: number):
   if (layout === "cover" || layout === "closing") return { id, layout, components: [heading, footer] };
   if (layout === "statement") return { id, layout, components: [middle.statement!, footer] };
   return { id, layout, components: [heading, middle[layout]!, footer] };
-}
-
-function createComponent(type: SlideComponent["type"], id: string): SlideComponent {
-  switch (type) {
-    case "heading": return { id, type, props: { title: "Tiêu đề mới", description: "Mô tả ngắn cho slide." } };
-    case "statement": return { id, type, props: { quote: "Luận điểm mới", byline: "Nguồn" } };
-    case "metric-grid": return { id, type, props: { metrics: [
-      { value: "82", label: "Metric A", note: "Fixture", tone: "cobalt" },
-      { value: "74", label: "Metric B", note: "Fixture", tone: "teal" },
-      { value: "61", label: "Metric C", note: "Fixture", tone: "amber" }
-    ] } };
-    case "comparison": return { id, type, props: { left: { eyebrow: "TRƯỚC", title: "Hiện tại", points: ["Điểm 1", "Điểm 2"] }, right: { eyebrow: "SAU", title: "Đề xuất", points: ["Điểm 1", "Điểm 2"] } } };
-    case "process": return { id, type, props: { steps: [
-      { title: "Bước một", note: "Mô tả", icon: "data" },
-      { title: "Bước hai", note: "Mô tả", icon: "system" },
-      { title: "Bước ba", note: "Mô tả", icon: "sparkle" }
-    ] } };
-    case "architecture": return { id, type, props: { layers: [
-      { label: "INPUT", items: ["Nguồn"] },
-      { label: "CORE", items: ["Source of truth"], accent: true },
-      { label: "OUTPUT", items: ["Kết quả"] }
-    ] } };
-    case "chart": return { id, type, props: { title: "Chart mới", unit: "điểm", variant: "bar", values: [
-      { label: "A", value: 72, highlight: true },
-      { label: "B", value: 58 },
-      { label: "C", value: 64 }
-    ] } };
-    case "table": return { id, type, props: { title: "Bảng mới", columns: ["Tiêu chí", "Kết quả"], rows: [
-      { cells: ["Mục A", "Đạt"], highlight: true },
-      { cells: ["Mục B", "Đang cải thiện"] }
-    ], note: "Thay dữ liệu minh hoạ bằng nguồn đã kiểm chứng." } };
-    case "code": return { id, type, props: { title: "Đoạn mã mới", language: "typescript", code: "const insight = createStory(data);", caption: "Giải thích ngắn ý nghĩa của đoạn mã.", showLineNumbers: true } };
-    case "insight": return { id, type, props: { label: "KẾT LUẬN", title: "Insight chính", description: "Diễn giải vì sao insight này quan trọng.", metric: "+12", tone: "cobalt" } };
-    case "evidence-footer": return { id, type, props: { source: "Nguồn cần bổ sung" } };
-  }
 }
