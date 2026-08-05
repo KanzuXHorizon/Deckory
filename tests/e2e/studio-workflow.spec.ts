@@ -64,6 +64,40 @@ test.describe("Deckory Studio production workflow", () => {
     await expect(slideItems).toHaveCount(11);
   });
 
+  test("falls back safely when the saved draft is malformed", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate((key) => window.localStorage.setItem(key, "{not-valid-json"), draftKey);
+
+    await page.goto("/studio?deck=deckory-story");
+    await waitForReady(page);
+    await expect(page.getByRole("textbox", { name: "Tên deck" })).toHaveValue("Deckory — biến dữ liệu thành một câu chuyện rõ");
+    await expect(page.getByRole("status")).toContainText("Không thể đọc bản nháp cục bộ");
+
+    await page.goto("/preview?deck=deckory-story");
+    await waitForReady(page);
+    await expect(page.getByRole("status")).toContainText("Không thể đọc draft cục bộ");
+    await expect(page.locator('[data-slide-id="cover"]')).toBeVisible();
+  });
+
+  test("keeps the in-memory edit and reports recovery guidance when storage is blocked", async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function setItem(key: string, value: string) {
+        if (key.startsWith("deckory:draft:v1:")) throw new DOMException("Storage blocked", "SecurityError");
+        return originalSetItem.call(this, key, value);
+      };
+    });
+
+    await page.goto("/studio?deck=deckory-story");
+    await waitForReady(page);
+    const title = page.getByRole("textbox", { name: "Tên deck" });
+    await title.fill("Deckory — phiên chỉnh sửa trong bộ nhớ");
+
+    await expect(page.locator(".studio-save-state")).toContainText("Chưa thể lưu", { timeout: 5_000 });
+    await expect(page.getByRole("status")).toContainText("Phiên chỉnh sửa hiện tại vẫn còn trong bộ nhớ");
+    await expect(title).toHaveValue("Deckory — phiên chỉnh sửa trong bộ nhớ");
+  });
+
   test("supports the complete keyboard pattern for Inspector tabs", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 900 });
     await page.goto("/studio?deck=deckory-story");
