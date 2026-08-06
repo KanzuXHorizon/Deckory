@@ -1,8 +1,15 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import type { SceneElement } from "@deckory/schema/v2";
-import { buildLayersTree, filterLayersTree, type LayerNode, type LayerPatch } from "./layers-model";
+import {
+  buildLayersTree,
+  filterLayersTree,
+  flattenLayersTree,
+  resolveLayerTreeKey,
+  type LayerNode,
+  type LayerPatch
+} from "./layers-model";
 import styles from "./layers-panel.module.css";
 
 export type LayersPanelProps = {
@@ -15,24 +22,58 @@ export type LayersPanelProps = {
   onPatch: (elementId: string, patch: Partial<LayerPatch>) => void;
 };
 
+type LayerTreeItemProps = {
+  node: LayerNode;
+  level: number;
+  tree: readonly LayerNode[];
+  selectedIds: ReadonlySet<string>;
+  primaryId: string | undefined;
+  focusId: string | undefined;
+  renamingId: string | undefined;
+  renameValue: string;
+  onSelect: LayersPanelProps["onSelect"];
+  onPatch: LayersPanelProps["onPatch"];
+  onFocusRequest: (elementId: string) => void;
+  onRenameStart: (node: LayerNode) => void;
+  onRenameValueChange: (value: string) => void;
+  onRenameCommit: (node: LayerNode) => void;
+  onRenameCancel: () => void;
+};
+
 function LayerTreeItem({
   node,
   level,
+  tree,
   selectedIds,
   primaryId,
+  focusId,
+  renamingId,
+  renameValue,
   onSelect,
-  onPatch
-}: {
-  node: LayerNode;
-  level: number;
-  selectedIds: ReadonlySet<string>;
-  primaryId: string | undefined;
-  onSelect: LayersPanelProps["onSelect"];
-  onPatch: LayersPanelProps["onPatch"];
-}) {
+  onPatch,
+  onFocusRequest,
+  onRenameStart,
+  onRenameValueChange,
+  onRenameCommit,
+  onRenameCancel
+}: LayerTreeItemProps) {
   const selected = selectedIds.has(node.id);
   const hasChildren = node.children.length > 0;
-  const handleSelect = (event: MouseEvent<HTMLButtonElement>) => onSelect(node.id, event.shiftKey || event.metaKey || event.ctrlKey);
+  const handleSelect = (event: MouseEvent<HTMLButtonElement>) => {
+    onFocusRequest(node.id);
+    onSelect(node.id, event.shiftKey || event.metaKey || event.ctrlKey);
+  };
+  const handleTreeKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const action = resolveLayerTreeKey(tree, node.id, event);
+    if (!action) return;
+    event.preventDefault();
+    if (action.type === "focus") onFocusRequest(action.elementId);
+    if (action.type === "select") {
+      onFocusRequest(action.elementId);
+      onSelect(action.elementId, action.additive);
+    }
+    if (action.type === "rename") onRenameStart(node);
+  };
 
   return (
     <li
@@ -44,16 +85,42 @@ function LayerTreeItem({
       data-primary={primaryId === node.id ? "true" : "false"}
     >
       <div className={styles.row}>
-        <button
-          type="button"
-          className={styles.select}
-          tabIndex={primaryId === node.id ? 0 : -1}
-          onClick={handleSelect}
-          aria-label={`Chọn ${node.element.name}`}
-        >
-          <span aria-hidden="true" className={styles.kind}>{node.element.kind}</span>
-          <span>{node.element.name}</span>
-        </button>
+        {renamingId === node.id ? (
+          <input
+            className={styles.select}
+            value={renameValue}
+            autoFocus
+            aria-label={`Đổi tên ${node.element.name}`}
+            onChange={(event) => onRenameValueChange(event.currentTarget.value)}
+            onBlur={() => onRenameCommit(node)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                onRenameCommit(node);
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                onRenameCancel();
+                onFocusRequest(node.id);
+              }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className={styles.select}
+            tabIndex={focusId === node.id ? 0 : -1}
+            data-layer-select-id={node.id}
+            aria-keyshortcuts="F2"
+            onFocus={() => onFocusRequest(node.id)}
+            onClick={handleSelect}
+            onKeyDown={handleTreeKey}
+            aria-label={`Chọn ${node.element.name}`}
+          >
+            <span aria-hidden="true" className={styles.kind}>{node.element.kind}</span>
+            <span>{node.element.name}</span>
+          </button>
+        )}
         <span className={styles.state} aria-live="polite">
           {node.element.locked ? <span>Đang khóa</span> : null}
           {node.element.hidden ? <span>Đang ẩn</span> : null}
@@ -84,10 +151,19 @@ function LayerTreeItem({
               key={child.id}
               node={child}
               level={level + 1}
+              tree={tree}
               selectedIds={selectedIds}
               primaryId={primaryId}
+              focusId={focusId}
+              renamingId={renamingId}
+              renameValue={renameValue}
               onSelect={onSelect}
               onPatch={onPatch}
+              onFocusRequest={onFocusRequest}
+              onRenameStart={onRenameStart}
+              onRenameValueChange={onRenameValueChange}
+              onRenameCommit={onRenameCommit}
+              onRenameCancel={onRenameCancel}
             />
           ))}
         </ul>
@@ -106,7 +182,38 @@ export function LayersPanel({
   onPatch
 }: LayersPanelProps) {
   const tree = filterLayersTree(buildLayersTree(elements), searchQuery);
+  const visibleIds = flattenLayersTree(tree).map((node) => node.id);
+  const [requestedFocusId, setRequestedFocusId] = useState<string | undefined>(primaryId);
+  const focusId = requestedFocusId && visibleIds.includes(requestedFocusId)
+    ? requestedFocusId
+    : primaryId && visibleIds.includes(primaryId)
+      ? primaryId
+      : visibleIds[0];
+  const [renamingId, setRenamingId] = useState<string | undefined>();
+  const [renameValue, setRenameValue] = useState("");
   const selected = new Set(selectedIds);
+
+  const focusLayer = (elementId: string) => {
+    setRequestedFocusId(elementId);
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLButtonElement>(`[data-layer-select-id="${elementId}"]`)?.focus();
+    });
+  };
+  const startRename = (node: LayerNode) => {
+    setRequestedFocusId(node.id);
+    setRenamingId(node.id);
+    setRenameValue(node.element.name);
+  };
+  const cancelRename = () => {
+    setRenamingId(undefined);
+    setRenameValue("");
+  };
+  const commitRename = (node: LayerNode) => {
+    const nextName = renameValue.trim();
+    if (nextName && nextName !== node.element.name) onPatch(node.id, { name: nextName });
+    cancelRename();
+    focusLayer(node.id);
+  };
 
   return (
     <section className={styles.root} aria-labelledby="studio-v2-layers-title">
@@ -133,10 +240,19 @@ export function LayersPanel({
               key={node.id}
               node={node}
               level={1}
+              tree={tree}
               selectedIds={selected}
               primaryId={primaryId}
+              focusId={focusId}
+              renamingId={renamingId}
+              renameValue={renameValue}
               onSelect={onSelect}
               onPatch={onPatch}
+              onFocusRequest={focusLayer}
+              onRenameStart={startRename}
+              onRenameValueChange={setRenameValue}
+              onRenameCommit={commitRename}
+              onRenameCancel={cancelRename}
             />
           ))}
         </ul>

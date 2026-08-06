@@ -59,7 +59,10 @@ function NumberControl({
         min={min}
         step={1}
         value={value}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
+        onChange={(event) => {
+          const nextValue = event.currentTarget.valueAsNumber;
+          if (Number.isFinite(nextValue) && nextValue >= min) onChange(nextValue);
+        }}
       />
     </label>
   );
@@ -79,6 +82,7 @@ function SizingSelect({ label, value, onChange }: { label: string; value: Studio
 }
 
 export function LayoutPanel({ value, diagnostic, onChange, onDetach }: LayoutPanelProps) {
+  const autoLayout = value.mode === "stack" || value.mode === "grid";
   const patchPadding = (side: keyof LayoutPanelValue["padding"], nextValue: number) => {
     onChange({ padding: { ...value.padding, [side]: nextValue } });
   };
@@ -146,81 +150,90 @@ export function LayoutPanel({ value, diagnostic, onChange, onDetach }: LayoutPan
         </fieldset>
       ) : null}
 
-      <fieldset>
-        <legend>Khoảng cách và padding</legend>
-        <NumberControl label="Khoảng cách" value={value.gap} onChange={(gap) => onChange({ gap })} />
-        <NumberControl label="Padding trên" value={value.padding.top} onChange={(next) => patchPadding("top", next)} />
-        <NumberControl label="Padding phải" value={value.padding.right} onChange={(next) => patchPadding("right", next)} />
-        <NumberControl label="Padding dưới" value={value.padding.bottom} onChange={(next) => patchPadding("bottom", next)} />
-        <NumberControl label="Padding trái" value={value.padding.left} onChange={(next) => patchPadding("left", next)} />
-      </fieldset>
+      {autoLayout ? (
+        <>
+          <fieldset>
+            <legend>Khoảng cách và padding</legend>
+            <NumberControl label="Khoảng cách" value={value.gap} onChange={(gap) => onChange({ gap })} />
+            <NumberControl label="Padding trên" value={value.padding.top} onChange={(next) => patchPadding("top", next)} />
+            <NumberControl label="Padding phải" value={value.padding.right} onChange={(next) => patchPadding("right", next)} />
+            <NumberControl label="Padding dưới" value={value.padding.bottom} onChange={(next) => patchPadding("bottom", next)} />
+            <NumberControl label="Padding trái" value={value.padding.left} onChange={(next) => patchPadding("left", next)} />
+          </fieldset>
 
-      <fieldset>
-        <legend>Căn chỉnh và phân bố</legend>
-        <label>
-          <span>Căn theo trục phụ</span>
-          <select value={value.align} onChange={(event) => onChange({ align: event.currentTarget.value as LayoutPanelValue["align"] })}>
-            <option value="start">Đầu</option>
-            <option value="center">Giữa</option>
-            <option value="end">Cuối</option>
-            <option value="stretch">Kéo giãn</option>
-          </select>
-        </label>
-        <label>
-          <span>Phân bố theo trục chính</span>
-          <select value={value.justify} onChange={(event) => onChange({ justify: event.currentTarget.value as LayoutPanelValue["justify"] })}>
-            <option value="start">Đầu</option>
-            <option value="center">Giữa</option>
-            <option value="end">Cuối</option>
-            <option value="space-between">Cách đều</option>
-          </select>
-        </label>
-      </fieldset>
+          <fieldset>
+            <legend>Căn chỉnh và phân bố</legend>
+            <label>
+              <span>Căn theo trục phụ</span>
+              <select value={value.align} onChange={(event) => onChange({ align: event.currentTarget.value as LayoutPanelValue["align"] })}>
+                <option value="start">Đầu</option>
+                <option value="center">Giữa</option>
+                <option value="end">Cuối</option>
+                <option value="stretch">Kéo giãn</option>
+              </select>
+            </label>
+            {value.mode === "stack" ? (
+              <label>
+                <span>Phân bố theo trục chính</span>
+                <select value={value.justify} onChange={(event) => onChange({ justify: event.currentTarget.value as LayoutPanelValue["justify"] })}>
+                  <option value="start">Đầu</option>
+                  <option value="center">Giữa</option>
+                  <option value="end">Cuối</option>
+                  <option value="space-between">Cách đều</option>
+                </select>
+              </label>
+            ) : null}
+          </fieldset>
 
-      <fieldset>
-        <legend>Kích thước thành phần con</legend>
-        <SizingSelect label="Chiều rộng" value={value.childWidth} onChange={(childWidth) => onChange({ childWidth })} />
-        <SizingSelect label="Chiều cao" value={value.childHeight} onChange={(childHeight) => onChange({ childHeight })} />
-      </fieldset>
+          <fieldset>
+            <legend>Kích thước thành phần con</legend>
+            <SizingSelect label="Chiều rộng" value={value.childWidth} onChange={(childWidth) => onChange({ childWidth })} />
+            <SizingSelect label="Chiều cao" value={value.childHeight} onChange={(childHeight) => onChange({ childHeight })} />
+          </fieldset>
+        </>
+      ) : null}
 
-      <fieldset>
-        <legend>Constraints khi resize khung cha</legend>
-        <label>
-          <span>Neo ngang</span>
-          <select
-            value={value.horizontalConstraint}
-            onChange={(event) => onChange({ horizontalConstraint: event.currentTarget.value as LayoutPanelValue["horizontalConstraint"] })}
-          >
-            <option value="left">Trái</option>
-            <option value="right">Phải</option>
-            <option value="center">Giữa</option>
-            <option value="stretch">Kéo giãn</option>
-            <option value="scale">Tỷ lệ</option>
-          </select>
-        </label>
-        <label>
-          <span>Neo dọc</span>
-          <select
-            value={value.verticalConstraint}
-            onChange={(event) => onChange({ verticalConstraint: event.currentTarget.value as LayoutPanelValue["verticalConstraint"] })}
-          >
-            <option value="top">Trên</option>
-            <option value="bottom">Dưới</option>
-            <option value="center">Giữa</option>
-            <option value="stretch">Kéo giãn</option>
-            <option value="scale">Tỷ lệ</option>
-          </select>
-        </label>
-      </fieldset>
+      {value.mode === "constraint" ? (
+        <fieldset>
+          <legend>Constraints khi resize khung cha</legend>
+          <label>
+            <span>Neo ngang</span>
+            <select
+              value={value.horizontalConstraint}
+              onChange={(event) => onChange({ horizontalConstraint: event.currentTarget.value as LayoutPanelValue["horizontalConstraint"] })}
+            >
+              <option value="left">Trái</option>
+              <option value="right">Phải</option>
+              <option value="center">Giữa</option>
+              <option value="stretch">Kéo giãn</option>
+              <option value="scale">Tỷ lệ</option>
+            </select>
+          </label>
+          <label>
+            <span>Neo dọc</span>
+            <select
+              value={value.verticalConstraint}
+              onChange={(event) => onChange({ verticalConstraint: event.currentTarget.value as LayoutPanelValue["verticalConstraint"] })}
+            >
+              <option value="top">Trên</option>
+              <option value="bottom">Dưới</option>
+              <option value="center">Giữa</option>
+              <option value="stretch">Kéo giãn</option>
+              <option value="scale">Tỷ lệ</option>
+            </select>
+          </label>
+        </fieldset>
+      ) : null}
 
-      <button
-        type="button"
-        onClick={onDetach}
-        disabled={value.mode !== "stack" && value.mode !== "grid"}
-        title={value.mode === "stack" || value.mode === "grid" ? "Giữ frame hiện tại và tách thành phần" : "Chỉ dùng khi thành phần đang ở auto layout"}
-      >
-        Tách khỏi auto layout
-      </button>
+      {autoLayout ? (
+        <button
+          type="button"
+          onClick={onDetach}
+          title="Giữ frame hiện tại và tách thành phần"
+        >
+          Tách khỏi auto layout
+        </button>
+      ) : null}
     </section>
   );
 }

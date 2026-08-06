@@ -28,6 +28,20 @@ describe("LayersPanel", () => {
     expect(html).toContain("Tiêu đề");
   });
 
+  it("keeps the first visible layer tabbable when there is no primary selection", () => {
+    const html = renderToStaticMarkup(<LayersPanel
+      elements={elements}
+      selectedIds={[]}
+      searchQuery=""
+      onSelect={() => undefined}
+      onPatch={() => undefined}
+    />);
+
+    expect(html).toContain('data-layer-select-id="group"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('aria-keyshortcuts="F2"');
+  });
+
   it("renders a clear empty search state", () => {
     const html = renderToStaticMarkup(<LayersPanel
       elements={elements}

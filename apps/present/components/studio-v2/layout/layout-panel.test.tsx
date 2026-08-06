@@ -36,6 +36,45 @@ describe("LayoutPanel", () => {
     expect(html).not.toContain("{&quot;mode&quot;");
   });
 
+  it("uses progressive disclosure for freeform and constraint modes", () => {
+    const freeform = renderToStaticMarkup(<LayoutPanel
+      value={{
+        mode: "freeform",
+        gap: 16,
+        padding: { top: 20, right: 20, bottom: 20, left: 20 },
+        align: "start",
+        justify: "start",
+        childWidth: "fixed",
+        childHeight: "fixed",
+        horizontalConstraint: "left",
+        verticalConstraint: "top"
+      }}
+      onChange={() => undefined}
+      onDetach={() => undefined}
+    />);
+    const constraint = renderToStaticMarkup(<LayoutPanel
+      value={{
+        mode: "constraint",
+        gap: 16,
+        padding: { top: 20, right: 20, bottom: 20, left: 20 },
+        align: "start",
+        justify: "start",
+        childWidth: "fixed",
+        childHeight: "fixed",
+        horizontalConstraint: "right",
+        verticalConstraint: "bottom"
+      }}
+      onChange={() => undefined}
+      onDetach={() => undefined}
+    />);
+
+    expect(freeform).not.toContain("Khoảng cách và padding");
+    expect(freeform).not.toContain("Constraints khi resize khung cha");
+    expect(constraint).toContain("Constraints khi resize khung cha");
+    expect(constraint).not.toContain("Khoảng cách và padding");
+    expect(constraint).not.toContain("Kích thước thành phần con");
+  });
+
   it("shows an actionable fit diagnostic without hiding the controls", () => {
     const html = renderToStaticMarkup(<LayoutPanel
       value={{
