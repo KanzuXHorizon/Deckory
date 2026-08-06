@@ -125,6 +125,31 @@ describe("evidence domain", () => {
     expect(JSON.stringify(parsed.sources[0])).not.toContain("requestInit");
   });
 
+  it("rejects unknown contract fields and malformed dataset rows", () => {
+    const unknownFieldDomain = validDomain() as EvidenceDomain & {
+      vendorPayload?: { option: string };
+    };
+    unknownFieldDomain.vendorPayload = { option: "raw" };
+
+    expect(() => EvidenceDomainSchema.parse(unknownFieldDomain)).toThrow();
+
+    const duplicateColumns = validDomain();
+    duplicateColumns.datasets[0]!.columns.push({
+      key: "score",
+      label: "Duplicate score",
+      type: "number"
+    });
+    expect(() => EvidenceDomainSchema.parse(duplicateColumns)).toThrow(/duplicate dataset column/i);
+
+    const wrongRowType = validDomain();
+    wrongRowType.datasets[0]!.rows[0]!.score = "sixty-two";
+    expect(() => EvidenceDomainSchema.parse(wrongRowType)).toThrow(/row value.*score/i);
+
+    const unknownRowField = validDomain();
+    unknownRowField.datasets[0]!.rows[0]!.vendorOption = "forbidden";
+    expect(() => EvidenceDomainSchema.parse(unknownRowField)).toThrow(/unknown row field/i);
+  });
+
   it("lists every dependent claim, dataset and visual before source deletion", () => {
     const dependents = traceSourceDependents(validDomain(), "interview-evaluation");
 

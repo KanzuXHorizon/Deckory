@@ -132,6 +132,97 @@ describe("data transforms", () => {
     ]);
   });
 
+  it("rejects duplicate or colliding transform fields before changing data", () => {
+    const duplicateSelect = applyDataTransform(dataset(), {
+      id: "duplicate-select",
+      version: 1,
+      type: "select",
+      fields: ["candidate", "candidate"]
+    });
+    const collidingAggregate = applyDataTransform(dataset(), {
+      id: "colliding-aggregate",
+      version: 1,
+      type: "group-aggregate",
+      groupBy: ["round"],
+      measures: [
+        { field: "score", operation: "mean", output: "round", label: "Invalid collision" }
+      ]
+    });
+    const pivotSource = dataset();
+    pivotSource.rows[0]!.round = "candidate";
+    const collidingPivot = applyDataTransform(pivotSource, {
+      id: "colliding-pivot",
+      version: 1,
+      type: "pivot",
+      index: ["candidate"],
+      column: "round",
+      value: "score",
+      operation: "first"
+    });
+
+    expect(duplicateSelect).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "duplicate-output-field" })]
+    });
+    expect(collidingAggregate).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "duplicate-output-field", field: "round" })]
+    });
+    expect(collidingPivot).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "invalid-pivot-key", field: "candidate" })]
+    });
+  });
+
+  it("rejects duplicate transform IDs and invalid filter operand shapes", () => {
+    const duplicateIds = applyDataTransforms(dataset(), [
+      {
+        id: "same-id",
+        version: 1,
+        type: "select",
+        fields: ["candidate", "score"]
+      },
+      {
+        id: "same-id",
+        version: 1,
+        type: "sort",
+        by: [{ field: "score", direction: "desc" }]
+      }
+    ]);
+    const invalidFilter = applyDataTransform(dataset(), {
+      id: "bad-in-filter",
+      version: 1,
+      type: "filter",
+      predicate: { field: "round", operator: "in", value: "1" }
+    });
+
+    expect(duplicateIds).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "duplicate-transform-id", transformId: "same-id" })]
+    });
+    expect(invalidFilter).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "invalid-operand", transformId: "bad-in-filter" })]
+    });
+  });
+
+  it("rejects an invalid source dataset before applying a transform", () => {
+    const invalid = dataset();
+    invalid.columns.push({ key: "score", label: "Duplicate", type: "number" });
+
+    const result = applyDataTransform(invalid, {
+      id: "sort-invalid-source",
+      version: 1,
+      type: "sort",
+      by: [{ field: "score", direction: "desc" }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "invalid-dataset" })]
+    });
+  });
+
   it("returns actionable diagnostics for invalid fields and non-finite derive results", () => {
     const missingField = applyDataTransform(dataset(), {
       id: "bad-filter",

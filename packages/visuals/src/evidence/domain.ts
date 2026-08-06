@@ -35,6 +35,7 @@ export const DeckDataSourceSchema = z
     privacyNote: z.string().trim().optional(),
     copyrightNote: z.string().trim().optional()
   })
+  .strict()
   .superRefine((source, context) => {
     if (source.kind === "url-reference" && !source.referenceUrl) {
       context.addIssue({
@@ -63,22 +64,36 @@ export const EvidenceRecordSchema = z.object({
   period: z.string().trim().min(1).optional(),
   sample: z.string().trim().min(1).optional(),
   confidence: z.enum(["high", "medium", "low"]).optional()
-});
+}).strict();
 export type EvidenceRecord = z.infer<typeof EvidenceRecordSchema>;
 
-export const ClaimRecordSchema = z.object({
-  id: z.string().trim().min(1),
-  text: z.string().trim().min(1),
-  slideId: z.string().trim().min(1),
-  elementId: z.string().trim().min(1).optional(),
-  evidenceIds: z.array(z.string().trim().min(1)),
-  status: z.enum([
-    "supported",
-    "partially-supported",
-    "unsupported",
-    "illustrative"
-  ])
-});
+export const ClaimRecordSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    text: z.string().trim().min(1),
+    slideId: z.string().trim().min(1),
+    elementId: z.string().trim().min(1).optional(),
+    evidenceIds: z.array(z.string().trim().min(1)),
+    status: z.enum([
+      "supported",
+      "partially-supported",
+      "unsupported",
+      "illustrative"
+    ])
+  })
+  .strict()
+  .superRefine((claim, context) => {
+    if (
+      (claim.status === "supported" || claim.status === "partially-supported") &&
+      claim.evidenceIds.length === 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["evidenceIds"],
+        message: `${claim.status} claim requires at least one evidence ID.`
+      });
+    }
+  });
 export type ClaimRecord = z.infer<typeof ClaimRecordSchema>;
 
 export const DataValueSchema = z.union([
@@ -94,7 +109,7 @@ export const DatasetColumnSchema = z.object({
   key: z.string().trim().min(1),
   label: z.string().trim().min(1),
   type: z.enum(["string", "number", "boolean", "date"])
-});
+}).strict();
 export type DatasetColumn = z.infer<typeof DatasetColumnSchema>;
 
 export const TransformLineageStepSchema = z.object({
@@ -103,26 +118,70 @@ export const TransformLineageStepSchema = z.object({
   version: z.number().int().positive(),
   inputRowCount: z.number().int().nonnegative(),
   outputRowCount: z.number().int().nonnegative()
-});
+}).strict();
 export type TransformLineageStep = z.infer<typeof TransformLineageStepSchema>;
 
 export const DatasetLineageSchema = z.object({
   sourceDatasetId: z.string().trim().min(1),
   sourceIds: z.array(z.string().trim().min(1)),
   transforms: z.array(TransformLineageStepSchema)
-});
+}).strict();
 export type DatasetLineage = z.infer<typeof DatasetLineageSchema>;
 
-export const DatasetSchema = z.object({
-  id: z.string().trim().min(1),
-  label: z.string().trim().min(1),
-  sourceIds: z.array(z.string().trim().min(1)).min(1),
-  status: EvidenceStatusSchema,
-  illustrativeLabel: z.string().trim().min(1).optional(),
-  columns: z.array(DatasetColumnSchema),
-  rows: z.array(z.record(z.string(), DataValueSchema)),
-  lineage: DatasetLineageSchema.optional()
-});
+export const DatasetSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    label: z.string().trim().min(1),
+    sourceIds: z.array(z.string().trim().min(1)).min(1),
+    status: EvidenceStatusSchema,
+    illustrativeLabel: z.string().trim().min(1).optional(),
+    columns: z.array(DatasetColumnSchema),
+    rows: z.array(z.record(z.string(), DataValueSchema)),
+    lineage: DatasetLineageSchema.optional()
+  })
+  .strict()
+  .superRefine((dataset, context) => {
+    const columnsByKey = new Map<string, DatasetColumn>();
+    dataset.columns.forEach((column, columnIndex) => {
+      if (columnsByKey.has(column.key)) {
+        context.addIssue({
+          code: "custom",
+          path: ["columns", columnIndex, "key"],
+          message: `Duplicate dataset column: ${column.key}.`
+        });
+      }
+      columnsByKey.set(column.key, column);
+    });
+
+    dataset.rows.forEach((row, rowIndex) => {
+      for (const [key, value] of Object.entries(row)) {
+        const column = columnsByKey.get(key);
+        if (!column) {
+          context.addIssue({
+            code: "custom",
+            path: ["rows", rowIndex, key],
+            message: `Unknown row field: ${key}.`
+          });
+          continue;
+        }
+        if (value === null) continue;
+        const valid =
+          (column.type === "string" && typeof value === "string") ||
+          (column.type === "number" && typeof value === "number" && Number.isFinite(value)) ||
+          (column.type === "boolean" && typeof value === "boolean") ||
+          (column.type === "date" &&
+            typeof value === "string" &&
+            /^\d{4}-\d{2}-\d{2}(?:[T ][^\s]+)?$/u.test(value));
+        if (!valid) {
+          context.addIssue({
+            code: "custom",
+            path: ["rows", rowIndex, key],
+            message: `Row value for ${key} does not match declared ${column.type} type.`
+          });
+        }
+      }
+    });
+  });
 export type Dataset = z.infer<typeof DatasetSchema>;
 
 export const VisualDataBindingSchema = z.object({
@@ -132,7 +191,7 @@ export const VisualDataBindingSchema = z.object({
   elementId: z.string().trim().min(1).optional(),
   datasetId: z.string().trim().min(1).optional(),
   claimIds: z.array(z.string().trim().min(1)).default([])
-});
+}).strict();
 export type VisualDataBinding = z.infer<typeof VisualDataBindingSchema>;
 
 export const EvidenceDomainSchema = z.object({
@@ -141,7 +200,7 @@ export const EvidenceDomainSchema = z.object({
   claims: z.array(ClaimRecordSchema),
   datasets: z.array(DatasetSchema),
   visualBindings: z.array(VisualDataBindingSchema)
-});
+}).strict();
 export type EvidenceDomain = z.infer<typeof EvidenceDomainSchema>;
 
 export type EvidenceDomainDiagnosticCode =

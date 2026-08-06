@@ -1,9 +1,10 @@
-import type {
-  DataRow,
-  Dataset,
-  DatasetColumn,
-  DatasetLineage,
-  DataValue
+import {
+  DatasetSchema,
+  type DataRow,
+  type Dataset,
+  type DatasetColumn,
+  type DatasetLineage,
+  type DataValue
 } from "./domain";
 
 export type { Dataset } from "./domain";
@@ -101,6 +102,8 @@ export type DataTransform =
   | PivotTransform;
 
 export type DataTransformDiagnosticCode =
+  | "invalid-dataset"
+  | "duplicate-transform-id"
   | "unknown-field"
   | "invalid-operand"
   | "non-finite-result"
@@ -239,6 +242,18 @@ function selectTransform(dataset: Dataset, transform: SelectTransform): DataTran
       "Khai báo fields theo thứ tự cần xuất."
     );
   }
+  const duplicateField = transform.fields.find(
+    (field, index) => transform.fields.indexOf(field) !== index
+  );
+  if (duplicateField) {
+    return fail(
+      transform,
+      "duplicate-output-field",
+      `Select transform khai báo field trùng: ${duplicateField}.`,
+      "Mỗi field chỉ được xuất hiện một lần trong select fields.",
+      { field: duplicateField }
+    );
+  }
   const missing = requireFields(dataset, transform, transform.fields);
   if (missing) return missing;
   const columnsByKey = columnMap(dataset);
@@ -294,6 +309,19 @@ function filterMatches(
 }
 
 function filterTransform(dataset: Dataset, transform: FilterTransform): DataTransformResult {
+  const expectsArray = transform.predicate.operator === "in";
+  const receivedArray = Array.isArray(transform.predicate.value);
+  if (expectsArray !== receivedArray) {
+    return fail(
+      transform,
+      "invalid-operand",
+      expectsArray
+        ? "Filter operator in yêu cầu một mảng giá trị."
+        : `Filter operator ${transform.predicate.operator} yêu cầu một giá trị đơn.`,
+      "Đổi predicate value đúng với operator đã chọn.",
+      { field: transform.predicate.field }
+    );
+  }
   const missing = requireFields(dataset, transform, [transform.predicate.field]);
   if (missing) return missing;
   const rows = dataset.rows
@@ -489,6 +517,19 @@ function groupAggregateTransform(
     ...transform.measures.map((measure) => measure.field)
   ]);
   if (missing) return missing;
+  const outputKeys = new Set(transform.groupBy);
+  for (const measure of transform.measures) {
+    if (outputKeys.has(measure.output)) {
+      return fail(
+        transform,
+        "duplicate-output-field",
+        `Group-aggregate output ghi đè field đã tồn tại trong result: ${measure.output}.`,
+        "Đặt output key duy nhất, khác groupBy và các measure khác.",
+        { field: measure.output }
+      );
+    }
+    outputKeys.add(measure.output);
+  }
   const groups = new Map<string, DataRow[]>();
   for (const row of dataset.rows) {
     const key = JSON.stringify(transform.groupBy.map((field) => row[field] ?? null));
@@ -582,6 +623,17 @@ function pivotTransform(dataset: Dataset, transform: PivotTransform): DataTransf
   const orderedPivotKeys = [...pivotKeys].sort((a, b) =>
     a.localeCompare(b, "vi", { numeric: true, sensitivity: "base" })
   );
+  const indexKeys = new Set(transform.index);
+  const collidingPivotKey = orderedPivotKeys.find((key) => indexKeys.has(key));
+  if (collidingPivotKey) {
+    return fail(
+      transform,
+      "invalid-pivot-key",
+      `Pivot key ghi đè index field: ${collidingPivotKey}.`,
+      "Đổi pivot category hoặc index field để output columns có key duy nhất.",
+      { field: collidingPivotKey }
+    );
+  }
   const rows: DataRow[] = [];
   for (const groupKey of [...grouped.keys()].sort((a, b) => a.localeCompare(b, "en"))) {
     const groupRows = grouped.get(groupKey) ?? [];
@@ -627,7 +679,17 @@ export function applyDataTransform(
   sourceDataset: Dataset,
   transform: DataTransform
 ): DataTransformResult {
-  const dataset = cloneDataset(sourceDataset);
+  const parsed = DatasetSchema.safeParse(sourceDataset);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return fail(
+      transform,
+      "invalid-dataset",
+      `Source dataset không hợp lệ: ${issue?.message ?? "unknown validation error"}`,
+      "Sửa columns, rows, source IDs và lineage trước khi chạy transform."
+    );
+  }
+  const dataset = cloneDataset(parsed.data);
   switch (transform.type) {
     case "select":
       return selectTransform(dataset, transform);
@@ -648,6 +710,20 @@ export function applyDataTransforms(
   sourceDataset: Dataset,
   transforms: readonly DataTransform[]
 ): DataTransformResult {
+  const seenTransformIds = new Set(
+    sourceDataset.lineage?.transforms.map((step) => step.transformId) ?? []
+  );
+  for (const transform of transforms) {
+    if (seenTransformIds.has(transform.id)) {
+      return fail(
+        transform,
+        "duplicate-transform-id",
+        `Transform ID bị lặp trong lineage: ${transform.id}.`,
+        "Mỗi transform step phải có stable ID duy nhất trong toàn bộ lineage."
+      );
+    }
+    seenTransformIds.add(transform.id);
+  }
   if (transforms.length === 0) {
     const dataset = cloneDataset(sourceDataset);
     const lineage = baseLineage(dataset);
