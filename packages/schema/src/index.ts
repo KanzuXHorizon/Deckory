@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export * from "./v2";
+export * from "@deckory/schema/v2";
 
 export const SUPPORTED_COMPONENT_TYPES = [
   "heading",
