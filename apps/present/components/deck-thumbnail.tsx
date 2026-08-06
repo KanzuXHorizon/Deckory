@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
-import type { DeckAsset, Slide } from "@deckory/schema";
+import type { DeckAsset, DeckAssetV2, SceneSlide, Slide } from "@deckory/schema";
 import { SlideFrame } from "./slide-frame";
 
 const PRESENTATION_WIDTH = 1280;
@@ -14,9 +14,9 @@ export function calculatePreviewScale(width: number, height: number): number {
 }
 
 type ScaledSlidePreviewProps = {
-  slide: Slide;
+  slide: Slide | SceneSlide;
   deckId?: string;
-  assets?: readonly DeckAsset[] | undefined;
+  assets?: readonly DeckAsset[] | readonly DeckAssetV2[] | undefined;
   sequenceStep?: number;
   className?: string;
   label?: string;
@@ -57,10 +57,10 @@ export function DeckThumbnail({
   themeClassName,
   assets
 }: {
-  slide: Slide;
+  slide: Slide | SceneSlide;
   label?: string;
   themeClassName?: string;
-  assets?: readonly DeckAsset[] | undefined;
+  assets?: readonly DeckAsset[] | readonly DeckAssetV2[] | undefined;
 }) {
   const classes = ["deck-thumbnail", "scaled-slide-preview", themeClassName].filter(Boolean).join(" ");
 
@@ -90,9 +90,9 @@ function ScaledCanvas({
   reducedMotion,
   previewKey
 }: {
-  slide: Slide;
+  slide: Slide | SceneSlide;
   deckId: string;
-  assets: readonly DeckAsset[] | undefined;
+  assets: readonly DeckAsset[] | readonly DeckAssetV2[] | undefined;
   sequenceStep: number;
   className: string;
   label?: string;
@@ -129,15 +129,27 @@ function ScaledCanvas({
       aria-label={label}
     >
       <div className="scaled-slide-preview-canvas">
-        <SlideFrame
-          key={previewKey}
-          slide={slide}
-          deckId={deckId}
-          assets={assets}
-          sequenceStep={sequenceStep}
-          reducedMotion={reducedMotion}
-          motionDisabled={motionDisabled}
-        />
+        {"elements" in slide ? (
+          <SlideFrame
+            key={previewKey}
+            slide={slide}
+            deckId={deckId}
+            assets={assets as readonly DeckAssetV2[] | undefined}
+            sequenceStep={sequenceStep}
+            reducedMotion={reducedMotion}
+            motionDisabled={motionDisabled}
+          />
+        ) : (
+          <SlideFrame
+            key={previewKey}
+            slide={slide}
+            deckId={deckId}
+            assets={assets as readonly DeckAsset[] | undefined}
+            sequenceStep={sequenceStep}
+            reducedMotion={reducedMotion}
+            motionDisabled={motionDisabled}
+          />
+        )}
       </div>
     </div>
   );

@@ -38,9 +38,15 @@ importers:
       '@deckory/deckory-story':
         specifier: workspace:*
         version: link:../../decks/deckory-story
+      '@deckory/deckory-story-v2':
+        specifier: workspace:*
+        version: link:../../decks/deckory-story-v2
       '@deckory/myinterview-defense':
         specifier: workspace:*
         version: link:../../decks/myinterview-defense
+      '@deckory/myinterview-defense-v2':
+        specifier: workspace:*
+        version: link:../../decks/myinterview-defense-v2
       '@deckory/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
@@ -53,9 +59,15 @@ importers:
       '@deckory/template-gallery':
         specifier: workspace:*
         version: link:../../decks/template-gallery
+      '@deckory/template-gallery-v2':
+        specifier: workspace:*
+        version: link:../../decks/template-gallery-v2
       '@deckory/templates':
         specifier: workspace:*
         version: link:../../packages/templates
+      '@deckory/visual-lab-v2':
+        specifier: workspace:*
+        version: link:../../decks/visual-lab-v2
       '@deckory/visuals':
         specifier: workspace:*
         version: link:../../packages/visuals
@@ -81,6 +93,21 @@ importers:
         specifier: workspace:*
         version: link:../../packages/schema
 
+  decks/deckory-story-v2:
+    dependencies:
+      '@deckory/deckory-story':
+        specifier: workspace:*
+        version: link:../deckory-story
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+      '@deckory/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
+      '@deckory/visuals':
+        specifier: workspace:*
+        version: link:../../packages/visuals
+
   decks/myinterview-defense:
     dependencies:
       '@deckory/schema':
@@ -90,6 +117,21 @@ importers:
         specifier: workspace:*
         version: link:../../packages/templates
 
+  decks/myinterview-defense-v2:
+    dependencies:
+      '@deckory/myinterview-defense':
+        specifier: workspace:*
+        version: link:../myinterview-defense
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+      '@deckory/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
+      '@deckory/visuals':
+        specifier: workspace:*
+        version: link:../../packages/visuals
+
   decks/template-gallery:
     dependencies:
       '@deckory/schema':
@@ -98,6 +140,33 @@ importers:
       '@deckory/templates':
         specifier: workspace:*
         version: link:../../packages/templates
+
+  decks/template-gallery-v2:
+    dependencies:
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+      '@deckory/template-gallery':
+        specifier: workspace:*
+        version: link:../template-gallery
+      '@deckory/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
+      '@deckory/visuals':
+        specifier: workspace:*
+        version: link:../../packages/visuals
+
+  decks/visual-lab-v2:
+    dependencies:
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+      '@deckory/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
+      '@deckory/visuals':
+        specifier: workspace:*
+        version: link:../../packages/visuals
 
   packages/audit:
     dependencies:

@@ -666,16 +666,59 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.hub-library {
+.hub-v2-library {
   padding-top: 64px;
 }
 
+.hub-v2-library .section-heading-row > div > p,
 .hub-library .section-heading-row > div > p {
   max-width: 64ch;
   margin: 9px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.hub-v2-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.hub-v2-summary strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.hub-v2-summary span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.hub-v2-card {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+}
+
+.hub-v2-card .deck-card-preview {
+  text-decoration: none;
+}
+
+.hub-v2-card > footer {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.hub-v2-card > footer a {
+  min-width: 0;
+  padding-inline: 7px !important;
+  font-size: 10px;
+}
+
+.hub-library {
+  padding-top: 64px;
 }
 
 .hub-shell .deck-card > footer {

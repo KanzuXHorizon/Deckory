@@ -22,6 +22,19 @@ describe("Deckory Hub workspace hierarchy", () => {
     expect(html).toContain("Mở Studio V2");
   });
 
+  it("keeps MyInterview V2 visible with review-safe actions", () => {
+    const html = renderToStaticMarkup(<Hub />);
+
+    expect(html).toContain('id="v2-library"');
+    expect(html).toContain('data-v2-deck-id="myinterview-defense-v2"');
+    expect(html).toContain("MyInterview");
+    expect(html).toContain("runtime pending");
+    expect(html).toContain('/studio?deck=myinterview-defense-v2');
+    expect(html).toContain('/preview?deck=myinterview-defense-v2');
+    expect(html).toContain('/present?deck=myinterview-defense-v2');
+    expect(html).toContain('/export?deck=myinterview-defense-v2');
+  });
+
   it("keeps every deck action explicitly named", () => {
     const html = renderToStaticMarkup(<Hub />);
 

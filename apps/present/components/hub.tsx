@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock3,
   Eye,
+  FileOutput,
   LayoutGrid,
   Pencil,
   Play,
@@ -15,7 +16,7 @@ import {
   SlidersHorizontal,
   Sparkles
 } from "lucide-react";
-import { deckCatalog, sceneFoundationAudit, slideTitle, visualCoverage } from "../lib/deck-catalog";
+import { deckCatalog, sceneFoundationAudit, slideTitle, v2DeckCatalog, visualCoverage } from "../lib/deck-catalog";
 import { deckThemeClassName } from "../lib/deck-theme";
 import { layoutLabel } from "../lib/studio-option-catalog";
 import { DeckoryBrand } from "./brand-mark";
@@ -117,6 +118,54 @@ export function Hub() {
           <Link className="secondary-action" href="/studio?deck=scene-foundation">Mở Studio V2 <ArrowRight size={16} /></Link>
         </div>
         <QualitySummaryV2 report={sceneFoundationAudit} />
+      </section>
+
+      <section className="hub-section hub-v2-library" id="v2-library" aria-labelledby="v2-library-title">
+        <div className="section-heading-row">
+          <div>
+            <span className="section-label">SCENE V2 MIGRATIONS</span>
+            <h2 id="v2-library-title">Bốn deck tham chiếu đã chuyển sang document model có thể audit.</h2>
+            <p>V1 vẫn được giữ làm rollback source. Bản V2 công bố trạng thái review, evidence migration và export capability thay vì tự nhận production-ready.</p>
+          </div>
+          <div className="hub-v2-summary" aria-label="Tóm tắt thư viện Scene V2">
+            <strong>{v2DeckCatalog.length}</strong>
+            <span>deck V2 · {v2DeckCatalog.reduce((sum, item) => sum + item.deck.slides.length, 0)} slide</span>
+          </div>
+        </div>
+        <div className="deck-library-grid hub-v2-grid">
+          {v2DeckCatalog.map((item) => {
+            const score = item.audit.scorecard.overallScore;
+            const structuralErrors = item.audit.summary.errorCount;
+            return (
+              <article className="deck-card hub-v2-card" data-v2-deck-id={item.deck.id} key={item.deck.id}>
+                <Link className="deck-card-preview" href={`/preview?deck=${item.deck.id}`} aria-label={`Xem trước ${item.deck.title}`}>
+                  <DeckThumbnail slide={item.deck.slides[0]!} assets={item.deck.assets} />
+                  <span className={`hub-status-chip ${structuralErrors === 0 ? "hub-status-chip--ready" : "hub-status-chip--draft"}`}>
+                    {structuralErrors === 0 ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
+                    {structuralErrors === 0 ? "Structural pass" : `${structuralErrors} lỗi cấu trúc`}
+                  </span>
+                </Link>
+                <div className="deck-card-content">
+                  <div><span>{item.deck.slides.length} SLIDE</span><span>{item.updatedLabel}</span></div>
+                  <h3>{item.deck.title}</h3>
+                  <p>{item.description}</p>
+                  <div className="deck-card-quality" aria-label={`V2 quality score ${score} trên 10`}>
+                    <span>V2 score · runtime pending</span>
+                    <div aria-hidden="true"><i style={{ width: `${score * 10}%` }} /></div>
+                    <strong>{score}/10</strong>
+                  </div>
+                  <ul>{item.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
+                </div>
+                <footer>
+                  <Link href={`/studio?deck=${item.deck.id}`}><Pencil size={14} /> Studio</Link>
+                  <Link href={`/preview?deck=${item.deck.id}`}><Eye size={14} /> Preview</Link>
+                  <Link href={`/present?deck=${item.deck.id}`}><Play size={14} /> Present</Link>
+                  <Link className="deck-card-present" href={`/export?deck=${item.deck.id}`} aria-label={`Xuất deck ${item.deck.title}`}><FileOutput size={15} /><span>Export</span></Link>
+                </footer>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
       <section className="hub-section hub-library" id="library" aria-labelledby="library-title">

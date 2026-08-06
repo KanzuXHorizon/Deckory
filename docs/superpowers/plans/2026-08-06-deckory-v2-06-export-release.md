@@ -415,7 +415,7 @@ git commit -m "feat(audit): score V2 across twenty quality dimensions"
 **Interfaces:**
 - Produces V2 template instantiation and four production reference decks while retaining V1 sources.
 
-- [ ] **Step 1: Write failing V2 template instantiation tests**
+- [x] **Step 1: Write failing V2 template instantiation tests**
 
 ```ts
 it("instantiates a V2 recipe with explicit frames and semantic metadata", () => {
@@ -427,15 +427,15 @@ it("instantiates a V2 recipe with explicit frames and semantic metadata", () => 
 });
 ```
 
-- [ ] **Step 2: Migrate Visual Lab and Template Gallery**
+- [x] **Step 2: Migrate Visual Lab and Template Gallery**
 
 Use these to verify every component, recipe, master and visual world before migrating story-critical decks.
 
-- [ ] **Step 3: Migrate Deckory Story**
+- [x] **Step 3: Migrate Deckory Story**
 
 Preserve thesis, architecture and evidence. Replace repeated layouts only where the V2 catalog provides a clearer relationship visual.
 
-- [ ] **Step 4: Migrate MyInterview Defense**
+- [x] **Step 4: Migrate MyInterview Defense**
 
 Required acceptance:
 
@@ -453,11 +453,11 @@ Required acceptance:
 - presentation flow works offline;
 - MyInterview V2 is visible in Hub.
 
-- [ ] **Step 5: Add per-deck migration tests**
+- [x] **Step 5: Add per-deck migration tests**
 
 Tests assert slide count/range, stable critical IDs, thesis and section roles, conclusion coverage, claim/evidence coverage, dataset lineage, notes, composition variance, no unresolved migration diagnostics and schema validity.
 
-- [ ] **Step 6: Run strict migration verification**
+- [x] **Step 6: Run strict migration verification**
 
 ```bash
 pnpm --filter @deckory/templates test
@@ -469,7 +469,7 @@ pnpm assets:check
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit each deck separately**
+- [x] **Step 7: Commit each deck separately**
 
 Use one logical commit per migrated deck so a visual regression can be reverted without reverting the platform.
 

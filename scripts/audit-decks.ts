@@ -5,7 +5,8 @@ import {
 } from "../packages/audit/src/index.ts";
 import {
   deckCatalog,
-  sceneFoundationAudit
+  sceneFoundationAudit,
+  v2DeckCatalog
 } from "../apps/present/lib/deck-catalog.ts";
 
 const argumentsSet = new Set(process.argv.slice(2));
@@ -29,7 +30,7 @@ Options:
 }
 
 const v1Reports = auditDecks(deckCatalog.map((item) => item.deck));
-const v2Reports = [sceneFoundationAudit];
+const v2Reports = [sceneFoundationAudit, ...v2DeckCatalog.map((item) => item.audit)];
 const reports = [...v1Reports, ...v2Reports];
 
 if (asJson) {

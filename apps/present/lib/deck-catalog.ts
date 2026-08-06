@@ -1,6 +1,10 @@
 import { deckoryStory } from "@deckory/deckory-story";
+import { deckoryStoryV2 } from "@deckory/deckory-story-v2";
 import { myInterviewDefense } from "@deckory/myinterview-defense";
+import { myInterviewDefenseV2 } from "@deckory/myinterview-defense-v2";
 import { templateGalleryDeck } from "@deckory/template-gallery";
+import { templateGalleryV2 } from "@deckory/template-gallery-v2";
+import { visualLabV2 } from "@deckory/visual-lab-v2";
 import {
   auditDeckV2,
   scoreDeckQuality,
@@ -252,6 +256,50 @@ export const deckCatalog: DeckCatalogItem[] = [
     updatedLabel: "Template system",
     tags: ["Templates", "Blueprints", "Agent authoring"],
     quality: scoreDeckQuality(templateGalleryDeck)
+  }
+];
+
+export type V2DeckCatalogItem = {
+  deck: DeckDocumentV2;
+  description: string;
+  status: "review" | "ready";
+  updatedLabel: string;
+  tags: string[];
+  audit: ReturnType<typeof auditDeckV2>;
+};
+
+export const v2DeckCatalog: V2DeckCatalogItem[] = [
+  {
+    deck: myInterviewDefenseV2,
+    description: "Bản Scene V2 của deck bảo vệ MyInterview, giữ đủ 23 story beat, roster và asset local.",
+    status: "review",
+    updatedLabel: "V2 migration",
+    tags: ["MyInterview", "Academic defense", "Scene V2"],
+    audit: auditDeckV2(myInterviewDefenseV2)
+  },
+  {
+    deck: deckoryStoryV2,
+    description: "Deckory product story đã chuyển sang Scene V2 với narrative và evidence metadata.",
+    status: "review",
+    updatedLabel: "V2 migration",
+    tags: ["Product story", "Scene V2", "Architecture"],
+    audit: auditDeckV2(deckoryStoryV2)
+  },
+  {
+    deck: visualLabV2,
+    description: "Visual QA deck V2 cho chart, table, code, team và relationship content.",
+    status: "review",
+    updatedLabel: "V2 visual QA",
+    tags: ["Visual Lab", "Scene V2", "Data story"],
+    audit: auditDeckV2(visualLabV2)
+  },
+  {
+    deck: templateGalleryV2,
+    description: "Template Gallery đã instantiate và migrate qua typed V2 template pipeline.",
+    status: "review",
+    updatedLabel: "V2 templates",
+    tags: ["Templates", "Scene V2", "Agent authoring"],
+    audit: auditDeckV2(templateGalleryV2)
   }
 ];
 
@@ -836,11 +884,17 @@ export function resolveDeck(deckId?: string | null): DeckDocument {
   return deckCatalog.find((item) => item.deck.id === deckId)?.deck ?? defaultDeck;
 }
 
-export function resolveAnyDeck(deckId?: string | null): AnyDeckDocument {
+export function findAnyDeck(deckId?: string | null): AnyDeckDocument | undefined {
+  if (!deckId) return undefined;
   if (deckId === sceneFoundationDeck.id) return sceneFoundationDeck;
   if (deckId === pptxV2ProofDeck.id) return pptxV2ProofDeck;
   if (deckId === exportV2ProofDeck.id) return exportV2ProofDeck;
-  return resolveDeck(deckId);
+  return v2DeckCatalog.find((item) => item.deck.id === deckId)?.deck
+    ?? deckCatalog.find((item) => item.deck.id === deckId)?.deck;
+}
+
+export function resolveAnyDeck(deckId?: string | null): AnyDeckDocument {
+  return findAnyDeck(deckId) ?? defaultDeck;
 }
 
 export function resolveCatalogItem(deckId?: string | null): DeckCatalogItem {

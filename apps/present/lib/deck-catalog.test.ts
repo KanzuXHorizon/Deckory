@@ -1,27 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { myInterviewDefense } from "@deckory/myinterview-defense";
-import { SUPPORTED_COMPONENT_TYPES } from "@deckory/schema";
-import { deckCatalog, resolveAnyDeck, resolveDeck, sceneFoundationDeck, visualCoverage } from "./deck-catalog";
+import { findAnyDeck, resolveAnyDeck, v2DeckCatalog } from "./deck-catalog.js";
+import { isDeckDocumentV2 } from "./deck-version.js";
 
-describe("deck catalog", () => {
-  it("uses the tracked MyInterview package as the only active defense deck", () => {
-    const catalogDeck = resolveDeck("myinterview-defense");
-
-    expect(catalogDeck).toBe(myInterviewDefense);
-    expect(catalogDeck.id).toBe("myinterview-defense");
-    expect(catalogDeck.slides).toHaveLength(23);
-    expect(deckCatalog.filter((item) => item.deck.id === "myinterview-defense")).toHaveLength(1);
+describe("Deckory V2 deck catalog", () => {
+  it("keeps MyInterview V2 first and exposes four unique production migrations", () => {
+    expect(v2DeckCatalog.map((item) => item.deck.id)).toEqual([
+      "myinterview-defense-v2",
+      "deckory-story-v2",
+      "visual-lab-v2",
+      "template-gallery-v2"
+    ]);
+    expect(new Set(v2DeckCatalog.map((item) => item.deck.id)).size).toBe(4);
+    expect(v2DeckCatalog.every((item) => item.audit.summary.errorCount === 0 && item.audit.summary.warningCount === 0)).toBe(true);
   });
 
-  it("resolves the hidden V2 scene fixture without changing the V1 Hub catalog", () => {
-    expect(resolveAnyDeck("scene-foundation")).toBe(sceneFoundationDeck);
-    expect(sceneFoundationDeck.schemaVersion).toBe(2);
-    expect(deckCatalog.some((item) => item.deck.id === sceneFoundationDeck.id)).toBe(false);
-  });
+  it("resolves migrated V2 decks without removing V1 rollback sources", () => {
+    const v2 = findAnyDeck("myinterview-defense-v2");
+    const v1 = findAnyDeck("myinterview-defense");
 
-  it("derives visual coverage from the canonical component catalog", () => {
-    const componentCoverage = visualCoverage.find((item) => item.label === "Components");
-
-    expect(componentCoverage?.value).toBe(String(SUPPORTED_COMPONENT_TYPES.length));
+    expect(v2 && isDeckDocumentV2(v2)).toBe(true);
+    expect(v1 && !isDeckDocumentV2(v1)).toBe(true);
+    expect(v2?.slides).toHaveLength(23);
+    expect(v1?.slides).toHaveLength(23);
+    expect(resolveAnyDeck("missing-deck").id).toBe("myinterview-defense");
   });
 });
