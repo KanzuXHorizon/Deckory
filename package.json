@@ -21,7 +21,8 @@
   "scripts": {
     "dev": "pnpm --filter @deckory/present dev",
     "build": "pnpm --filter @deckory/present build",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --if-present test && pnpm test:scripts",
+    "test:scripts": "node --test scripts/export-image-contract.test.mjs scripts/pptx-image-deck.test.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint",
     "audit:decks": "node --experimental-strip-types --import ./scripts/register-typescript-loader.mjs scripts/audit-decks.ts",

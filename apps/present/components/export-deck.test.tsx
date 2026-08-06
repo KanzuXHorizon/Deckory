@@ -50,6 +50,12 @@ describe("ExportDeck", () => {
     expect(html).toContain('data-export-slide-id="evidence"');
     expect(html).toContain('data-visible="true"');
     expect(html).toContain("In / Lưu PDF");
+    expect(html).toContain("PNG");
+    expect(html).toContain("JPG");
+    expect(html).toContain("PPTX");
+    expect(html).toContain("PDF + PNG + JPG + PPTX");
+    expect(html).toContain("Sao chép lệnh");
+    expect(html).toContain("mở terminal tại thư mục Deckory");
     expect(html).not.toContain("Ghi chú riêng tư không được xuất.");
     expect(html).not.toContain("Giải thích chart khi thuyết trình.");
     expect(html).not.toContain("speaker-note-copy");

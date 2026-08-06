@@ -3,6 +3,8 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, extname, join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
+import { assertPngDimensions, createSlideImageClip } from "./export-image-contract.mjs";
+import { writeImageDeckPptx } from "./pptx-image-deck.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const options = parseArguments(process.argv.slice(2));
@@ -16,10 +18,10 @@ const runId = `${Date.now().toString(36)}-${process.pid}`;
 const distDir = `.next-export-${runId}`;
 const distPath = resolve(repositoryRoot, "apps", "present", distDir);
 const requestedOutputPath = resolve(repositoryRoot, options.output);
-const explicitPdfPath = options.format === "pdf" && extname(options.output).toLowerCase() === ".pdf"
+const explicitOutputFile = ["pdf", "pptx"].includes(options.format) && extname(options.output).toLowerCase() === `.${options.format}`
   ? requestedOutputPath
   : undefined;
-const outputRoot = explicitPdfPath ? dirname(explicitPdfPath) : requestedOutputPath;
+const outputRoot = explicitOutputFile ? dirname(explicitOutputFile) : requestedOutputPath;
 const port = await findAvailablePort();
 const environment = {
   ...process.env,
@@ -68,8 +70,17 @@ try {
   if (slideCount === 0) throw new Error("Deck không có slide để xuất.");
 
   const files = [];
-  if (options.format === "png" || options.format === "both") {
-    const pngDirectory = join(outputRoot, `${safeFileName(options.deck)}-png`);
+  const keepPng = ["png", "all"].includes(options.format);
+  const wantsJpeg = ["jpg", "jpeg", "all"].includes(options.format);
+  const wantsPdf = ["pdf", "all"].includes(options.format);
+  const wantsPptx = ["pptx", "all"].includes(options.format);
+  const needsPng = keepPng || wantsPptx;
+  const pptxImages = [];
+
+  if (needsPng) {
+    const pngDirectory = keepPng
+      ? join(outputRoot, `${safeFileName(options.deck)}-png`)
+      : join(distPath, "pptx-images");
     mkdirSync(pngDirectory, { recursive: true });
 
     for (let index = 0; index < slideCount; index += 1) {
@@ -77,13 +88,27 @@ try {
       const slideId = await slide.getAttribute("data-export-slide-id") ?? `slide-${index + 1}`;
       const filename = `${String(index + 1).padStart(2, "0")}-${safeFileName(slideId)}.png`;
       const filepath = join(pngDirectory, filename);
-      await slide.screenshot({ path: filepath, animations: "disabled", type: "png" });
+      await captureSlideImage(page, slide, { path: filepath, type: "png" });
+      assertPngDimensions(filepath);
+      pptxImages.push(filepath);
+      if (keepPng) files.push(relativeOutputPath(filepath));
+    }
+  }
+
+  if (wantsJpeg) {
+    const jpegDirectory = join(outputRoot, `${safeFileName(options.deck)}-jpg`);
+    mkdirSync(jpegDirectory, { recursive: true });
+    for (let index = 0; index < slideCount; index += 1) {
+      const slide = slides.nth(index);
+      const slideId = await slide.getAttribute("data-export-slide-id") ?? `slide-${index + 1}`;
+      const filepath = join(jpegDirectory, `${String(index + 1).padStart(2, "0")}-${safeFileName(slideId)}.jpg`);
+      await captureSlideImage(page, slide, { path: filepath, type: "jpeg", quality: 92 });
       files.push(relativeOutputPath(filepath));
     }
   }
 
-  if (options.format === "pdf" || options.format === "both") {
-    const pdfPath = explicitPdfPath ?? join(outputRoot, `${safeFileName(options.deck)}.pdf`);
+  if (wantsPdf) {
+    const pdfPath = options.format === "pdf" && explicitOutputFile ? explicitOutputFile : join(outputRoot, `${safeFileName(options.deck)}.pdf`);
     mkdirSync(dirname(pdfPath), { recursive: true });
     await page.emulateMedia({ media: "print" });
     await page.pdf({
@@ -94,6 +119,13 @@ try {
       outline: true
     });
     files.push(relativeOutputPath(pdfPath));
+  }
+
+  if (wantsPptx) {
+    const pptxPath = options.format === "pptx" && explicitOutputFile ? explicitOutputFile : join(outputRoot, `${safeFileName(options.deck)}.pptx`);
+    mkdirSync(dirname(pptxPath), { recursive: true });
+    writeImageDeckPptx({ outputPath: pptxPath, title: await page.title(), imagePaths: pptxImages });
+    files.push(relativeOutputPath(pptxPath));
   }
 
   if (failedResponses.length > 0 || pageErrors.length > 0) {
@@ -125,6 +157,16 @@ try {
   rmSync(distPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
 }
 
+async function captureSlideImage(page, slide, screenshotOptions) {
+  await slide.scrollIntoViewIfNeeded();
+  const clip = createSlideImageClip(await slide.boundingBox());
+  await page.screenshot({
+    ...screenshotOptions,
+    animations: "disabled",
+    clip
+  });
+}
+
 function parseArguments(args) {
   const values = args.filter((argument) => argument !== "--");
   const option = (name) => {
@@ -135,12 +177,16 @@ function parseArguments(args) {
   };
 
   const format = option("format") ?? "pdf";
-  if (!["pdf", "png", "both"].includes(format)) {
-    throw new Error(`Format “${format}” không hợp lệ. Chọn pdf, png hoặc both.`);
+  if (!["pdf", "png", "jpg", "jpeg", "pptx", "all"].includes(format)) {
+    throw new Error(`Format “${format}” không hợp lệ. Chọn pdf, png, jpg, pptx hoặc all.`);
   }
   const output = option("output") ?? "output/exports";
-  if (format !== "pdf" && extname(output).toLowerCase() === ".pdf") {
-    throw new Error("Đường dẫn --output kết thúc bằng .pdf chỉ dùng được với --format=pdf.");
+  const outputExtension = extname(output).toLowerCase();
+  if (outputExtension && ![".pdf", ".pptx"].includes(outputExtension)) {
+    throw new Error("--output phải là thư mục, hoặc tệp .pdf/.pptx phù hợp với format.");
+  }
+  if (outputExtension && outputExtension !== `.${format}`) {
+    throw new Error(`Đường dẫn ${outputExtension} chỉ dùng được với --format=${outputExtension.slice(1)}.`);
   }
 
   return {
@@ -157,11 +203,13 @@ function printHelp() {
 Usage:
   pnpm export:deck -- --deck=deckory-story --format=pdf
   pnpm export:deck -- --deck=template-gallery --format=png --output=output/exports
-  pnpm export:deck -- --deck=visual-lab --format=both
+  pnpm export:deck -- --deck=visual-lab --format=jpg
+  pnpm export:deck -- --deck=visual-lab --format=pptx
+  pnpm export:deck -- --deck=visual-lab --format=all
 
 Options:
   --deck      ID của deck đã đăng ký trong Deckory catalog.
-  --format    pdf, png hoặc both. Mặc định: pdf.
+  --format    pdf, png, jpg, pptx hoặc all. Mặc định: pdf.
   --output    Thư mục output hoặc đường dẫn .pdf khi format=pdf.
   --help      Hiển thị hướng dẫn.`);
 }

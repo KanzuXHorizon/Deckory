@@ -69,6 +69,25 @@ test.describe("Deckory export surface", () => {
     runtime.assertClean();
   });
 
+  test("copies explicit offline export commands and keeps the format panel responsive", async ({ context, page }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.setViewportSize({ width: 680, height: 900 });
+    await page.goto("/export?deck=deckory-story");
+    await waitForFonts(page);
+
+    const panel = page.locator(".export-format-panel");
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("mở terminal tại thư mục Deckory");
+    await panel.getByRole("button", { name: /^PNG\b/ }).click();
+    await expect(panel.getByRole("status")).toContainText("Đã sao chép lệnh PNG");
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(
+      "pnpm export:deck -- --deck=deckory-story --format=png"
+    );
+
+    const overflow = await panel.evaluate((element) => element.scrollWidth - element.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
+
   test("returns not found for an unknown deck instead of exporting the default deck", async ({ page }) => {
     const response = await page.goto("/export?deck=unknown-deck");
     expect(response?.status()).toBe(404);
