@@ -1,0 +1,244 @@
+.shell {
+  --studio-bg: #111318;
+  --studio-panel: #181b21;
+  --studio-panel-strong: #20242c;
+  --studio-line: #303540;
+  --studio-text: #f5f6f8;
+  --studio-muted: #a4aab5;
+  --studio-accent: #8c86ff;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 64px minmax(0, 1fr) 30px;
+  background: var(--studio-bg);
+  color: var(--studio-text);
+  overflow: hidden;
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--studio-line);
+  background: color-mix(in srgb, var(--studio-panel) 94%, transparent);
+}
+
+.brand,
+.actions,
+.navigation,
+.zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand { min-width: 0; }
+.brand div { min-width: 0; }
+.brand span,
+.statusbar,
+.panelLabel {
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--studio-muted);
+}
+.brand strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.actions { justify-content: center; }
+.navigation { justify-content: flex-end; }
+.topbar button,
+.topbar a,
+.toolbarButton {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: var(--studio-panel-strong);
+  color: var(--studio-text);
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}
+.topbar button:disabled { opacity: .42; cursor: not-allowed; }
+.topbar button:focus-visible,
+.topbar a:focus-visible,
+.slideButton:focus-visible,
+.canvasHost:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+
+.workspace {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr) 320px;
+}
+
+.leftPanel,
+.rightPanel {
+  min-height: 0;
+  overflow: auto;
+  background: var(--studio-panel);
+}
+.leftPanel { border-right: 1px solid var(--studio-line); }
+.rightPanel { border-left: 1px solid var(--studio-line); }
+
+.slideRail {
+  padding: 14px;
+  border-bottom: 1px solid var(--studio-line);
+}
+.slideRail header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.slideRail ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.slideButton {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: #14171c;
+  color: var(--studio-text);
+  text-align: left;
+  cursor: pointer;
+}
+.slideButton[data-active="true"] { border-color: var(--studio-accent); background: #23233a; }
+.slideButton span { color: var(--studio-muted); font-variant-numeric: tabular-nums; }
+.slideButton strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.canvasArea {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr);
+  background: radial-gradient(circle at 50% 45%, #262a33, #13161b 72%);
+}
+.canvasToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--studio-line);
+  background: #171a20;
+}
+.canvasToolbar p { margin: 0; color: var(--studio-muted); font-size: 12px; }
+.canvasHost {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+.canvasScroller {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+.canvasBounds { position: relative; flex: none; }
+.canvasStage {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 1280px;
+  height: 720px;
+  transform-origin: top left;
+  box-shadow: 0 24px 80px rgb(0 0 0 / .42);
+  background: #fff;
+}
+.canvasStage :global(.scene-slide) { pointer-events: auto; }
+.canvasStage :global(.scene-element) { cursor: move; }
+.canvasStage :global(.scene-element[data-locked="true"]) { cursor: not-allowed; }
+
+.selectionBox {
+  position: absolute;
+  border: 2px solid var(--studio-accent);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / .8) inset;
+  pointer-events: none;
+  z-index: 2147483000;
+}
+.selectionBox::after {
+  content: attr(data-selection-label);
+  position: absolute;
+  left: -2px;
+  bottom: calc(100% + 5px);
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--studio-accent);
+  color: #fff;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.inspectorSection {
+  padding: 16px;
+  border-bottom: 1px solid var(--studio-line);
+}
+.inspectorSection h2 { margin: 4px 0 6px; font-size: 15px; }
+.inspectorSection p { margin: 0; color: var(--studio-muted); font-size: 12px; line-height: 1.45; }
+.textEditor { display: grid; gap: 8px; margin-top: 12px; }
+.textEditor textarea {
+  min-height: 96px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: #101217;
+  color: var(--studio-text);
+  font: inherit;
+}
+
+.emptyInspector { padding: 24px 16px; color: var(--studio-muted); }
+.error {
+  margin: 12px;
+  padding: 10px 12px;
+  border: 1px solid #8f4f58;
+  border-radius: 8px;
+  background: #321e23;
+  color: #ffd7dc;
+  font-size: 12px;
+}
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 14px;
+  border-top: 1px solid var(--studio-line);
+  background: #15181d;
+}
+
+@media (max-width: 1050px) {
+  .workspace { grid-template-columns: 190px minmax(0, 1fr) 280px; }
+  .topbar { grid-template-columns: 1fr auto; }
+  .actions { display: none; }
+}
+
+@media (max-width: 760px) {
+  .shell { overflow: auto; }
+  .topbar { position: sticky; top: 0; z-index: 10; grid-template-columns: 1fr; height: auto; min-height: 64px; padding-block: 10px; }
+  .navigation { justify-content: flex-start; flex-wrap: wrap; }
+  .workspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(620px, 1fr) auto; }
+  .leftPanel, .rightPanel { max-height: 360px; border: 0; border-bottom: 1px solid var(--studio-line); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell *, .shell *::before, .shell *::after { scroll-behavior: auto !important; transition: none !important; }
+}

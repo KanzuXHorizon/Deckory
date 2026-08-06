@@ -10,6 +10,7 @@
     "@deckory/renderer": "workspace:*",
     "@deckory/deckory-story": "workspace:*",
     "@deckory/myinterview-defense": "workspace:*",
+    "@deckory/scene": "workspace:*",
     "@deckory/schema": "workspace:*",
     "@deckory/template-gallery": "workspace:*",
     "@deckory/templates": "workspace:*",
