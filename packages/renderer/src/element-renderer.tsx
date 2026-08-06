@@ -1,7 +1,12 @@
 import { Children, type CSSProperties, type ReactNode } from "react";
 import type { DeckAssetV2, SceneElement } from "@deckory/schema";
+import { normalizeRichText, type RichTextDocumentInput } from "@deckory/scene/rich-text";
 import { TrustedComponentHost } from "./component-host";
+import { ImageRenderer, type ImageRenderSpec } from "./image-renderer";
+import type { CompilerMotionState } from "./motion-compiler";
 import type { SceneRendererExtensions } from "./renderer-extensions";
+import { RichTextRenderer } from "./rich-text-renderer";
+import { ShapeRenderer, type ShapeRenderSpec } from "./shape-renderer";
 import { WebBlockHost, type WebBlockHostManifest } from "./web-block-host";
 
 export type SceneRenderMode = "final" | "thumbnail" | "studio" | "export";
@@ -32,6 +37,79 @@ function legacyComponent(element: Extract<SceneElement, { kind: "component-insta
       <small>{componentId}</small>
     </div>
   );
+}
+
+function renderRichText(element: Extract<SceneElement, { kind: "rich-text" }>): ReactNode {
+  try {
+    const document = normalizeRichText(element.content.document as RichTextDocumentInput);
+    return <RichTextRenderer document={document} />;
+  } catch (error) {
+    return (
+      <span data-scene-error="rich-text-invalid">
+        {element.content.plainText ?? element.accessibility.label ?? (error instanceof Error ? error.message : element.name)}
+      </span>
+    );
+  }
+}
+
+function shapeRenderSpec(element: Extract<SceneElement, { kind: "shape" }>): ShapeRenderSpec {
+  const supportedBlendModes = new Set<NonNullable<ShapeRenderSpec["blendMode"]>>([
+    "normal", "multiply", "screen", "overlay", "darken", "lighten", "soft-light", "difference"
+  ]);
+  const blendMode = element.blendMode && supportedBlendModes.has(element.blendMode as NonNullable<ShapeRenderSpec["blendMode"]>)
+    ? element.blendMode as NonNullable<ShapeRenderSpec["blendMode"]>
+    : undefined;
+  return {
+    id: element.id,
+    shape: element.content.shape,
+    width: element.frame.width,
+    height: element.frame.height,
+    ...(element.content.path ? { path: element.content.path } : {}),
+    fill: { type: "solid", color: element.style?.fill ?? "transparent" },
+    ...(element.style?.stroke ? {
+      stroke: { color: element.style.stroke, width: element.style.strokeWidth ?? 1 }
+    } : {}),
+    ...(element.style?.borderRadius !== undefined ? { cornerRadii: element.style.borderRadius } : {}),
+    ...(element.opacity !== undefined ? { opacity: element.opacity } : {}),
+    ...(blendMode ? { blendMode } : {})
+  };
+}
+
+function imageRenderSpec(
+  element: Extract<SceneElement, { kind: "image" }>,
+  assets: readonly DeckAssetV2[]
+): ImageRenderSpec | undefined {
+  const src = assetSource(assets, element.content.assetId);
+  if (!src) return undefined;
+  return {
+    id: element.id,
+    src,
+    alt: element.content.alt ?? element.accessibility.label ?? "",
+    width: element.frame.width,
+    height: element.frame.height,
+    fit: element.style?.objectFit ?? "cover",
+    ...(element.style?.focalPoint ? { focalPoint: element.style.focalPoint } : {}),
+    ...(element.style?.borderRadius !== undefined ? { cornerRadii: element.style.borderRadius } : {}),
+    ...(element.opacity !== undefined ? { opacity: element.opacity } : {})
+  };
+}
+
+function hasMotionProperty(state: CompilerMotionState | undefined, property: keyof CompilerMotionState): boolean {
+  return Boolean(state && Object.prototype.hasOwnProperty.call(state, property));
+}
+
+function elementTransform(element: SceneElement, motionState: CompilerMotionState | undefined): string | undefined {
+  const transforms: string[] = [];
+  if (hasMotionProperty(motionState, "translateX")) transforms.push(`translateX(${motionState!.translateX}px)`);
+  if (hasMotionProperty(motionState, "translateY")) transforms.push(`translateY(${motionState!.translateY}px)`);
+  if (hasMotionProperty(motionState, "scale")) transforms.push(`scale(${motionState!.scale})`);
+  if (hasMotionProperty(motionState, "scaleX")) transforms.push(`scaleX(${motionState!.scaleX})`);
+  if (hasMotionProperty(motionState, "scaleY")) transforms.push(`scaleY(${motionState!.scaleY})`);
+  const rotation = hasMotionProperty(motionState, "rotation") ? motionState!.rotation : element.transform?.rotation;
+  if (rotation !== undefined) transforms.push(`rotate(${rotation}deg)`);
+  if (element.transform?.skewX !== undefined) transforms.push(`skewX(${element.transform.skewX}deg)`);
+  if (element.transform?.skewY !== undefined) transforms.push(`skewY(${element.transform.skewY}deg)`);
+  return transforms.length > 0 ? transforms.join(" ") : undefined;
 }
 
 function parseWebBlockManifest(input: Record<string, unknown>): WebBlockHostManifest | undefined {
@@ -71,17 +149,17 @@ function elementContent(
     case "text":
       return element.content.text;
     case "rich-text":
-      return element.content.plainText ?? element.accessibility.label ?? element.name;
+      return renderRichText(element);
     case "image": {
-      const src = assetSource(assets, element.content.assetId);
-      return src
-        ? <img src={src} alt={element.content.alt ?? element.accessibility.label ?? ""} draggable={false} />
+      const spec = imageRenderSpec(element, assets);
+      return spec
+        ? <ImageRenderer spec={spec} />
         : <span data-scene-error="asset-missing">Thiếu asset: {element.content.assetId}</span>;
     }
     case "icon":
       return <span aria-hidden={element.accessibility.decorative || undefined}>{element.content.name}</span>;
     case "shape":
-      return null;
+      return <ShapeRenderer spec={shapeRenderSpec(element)} />;
     case "line":
       return (
         <svg viewBox={`0 0 ${element.frame.width} ${element.frame.height}`} preserveAspectRatio="none" aria-hidden="true">
@@ -165,20 +243,24 @@ export function ElementRenderer({
   assets,
   mode,
   children,
-  extensions
+  extensions,
+  motionState
 }: {
   element: SceneElement;
   assets: readonly DeckAssetV2[];
   mode: SceneRenderMode;
   children?: ReactNode;
   extensions?: SceneRendererExtensions;
+  motionState?: CompilerMotionState;
 }) {
   const customProperties = {
     "--scene-x": element.frame.x,
     "--scene-y": element.frame.y,
     "--scene-width": element.frame.width,
-    "--scene-height": element.frame.height
-  } as CSSProperties & Record<`--scene-${string}`, string | number>;
+    "--scene-height": element.frame.height,
+    ...(hasMotionProperty(motionState, "progress") ? { "--deckory-progress": motionState!.progress! } : {}),
+    ...(hasMotionProperty(motionState, "pathOffset") ? { "--deckory-path-offset": motionState!.pathOffset! } : {})
+  } as CSSProperties & Record<`--${string}`, string | number>;
 
   const style: CSSProperties = {
     ...customProperties,
@@ -189,15 +271,17 @@ export function ElementRenderer({
     height: element.frame.height,
     zIndex: element.zIndex,
     display: element.hidden ? "none" : undefined,
-    opacity: element.opacity,
+    opacity: motionState?.opacity ?? element.opacity,
     color: element.style?.color,
-    background: element.style?.fill,
-    borderColor: element.style?.stroke,
-    borderStyle: element.style?.stroke ? "solid" : undefined,
-    borderWidth: element.style?.strokeWidth,
-    borderRadius: Array.isArray(element.style?.borderRadius)
-      ? element.style.borderRadius.map((value) => `${value}px`).join(" ")
-      : element.style?.borderRadius,
+    background: element.kind === "shape" ? undefined : element.style?.fill,
+    borderColor: element.kind === "shape" ? undefined : element.style?.stroke,
+    borderStyle: element.kind !== "shape" && element.style?.stroke ? "solid" : undefined,
+    borderWidth: element.kind === "shape" ? undefined : element.style?.strokeWidth,
+    borderRadius: element.kind === "shape" || element.kind === "image"
+      ? undefined
+      : Array.isArray(element.style?.borderRadius)
+        ? element.style.borderRadius.map((value) => `${value}px`).join(" ")
+        : element.style?.borderRadius,
     fontFamily: element.style?.fontFamily,
     fontSize: element.style?.fontSize,
     fontWeight: element.style?.fontWeight,
@@ -205,11 +289,12 @@ export function ElementRenderer({
     letterSpacing: element.style?.letterSpacing,
     textAlign: element.style?.textAlign,
     overflow: element.kind === "group" || element.kind === "stack" || element.kind === "grid" ? "visible" : "hidden",
-    transform: element.transform?.rotation ? `rotate(${element.transform.rotation}deg)` : undefined,
+    transform: elementTransform(element, motionState),
     transformOrigin: element.transform?.originX !== undefined && element.transform?.originY !== undefined
       ? `${element.transform.originX}px ${element.transform.originY}px`
       : undefined,
     mixBlendMode: element.blendMode,
+    filter: hasMotionProperty(motionState, "blur") ? `blur(${motionState!.blur}px)` : undefined,
     pointerEvents: mode === "thumbnail" || mode === "export" ? "none" : undefined
   };
 
