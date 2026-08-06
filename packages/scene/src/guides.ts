@@ -91,6 +91,14 @@ export function collectSnapGuides(
   ];
 
   if (options.safeArea) {
+    const safeValues = [options.safeArea.top, options.safeArea.right, options.safeArea.bottom, options.safeArea.left];
+    if (safeValues.some((value) => !Number.isFinite(value) || value < 0)) {
+      throw new RangeError("Safe area must contain finite non-negative margins");
+    }
+    if (options.safeArea.left + options.safeArea.right >= canvas.width
+      || options.safeArea.top + options.safeArea.bottom >= canvas.height) {
+      throw new RangeError("Safe area margins must leave a positive region inside the canvas");
+    }
     guides.push(
       guide("safe-bottom", "y", canvas.height - options.safeArea.bottom, "safe-bottom"),
       guide("safe-left", "x", options.safeArea.left, "safe-left"),
@@ -113,7 +121,13 @@ export function collectSnapGuides(
     if (element.baseline !== undefined) guides.push(guide(`${prefix}-baseline`, "y", element.baseline, "text-baseline", element.id));
   }
 
-  for (const custom of customGuides) guides.push(guide(`custom-${custom.id}`, custom.axis, custom.position, "custom", custom.id));
+  for (const custom of customGuides) {
+    const maximum = custom.axis === "x" ? canvas.width : canvas.height;
+    if (!Number.isFinite(custom.position) || custom.position < 0 || custom.position > maximum) {
+      throw new RangeError(`Custom guide "${custom.id}" must stay inside the canvas`);
+    }
+    guides.push(guide(`custom-${custom.id}`, custom.axis, custom.position, "custom", custom.id));
+  }
   for (const layoutGuide of options.autoLayoutGuides ?? []) guides.push({ ...layoutGuide });
 
   const unique = new Map<string, SnapGuide>();
@@ -195,6 +209,7 @@ export function measureEqualSpacing(
     const currentStart = horizontal ? element.frame.x : element.frame.y;
     return currentStart - previousEnd;
   });
+  if (gaps.some((value) => value < 0)) return undefined;
   const average = gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
   if (gaps.some((value) => Math.abs(value - average) > tolerance)) return undefined;
   return { axis, gap: roundSceneNumber(average), elementIds: sorted.map((element) => element.id) };

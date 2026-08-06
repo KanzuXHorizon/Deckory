@@ -278,7 +278,67 @@ export function reparentElements(slide: SceneSlide, elementIds: readonly string[
   return { slide: nextSlide, ...commandPair(slide.id, slide.elements, nextElements) };
 }
 
+export function moveElementInHierarchy(
+  slide: SceneSlide,
+  elementId: string,
+  targetParentId: string | undefined,
+  targetIndex: number
+): HierarchyTransaction {
+  if (!Number.isInteger(targetIndex) || targetIndex < 0) throw new RangeError("Vị trí layer phải là số nguyên không âm.");
+  requireElement(slide, elementId);
+  const reparented = reparentElements(slide, [elementId], targetParentId).slide;
+  const siblings = reparented.elements.filter((element) => element.parentId === targetParentId && element.id !== elementId);
+  if (targetIndex > siblings.length) {
+    throw new RangeError(`Vị trí layer ${targetIndex} vượt quá ${siblings.length} sibling khả dụng.`);
+  }
+
+  const orderedSiblingIds = siblings.map((element) => element.id);
+  orderedSiblingIds.splice(targetIndex, 0, elementId);
+  const zIndices = reparented.elements
+    .filter((element) => element.parentId === targetParentId)
+    .map((element) => element.zIndex)
+    .sort((left, right) => left - right);
+  const zIndexById = new Map(orderedSiblingIds.map((id, index) => [id, zIndices[index]! ]));
+
+  const withoutMoving = reparented.elements.filter((element) => element.id !== elementId);
+  const moving = reparented.elements.find((element) => element.id === elementId)!;
+  let insertionIndex: number;
+  if (targetIndex < siblings.length) {
+    insertionIndex = withoutMoving.findIndex((element) => element.id === siblings[targetIndex]!.id);
+  } else if (siblings.length > 0) {
+    insertionIndex = withoutMoving.findIndex((element) => element.id === siblings.at(-1)!.id) + 1;
+  } else if (targetParentId !== undefined) {
+    insertionIndex = withoutMoving.findIndex((element) => element.id === targetParentId) + 1;
+  } else {
+    insertionIndex = withoutMoving.length;
+  }
+  if (insertionIndex < 0) insertionIndex = withoutMoving.length;
+  withoutMoving.splice(insertionIndex, 0, moving);
+
+  const nextElements = withoutMoving.map((element) => {
+    const nextZIndex = zIndexById.get(element.id);
+    let next = nextZIndex === undefined ? clone(element) : { ...clone(element), zIndex: nextZIndex } as SceneElement;
+    if (targetParentId !== undefined && element.id === targetParentId) {
+      next = updateGroupChildren(next, () => [...orderedSiblingIds]);
+    }
+    return next;
+  });
+  const nextSlide = { ...clone(slide), elements: nextElements };
+  return { slide: nextSlide, ...commandPair(slide.id, slide.elements, nextElements) };
+}
+
+export function detachElementFromAutoLayout(slide: SceneSlide, elementId: string): HierarchyTransaction {
+  const element = requireElement(slide, elementId);
+  if (!element.parentId) throw new Error(`Thành phần "${elementId}" không nằm trong auto layout.`);
+  const parent = requireElement(slide, element.parentId);
+  if (parent.kind !== "stack" && parent.kind !== "grid") {
+    throw new Error(`Parent của "${elementId}" phải là stack hoặc grid để detach khỏi auto layout.`);
+  }
+  return reparentElements(slide, [elementId], parent.parentId);
+}
+
 export function flattenSceneHierarchy(slide: SceneSlide): FlattenedSceneNode[] {
+  absoluteFrames(slide);
   const byParent = new Map<string | undefined, SceneElement[]>();
   for (const element of slide.elements) {
     const siblings = byParent.get(element.parentId) ?? [];

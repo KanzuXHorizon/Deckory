@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SceneSlide } from "@deckory/schema/v2";
-import { absoluteFrames, flattenSceneHierarchy, groupElements, reparentElements, ungroupElement } from "./hierarchy";
+import { absoluteFrames, detachElementFromAutoLayout, flattenSceneHierarchy, groupElements, moveElementInHierarchy, reparentElements, ungroupElement } from "./hierarchy";
 
 const slide: SceneSlide = {
   id: "cover",
@@ -68,6 +68,41 @@ describe("scene hierarchy", () => {
     } as SceneSlide;
 
     expect(() => reparentElements(transformed, ["a"], "outer")).toThrow(/transform|tỷ lệ/i);
+  });
+
+  it("reorders root siblings while preserving absolute frames and visual stacking order", () => {
+    const result = moveElementInHierarchy(slide, "b", undefined, 0);
+
+    expect(flattenSceneHierarchy(result.slide).slice(0, 3).map(({ id }) => id)).toEqual(["b", "a", "outer"]);
+    expect(absoluteFrames(result.slide).b).toEqual(absoluteFrames(slide).b);
+    expect(result.slide.elements.find((element) => element.id === "b")?.zIndex).toBeLessThan(
+      result.slide.elements.find((element) => element.id === "a")!.zIndex
+    );
+    expect(result.command.type).toBe("replace-scene-elements");
+  });
+
+  it("reparents into a container at a requested sibling index", () => {
+    const result = moveElementInHierarchy(slide, "a", "outer", 0);
+    const outerChildren = flattenSceneHierarchy(result.slide)
+      .filter((node) => node.parentId === "outer")
+      .map(({ id }) => id);
+
+    expect(outerChildren).toEqual(["a", "inner"]);
+    expect(absoluteFrames(result.slide).a).toEqual(absoluteFrames(slide).a);
+  });
+
+  it("detaches a child from auto layout while preserving its absolute frame", () => {
+    const stackSlide: SceneSlide = {
+      ...slide,
+      elements: slide.elements.map((element) => element.id === "outer"
+        ? { ...element, kind: "stack", content: { direction: "horizontal", gap: 16, padding: 20, align: "start", justify: "start", wrap: false } }
+        : element)
+    } as SceneSlide;
+    const before = absoluteFrames(stackSlide).inner;
+    const result = detachElementFromAutoLayout(stackSlide, "inner");
+
+    expect(result.slide.elements.find((element) => element.id === "inner")?.parentId).toBeUndefined();
+    expect(absoluteFrames(result.slide).inner).toEqual(before);
   });
 
   it("rejects hierarchy cycles with an actionable Vietnamese diagnostic", () => {

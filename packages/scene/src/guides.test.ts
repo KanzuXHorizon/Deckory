@@ -46,6 +46,28 @@ describe("smart guides", () => {
     expect(result.matches[0]).toMatchObject({ guideId: "near", target: "start", delta: 1 });
   });
 
+  it("rejects invalid safe areas and custom guides outside the canvas", () => {
+    expect(() => collectSnapGuides(
+      { width: 1280, height: 720 },
+      [],
+      [{ id: "outside", axis: "x", position: 1400 }]
+    )).toThrow(/canvas/i);
+    expect(() => collectSnapGuides(
+      { width: 1280, height: 720 },
+      [],
+      [],
+      { safeArea: { top: 400, right: 700, bottom: 400, left: 700 } }
+    )).toThrow(/safe area/i);
+  });
+
+  it("does not report equal spacing when elements overlap", () => {
+    expect(measureEqualSpacing([
+      { id: "a", frame: { x: 0, y: 0, width: 100, height: 60 } },
+      { id: "b", frame: { x: 80, y: 0, width: 100, height: 60 } },
+      { id: "c", frame: { x: 160, y: 0, width: 100, height: 60 } }
+    ], "horizontal", 0.25)).toBeUndefined();
+  });
+
   it("detects equal horizontal spacing for temporary measurement labels", () => {
     expect(measureEqualSpacing([
       { id: "a", frame: { x: 20, y: 20, width: 80, height: 60 } },

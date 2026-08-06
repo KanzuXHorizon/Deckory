@@ -10,6 +10,22 @@ export type AlignmentAction =
   | { type: "align"; mode: AlignMode }
   | { type: "distribute"; axis: DistributionAxis };
 
+export type AlignmentActionAvailability =
+  | { enabled: true }
+  | { enabled: false; reason: string };
+
+export function alignmentActionAvailability(action: AlignmentAction, selectionCount: number): AlignmentActionAvailability {
+  if (!Number.isInteger(selectionCount) || selectionCount < 0) throw new RangeError("Selection count must be a non-negative integer");
+  const minimum = action.type === "align" ? 2 : 3;
+  if (selectionCount >= minimum) return { enabled: true };
+  return {
+    enabled: false,
+    reason: action.type === "align"
+      ? `Căn chỉnh cần ít nhất ${minimum} thành phần.`
+      : `Phân bố cần ít nhất ${minimum} thành phần.`
+  };
+}
+
 export class DistributionError extends Error {
   readonly diagnostics: LayoutFailure["diagnostics"];
 

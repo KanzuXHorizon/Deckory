@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alignElements, createAlignmentCommand, distributeElements, tryDistributeElements } from "./alignment";
+import { alignElements, alignmentActionAvailability, createAlignmentCommand, distributeElements, tryDistributeElements } from "./alignment";
 
 const elements = [
   { id: "a", frame: { x: 20, y: 40, width: 80, height: 60 } },
@@ -35,6 +35,18 @@ describe("scene alignment", () => {
       ["b", 25],
       ["c", 150]
     ]);
+  });
+
+  it("provides explicit disabled reasons for toolbar actions", () => {
+    expect(alignmentActionAvailability({ type: "align", mode: "left" }, 1)).toEqual({
+      enabled: false,
+      reason: "Căn chỉnh cần ít nhất 2 thành phần."
+    });
+    expect(alignmentActionAvailability({ type: "distribute", axis: "horizontal" }, 2)).toEqual({
+      enabled: false,
+      reason: "Phân bố cần ít nhất 3 thành phần."
+    });
+    expect(alignmentActionAvailability({ type: "align", mode: "left" }, 2)).toEqual({ enabled: true });
   });
 
   it("maps one toolbar action to one transform-elements command", () => {
