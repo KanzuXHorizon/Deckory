@@ -87,23 +87,15 @@ function observedItems(kind: VisualInputKind, analysis: VisualIntentAnalysis): n
     case "numeric-data":
       return analysis.inputAvailability.numericData;
     case "dates":
-      return analysis.primary === "chronology" || analysis.primary === "roadmap" ? 1 : 0;
+      return analysis.inputAvailability.dates;
     case "hierarchy":
-      return analysis.primary === "hierarchy" ? Math.max(analysis.entities.length, 1) : 0;
+      return analysis.inputAvailability.relationships;
     case "relationships":
-      return analysis.primary === "architecture" ||
-        analysis.primary === "dependency" ||
-        analysis.primary === "network" ||
-        analysis.primary === "causality"
-        ? 1
-        : 0;
+      return analysis.inputAvailability.relationships;
     case "geography":
-      return analysis.primary === "geography" ? 1 : 0;
+      return analysis.inputAvailability.geography;
     case "evidence":
-      return analysis.primary === "evidence-chain" ||
-        analysis.primary === "implementation-proof"
-        ? 1
-        : 0;
+      return analysis.inputAvailability.evidence;
   }
 }
 
@@ -134,7 +126,7 @@ function candidateReasons(
 
   if (entry.family === "chart") {
     reasons.push(
-      `Có ${analysis.numericClaims.length} numeric claim được trích xuất trực tiếp từ nội dung.`
+      `Có ${analysis.inputAvailability.numericData} numeric claim dạng value được trích xuất trực tiếp từ nội dung.`
     );
   }
 
@@ -166,7 +158,7 @@ function buildCandidate(
   const observedDensity = Math.max(
     analysis.extractedSteps.length,
     analysis.entities.length,
-    analysis.numericClaims.length,
+    analysis.inputAvailability.numericData,
     analysis.sides.length
   );
   if (observedDensity > entry.density.maxItems) {
@@ -199,7 +191,7 @@ export function recommendVisuals(
         entry.intents.includes(analysis.primary) ||
         analysis.secondary.some((intent) => entry.intents.includes(intent));
       if (!matches) return false;
-      if (entry.family === "chart" && analysis.numericClaims.length === 0) return false;
+      if (entry.family === "chart" && analysis.inputAvailability.numericData === 0) return false;
       return true;
     })
     .map((entry) => buildCandidate(entry, analysis))

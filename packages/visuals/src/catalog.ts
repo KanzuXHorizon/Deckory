@@ -324,6 +324,73 @@ export const visualCatalog: readonly VisualCatalogEntry[] = [
     fixtureId: "evidence-chain-academic"
   },
   {
+    id: "risk-matrix",
+    family: "composition",
+    relationship: "risk likelihood and impact prioritization",
+    intents: ["risk"],
+    recommendationPriority: 95,
+    requiredInputs: [
+      { kind: "entities", label: "Danh sách rủi ro", required: true, minimumItems: 1 },
+      { kind: "categories", label: "Mức xác suất và tác động", required: true, minimumItems: 2 }
+    ],
+    optionalInputs: [numericInput],
+    evidenceRequirements: [
+      {
+        kind: "claim-source",
+        required: true,
+        description: "Mỗi rủi ro và mức đánh giá phải truy vết tới risk register hoặc đánh giá được ghi nhận."
+      }
+    ],
+    density: { minItems: 1, maxItems: 20 },
+    useWhen: ["Cần ưu tiên rủi ro theo xác suất và tác động trên cùng một khung đọc."],
+    avoidWhen: ["Không có tiêu chí đánh giá nhất quán hoặc chỉ có một cảnh báo định tính đơn lẻ."],
+    accessibility: {
+      summaryStrategy: "Nêu rủi ro nghiêm trọng nhất, mức xác suất, tác động và biện pháp xử lý.",
+      traversalStrategy: "severity-then-risk"
+    },
+    rendererCapability: "deckory-native",
+    exportCapabilities: ["svg", "png", "pdf", "pptx"],
+    fixtureId: "risk-matrix-register"
+  },
+  {
+    id: "geographic-map",
+    family: "diagram",
+    relationship: "entities or values by geographic region",
+    intents: ["geography"],
+    recommendationPriority: 95,
+    requiredInputs: [
+      { kind: "geography", label: "Geography keys", required: true, minimumItems: 1 }
+    ],
+    optionalInputs: [numericInput, {
+      kind: "entities",
+      label: "Địa điểm hoặc vùng cần chú thích",
+      required: false,
+      minimumItems: 1
+    }],
+    evidenceRequirements: [
+      {
+        kind: "local-asset",
+        required: true,
+        description: "Bản đồ phải dùng GeoJSON hoặc SVG local đã đăng ký trong asset manifest."
+      },
+      {
+        kind: "claim-source",
+        required: false,
+        description: "Liên kết nguồn khi map trình bày dữ liệu hoặc claim theo khu vực."
+      }
+    ],
+    density: { minItems: 1, maxItems: 80 },
+    useWhen: ["Vị trí địa lý là điều kiện cần để audience hiểu phân bố hoặc phạm vi."],
+    avoidWhen: ["Địa lý chỉ là nhãn phụ và không làm thay đổi kết luận của slide."],
+    accessibility: {
+      summaryStrategy: "Nêu phạm vi địa lý, vùng nổi bật và kết luận tương đương không phụ thuộc bản đồ.",
+      traversalStrategy: "declared-region-order"
+    },
+    rendererCapability: "echarts-adapter",
+    exportCapabilities: ["svg", "png", "pdf"],
+    fixtureId: "geographic-map-local-regions"
+  },
+  {
     id: "line-chart",
     family: "chart",
     relationship: "change over ordered categories",

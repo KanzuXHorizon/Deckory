@@ -48,6 +48,39 @@ describe("classifyVisualIntent", () => {
     );
   });
 
+  it("does not treat a calendar year as numeric chart evidence", () => {
+    const result = classifyVisualIntent({
+      text: "Lộ trình năm 2026 gồm ba giai đoạn triển khai.",
+      locale: "vi-VN"
+    });
+
+    expect(result.numericClaims).toEqual([
+      expect.objectContaining({ raw: "2026", role: "date" })
+    ]);
+    expect(result.inputAvailability.numericData).toBe(0);
+    expect(result.inputAvailability.dates).toBe(1);
+  });
+
+  it("keeps structured relationship, geography and evidence availability explicit", () => {
+    const result = classifyVisualIntent({
+      text: "Phân tích rủi ro theo khu vực.",
+      locale: "vi-VN",
+      hints: {
+        entities: ["Miền Bắc", "Miền Nam"],
+        relationships: [{ source: "Miền Bắc", target: "Miền Nam" }],
+        geographies: ["VN-HN", "VN-HCM"],
+        evidenceIds: ["evidence-risk-register"]
+      }
+    });
+
+    expect(result.inputAvailability).toMatchObject({
+      entities: 2,
+      relationships: 1,
+      geography: 2,
+      evidence: 1
+    });
+  });
+
   it("returns byte-for-byte stable analysis for repeated input", () => {
     const input = {
       text: "Bước 1: Chuẩn bị dữ liệu. Bước 2: Kiểm tra. Bước 3: Xuất bản.",

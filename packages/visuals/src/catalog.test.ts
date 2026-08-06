@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { validateVisualCatalog, visualCatalog } from "./catalog";
+import { visualIntents } from "./intent";
 
 describe("visual catalog", () => {
   it("contains unique, complete and inspectable metadata", () => {
@@ -18,6 +19,12 @@ describe("visual catalog", () => {
       expect(entry.exportCapabilities.length).toBeGreaterThan(0);
       expect(entry.density.minItems).toBeLessThanOrEqual(entry.density.maxItems);
     }
+  });
+
+  it("covers every public visual intent with at least one recommendation candidate", () => {
+    const covered = new Set(visualCatalog.flatMap((entry) => entry.intents));
+
+    expect([...visualIntents].filter((intent) => !covered.has(intent))).toEqual([]);
   });
 
   it("requires explicit numeric evidence for every chart entry", () => {

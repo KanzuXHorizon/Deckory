@@ -52,6 +52,45 @@ describe("recommendVisuals", () => {
     });
   });
 
+  it("does not recommend a numeric chart from a year-only roadmap", () => {
+    const intent = classifyVisualIntent({
+      text: "Lộ trình năm 2026 gồm ba giai đoạn triển khai.",
+      locale: "vi-VN"
+    });
+
+    const recommendations = recommendVisuals(intent, visualCatalog);
+
+    expect(recommendations.some((item) => item.family === "chart")).toBe(false);
+    expect(recommendations).toContainEqual(
+      expect.objectContaining({ componentId: "timeline" })
+    );
+  });
+
+  it("reports structured geography as missing until actual geography keys are supplied", () => {
+    const unstructured = classifyVisualIntent({
+      text: "Kết quả khác nhau theo khu vực.",
+      locale: "vi-VN"
+    });
+    const structured = classifyVisualIntent({
+      text: "Kết quả khác nhau theo khu vực.",
+      locale: "vi-VN",
+      hints: { geographies: ["VN-HN", "VN-HCM"] }
+    });
+
+    expect(recommendVisuals(unstructured, visualCatalog)[0]).toMatchObject({
+      componentId: "geographic-map",
+      requiredInputs: expect.arrayContaining([
+        expect.objectContaining({ kind: "geography", status: "missing" })
+      ])
+    });
+    expect(recommendVisuals(structured, visualCatalog)[0]).toMatchObject({
+      componentId: "geographic-map",
+      requiredInputs: expect.arrayContaining([
+        expect.objectContaining({ kind: "geography", status: "available" })
+      ])
+    });
+  });
+
   it("exposes missing inputs and density warnings instead of fabricating them", () => {
     const intent = classifyVisualIntent({
       text: "Doanh thu tăng 12%.",

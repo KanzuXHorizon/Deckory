@@ -1,31 +1,34 @@
-export type VisualIntent =
-  | "single-claim"
-  | "comparison"
-  | "before-after"
-  | "trade-off"
-  | "ranking"
-  | "magnitude"
-  | "trend"
-  | "distribution"
-  | "part-to-whole"
-  | "chronology"
-  | "process"
-  | "journey"
-  | "lifecycle"
-  | "roadmap"
-  | "hierarchy"
-  | "architecture"
-  | "dependency"
-  | "network"
-  | "causality"
-  | "geography"
-  | "ownership"
-  | "evidence-chain"
-  | "risk"
-  | "prioritization"
-  | "implementation-proof"
-  | "decision"
-  | "action";
+export const visualIntents = [
+  "single-claim",
+  "comparison",
+  "before-after",
+  "trade-off",
+  "ranking",
+  "magnitude",
+  "trend",
+  "distribution",
+  "part-to-whole",
+  "chronology",
+  "process",
+  "journey",
+  "lifecycle",
+  "roadmap",
+  "hierarchy",
+  "architecture",
+  "dependency",
+  "network",
+  "causality",
+  "geography",
+  "ownership",
+  "evidence-chain",
+  "risk",
+  "prioritization",
+  "implementation-proof",
+  "decision",
+  "action"
+] as const;
+
+export type VisualIntent = (typeof visualIntents)[number];
 
 export type ExtractedClaimKind =
   | "factual"
@@ -43,11 +46,19 @@ export type ExtractedSide = {
   text: string;
 };
 
+export type NumericClaimRole = "value" | "date" | "identifier";
+
 export type NumericClaim = {
   raw: string;
   value: number;
+  role: NumericClaimRole;
   unit?: string;
   context: string;
+};
+
+export type StructuredRelationship = {
+  source: string;
+  target: string;
 };
 
 export type VisualIntentHints = {
@@ -57,6 +68,10 @@ export type VisualIntentHints = {
   entities?: readonly string[];
   categories?: readonly string[];
   series?: readonly string[];
+  dates?: readonly string[];
+  relationships?: readonly StructuredRelationship[];
+  geographies?: readonly string[];
+  evidenceIds?: readonly string[];
 };
 
 export type VisualIntentInput = {
@@ -81,6 +96,10 @@ export type VisualIntentAnalysis = {
     categories: number;
     series: number;
     numericData: number;
+    dates: number;
+    relationships: number;
+    geography: number;
+    evidence: number;
   };
 };
 
@@ -284,6 +303,36 @@ function extractSides(text: string, hints?: VisualIntentHints): ExtractedSide[] 
   return [];
 }
 
+function classifyNumericRole(
+  statement: string,
+  raw: string,
+  matchIndex: number
+): NumericClaimRole {
+  if (raw.trim().endsWith("%")) return "value";
+  const before = statement.slice(Math.max(0, matchIndex - 16), matchIndex);
+  const normalizedBefore = before.toLocaleLowerCase("vi-VN");
+  const integerValue = Number(raw.replace(",", "."));
+  if (
+    Number.isInteger(integerValue) &&
+    integerValue >= 1900 &&
+    integerValue <= 2100 &&
+    /(?:năm|year)\s*$/iu.test(normalizedBefore)
+  ) {
+    return "date";
+  }
+  if (/(?:phiên bản|version|\bv|\bid)\s*$/iu.test(normalizedBefore)) {
+    return "identifier";
+  }
+  return "value";
+}
+
+function extractNumericUnit(statement: string, matchEnd: number, raw: string): string | undefined {
+  if (raw.trim().endsWith("%")) return "%";
+  const trailing = statement.slice(matchEnd, matchEnd + 16);
+  const match = trailing.match(/^\s*(điểm|giờ|phút|giây|ms|usd|vnd|triệu|tỷ)\b/iu);
+  return match?.[1];
+}
+
 function extractNumericClaims(text: string): NumericClaim[] {
   const statements = splitStatements(text);
   const claims: NumericClaim[] = [];
@@ -295,10 +344,13 @@ function extractNumericClaims(text: string): NumericClaim[] {
       const normalizedNumber = raw.replace(/\s?%$/u, "").replace(",", ".");
       const value = Number(normalizedNumber);
       if (!Number.isFinite(value)) continue;
+      const matchIndex = match.index ?? 0;
+      const unit = extractNumericUnit(statement, matchIndex + raw.length, raw);
       claims.push({
         raw,
         value,
-        ...(raw.trim().endsWith("%") ? { unit: "%" } : {}),
+        role: classifyNumericRole(statement, raw, matchIndex),
+        ...(unit ? { unit } : {}),
         context: statement
       });
     }
@@ -377,7 +429,13 @@ export function classifyVisualIntent(input: VisualIntentInput): VisualIntentAnal
       entities: entities.length,
       categories: input.hints?.categories?.length ?? 0,
       series: input.hints?.series?.length ?? 0,
-      numericData: numericClaims.length
+      numericData: numericClaims.filter((claim) => claim.role === "value").length,
+      dates:
+        numericClaims.filter((claim) => claim.role === "date").length +
+        (input.hints?.dates?.length ?? 0),
+      relationships: input.hints?.relationships?.length ?? 0,
+      geography: input.hints?.geographies?.length ?? 0,
+      evidence: input.hints?.evidenceIds?.length ?? 0
     }
   };
 }
