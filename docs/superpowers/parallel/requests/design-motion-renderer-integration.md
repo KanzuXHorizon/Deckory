@@ -110,9 +110,11 @@ Add tests proving:
 - existing V1 renderer snapshots remain unchanged;
 - V2 background layer order is stable;
 - mesh/noise markup is byte-identical across repeated renders;
-- missing and remote assets expose explicit diagnostics;
-- rich text is escaped and list semantics are preserved;
-- shape/image budgets reject unsafe effects;
+- missing, protocol-relative, wrong-type and remote assets expose explicit diagnostics;
+- rich text is escaped, unsafe links/colors are rejected and consecutive list items preserve grouped semantic list markup;
+- background/shape/image CSS fragments cannot introduce remote `url(...)`, executable CSS or invalid geometry;
+- shape/image budgets reject negative, non-finite and excessive effects with specific diagnostics;
 - focal point/crop/duotone survive full-size, thumbnail and export markup;
+- delayed live cues expose their declared `from` state, completed live timelines return the declared final state, and same-element track final states merge deterministically;
 - reduced, thumbnail, export and final modes produce equivalent complete element state;
 - Presenter audience bundle receives no Studio timeline/editor module.

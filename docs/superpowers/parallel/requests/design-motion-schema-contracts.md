@@ -118,7 +118,7 @@ export type DeckThemeV2 = {
 };
 ```
 
-Every color/string leaf may additionally accept `ThemeTokenReference`. Unknown references remain schema-valid authoring input but must produce a `theme-token-unknown` resolution diagnostic.
+Every color/string leaf may additionally accept `ThemeTokenReference`. Unknown references remain schema-valid authoring input but must produce a `theme-token-unknown` resolution diagnostic. Resolution applies literal overrides before references, resolves reference chains independently of object key order, preserves the prior layer for invalid references and emits `theme-reference-cycle` for every member of a cycle. The resolved token set must be revalidated for contrast, typography floors, safe-area geometry and effect budgets.
 
 ## Semantic rich text
 
@@ -159,7 +159,9 @@ Validation requirements:
 
 - duplicate paragraph IDs rejected;
 - `list.level` integer `0..8`;
-- links limited to `https:`, `http:`, `mailto:`, local `/...` and `#...` metadata;
+- links limited to `https:`, `http:`, `mailto:`, local `/...`, `./...`, `../...` and `#...` metadata; protocol-relative and executable schemes rejected;
+- inline color limited to a semantic token ID or hexadecimal color; raw CSS fragments rejected;
+- paragraph line height, tracking and spacing values finite and bounded;
 - no HTML field, executable handler or arbitrary object accepted;
 - Unicode text preserved and normalized by `@deckory/scene`, not rewritten by schema.
 
@@ -204,7 +206,10 @@ Hard budgets:
 - saturation `0..2`, contrast `0.5..2`;
 - crop values finite, within `0..1`, and `x + width <= 1`, `y + height <= 1`;
 - dash entries finite and positive, maximum 16 entries;
-- gradient stops `2..12`, offsets `0..1`, sorted at normalization.
+- gradient stops `2..12`, offsets `0..1`, sorted at normalization;
+- color fields must use a validated color/token contract and cannot contain `url(...)`, `@import`, executable CSS or declaration delimiters;
+- clip and mask fields must use typed geometric/gradient contracts, never arbitrary CSS strings or external URL references;
+- focal point coordinates finite within `0..1`; opacity and independent corner radii bounded before rendering.
 
 ## Background discriminated union
 
@@ -225,7 +230,7 @@ export type BackgroundLayerV2 =
   | Common & { type: "edge-mask"; color: string; edge: number };
 ```
 
-`Common` remains `{ id, opacity, blendMode? }`. Enforce background blur `0..64`, glow opacity `0..0.4`, maximum 32 layers and local asset references only.
+`Common` remains `{ id, opacity, blendMode? }`. Enforce background blur `0..64`, glow opacity `0..0.4`, maximum 32 layers and local asset references only. Image layers accept only image/SVG assets, SVG layers accept only SVG assets, protocol-relative sources are remote, and data URLs are accepted only for matching image media types. Pattern/grid sizes, edge masks, positions and all color fragments are validated before CSS/SVG output.
 
 ## Typed motion track
 
@@ -268,4 +273,8 @@ Validation requirements:
 - every animated property in `from` or `to` exists in `finalState`;
 - every state value finite;
 - exit before entrance rejected when the same track contains an entrance;
+- `path` cues require `pathId`, `stagger` cues require `groupId`;
+- `on-click` cues require a positive integer `clickStep`;
+- `sourceOrder` is an optional finite non-negative integer;
+- duplicate final-state properties from multiple tracks targeting one element merge deterministically by track ID;
 - arbitrary Motion/Framer objects, callbacks and CSS strings rejected.

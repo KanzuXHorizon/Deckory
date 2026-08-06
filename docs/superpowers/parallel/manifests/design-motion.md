@@ -23,11 +23,16 @@ Production commits, in order:
 4. `1635a53bc89257cce24c5aa7dedd439e023184ff` — `feat(renderer): add deterministic design renderers`
 5. `dbbbf31a93e05a8cc18645b761947c1ca7299357` — `feat(renderer): compile deterministic motion timelines`
 
-Integration-request commit:
+Integration-request and manifest commits:
 
 6. `abce07574ae1c26603d6ebd95efe1a226e61c79a` — `docs(v2): request design motion integration contracts`
+7. `deb4f7aaddba361d95bb3447c37517e6c94b41c7` — `docs(v2): record design motion track manifest`
 
-This manifest is committed separately after the commits above so that it can record their exact SHAs. Its own SHA is reported by the final session handoff.
+Review hardening commit:
+
+8. `08e73cbf433ba6a717fc56e464e46ca174db16a1` — `fix(design): harden V2 design and motion core`
+
+The final documentation commit updates this manifest and the integration requests with review findings and fresh verification. Its exact SHA is reported by the final session handoff.
 
 ## Baseline evidence
 
@@ -388,25 +393,50 @@ GREEN:
 pnpm --filter @deckory/renderer typecheck: exit 0
 ```
 
+## Review and hardening evidence
+
+A second independent review compared the committed track against the approved Plan 05 scope, public contracts, failure modes and offline guarantees. Regression tests were written before each correction. The review found and fixed:
+
+- invalid slide overrides reverting past a valid deck override;
+- wrong-type, key-order-dependent, chained and cyclic semantic token references;
+- missing post-resolution contrast and custom-world budget diagnostics;
+- rich-text executable links, unsafe color values, invalid list depth and non-finite paragraph metrics;
+- text-fit cache collisions, omitted list markers, paragraph spacing/line-height omissions, wrong overflow paragraph and skipped exact minimum size;
+- delayed live cues missing their declared `from` state, completed live timelines not returning final state, and multiple tracks overwriting one element's final properties;
+- missing path, stagger, click-step and source-order diagnostics at both scene and compiler boundaries;
+- protocol-relative and non-image data assets, incompatible background asset types and invalid background parameters;
+- ignored duotone colors, invalid focal points, invalid geometry/style values and unbounded negative effects;
+- raw CSS fragments capable of introducing remote `url(...)` fetches through background, shape, image or rich-text values;
+- one-list-per-item rendering instead of grouped semantic lists.
+
+Focused review RED runs produced failures only for the intended missing behaviors. After the minimal corrections:
+
+```text
+@deckory/themes: 14 tests passed, 0 failed
+@deckory/scene: 35 tests passed, 0 failed
+@deckory/renderer: 31 tests passed, 0 failed
+all three package typechecks passed
+```
+
 ## Fresh verification evidence
 
-Fresh package and workspace verification after all production commits:
+Fresh package and workspace verification after the review hardening commit:
 
 ```text
 pnpm --filter @deckory/themes test
-2 files, 6 tests passed, 0 failed
+2 files, 14 tests passed, 0 failed
 
 pnpm --filter @deckory/themes typecheck
 exit 0
 
 pnpm --filter @deckory/scene test
-6 files, 25 tests passed, 0 failed
+6 files, 35 tests passed, 0 failed
 
 pnpm --filter @deckory/scene typecheck
 exit 0
 
 pnpm --filter @deckory/renderer test
-6 files, 15 tests passed, 0 failed
+6 files, 31 tests passed, 0 failed
 
 pnpm --filter @deckory/renderer typecheck
 exit 0
@@ -419,11 +449,11 @@ Fresh full regression run:
 
 ```text
 pnpm test
-266 tests passed
+300 tests passed
 0 failed
 ```
 
-The full total consists of 262 Vitest tests across workspace packages/apps/decks and 4 Node script tests.
+The full total consists of 296 Vitest tests across workspace packages/apps/decks and 4 Node script tests. Workspace `pnpm typecheck` and `pnpm lint` also exited 0 across all applicable projects.
 
 ## Reduced-motion and final-state equivalence evidence
 
