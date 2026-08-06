@@ -96,7 +96,7 @@ function LayerTreeItem({
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                onRenameCommit(node);
+                event.currentTarget.blur();
               }
               if (event.key === "Escape") {
                 event.preventDefault();
@@ -195,6 +195,7 @@ export function LayersPanel({
 
   const focusLayer = (elementId: string) => {
     setRequestedFocusId(elementId);
+    if (document.activeElement?.getAttribute("data-layer-select-id") === elementId) return;
     requestAnimationFrame(() => {
       document.querySelector<HTMLButtonElement>(`[data-layer-select-id="${elementId}"]`)?.focus();
     });
