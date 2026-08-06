@@ -55,8 +55,14 @@ jobs:
       - name: Check local assets
         run: pnpm assets:check
 
+      - name: Check CSS contracts
+        run: pnpm css:check
+
       - name: Build
         run: pnpm build
+
+      - name: Check route bundle budgets
+        run: pnpm performance:check
 
   e2e:
     name: Production browser checks
