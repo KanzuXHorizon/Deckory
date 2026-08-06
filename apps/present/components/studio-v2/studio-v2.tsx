@@ -34,6 +34,7 @@ import { SelectionStatus } from "./canvas/selection-status";
 import { createLayerPatchCommand, type LayerDropIntent } from "./layers/layers-model";
 import { LayersPanel } from "./layers/layers-panel";
 import { LayoutPanel, type LayoutPanelValue } from "./layout/layout-panel";
+import { createTextToVisualCommand } from "../../lib/visual-assistant-v2";
 import {
   commitStudioCommand,
   createStudioV2State,
@@ -42,6 +43,7 @@ import {
   undoStudioCommand,
   type StudioV2State
 } from "./studio-v2-state";
+import { VisualIntelligencePanel } from "./visual-intelligence-panel";
 import styles from "./studio-v2.module.css";
 
 const EMPTY_SELECTION: StudioSelection = { elementIds: [] };
@@ -404,6 +406,22 @@ export function StudioV2({
     }
   };
 
+  const handleVisualRecommendation = (recommendationId: string) => {
+    if (!primaryElement || primaryElement.kind !== "text") return;
+    const result = createTextToVisualCommand(state.deck, activeSlide.id, primaryElement.id, recommendationId);
+    if (!result.ok) {
+      setDiagnostic({
+        code: result.code,
+        message: result.message,
+        recommendation: "Bổ sung input còn thiếu hoặc chọn recommendation đã có native conversion."
+      });
+      return;
+    }
+    commit(result.command);
+    const visualId = `${primaryElement.id}-visual`;
+    setSelection({ elementIds: [visualId], primaryElementId: visualId });
+  };
+
   const handleDetach = () => {
     if (!primaryElement) return;
     try {
@@ -537,6 +555,12 @@ export function StudioV2({
                   />
                 ) : null}
               </section>
+              <VisualIntelligencePanel
+                deck={state.deck}
+                slideId={activeSlide.id}
+                element={primaryElement}
+                onApply={handleVisualRecommendation}
+              />
               <LayoutPanel
                 value={layoutValueFor(activeSlide, primaryElement)}
                 {...(diagnostic ? { diagnostic } : {})}

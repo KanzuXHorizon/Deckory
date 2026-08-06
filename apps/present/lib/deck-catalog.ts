@@ -269,7 +269,7 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
         id: "foundation-proof",
         role: "proof",
         objective: "Chứng minh scene, chart, diagram và evidence dùng chung một contract.",
-        slideIds: ["cover", "visual-proof"]
+        slideIds: ["cover", "visual-proof", "assistant-proof"]
       }],
       unresolvedQuestions: []
     },
@@ -530,6 +530,50 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
         zIndex: 4,
         content: { source: "Deckory V2 local integration fixture", page: "02" },
         accessibility: { label: "Nguồn: Deckory V2 local integration fixture", readingOrder: 4 }
+      }
+    ]
+  }, {
+    id: "assistant-proof",
+    name: "Text to Visual Proof",
+    purpose: "transform-raw-content",
+    conclusion: "Text có thứ tự được chuyển thành native editable process mà không mất source.",
+    background: {
+      layers: [
+        { id: "assistant-paper", type: "solid", color: "#f5f2ea", opacity: 1 },
+        { id: "assistant-glow", type: "glow", color: "#7c6cff", opacity: 0.16, position: { x: 82, y: 18 }, blur: 30 }
+      ]
+    },
+    evidence: { source: "Deckory V2 text-to-visual local fixture", status: "illustrative" },
+    elements: [
+      {
+        id: "assistant-title",
+        name: "Assistant title",
+        kind: "text",
+        frame: { x: 76, y: 66, width: 1120, height: 72 },
+        zIndex: 2,
+        content: { text: "Một đoạn text nhàm chán vẫn phải giữ nguyên claim khi được trực quan hoá." },
+        style: { color: "#1d1b22", fontSize: 36, fontWeight: 760, lineHeight: 1.1 },
+        accessibility: { label: "Một đoạn text nhàm chán vẫn phải giữ nguyên claim khi được trực quan hoá.", readingOrder: 1 }
+      },
+      {
+        id: "workflow-source",
+        name: "Workflow source text",
+        kind: "text",
+        frame: { x: 120, y: 194, width: 1040, height: 330 },
+        zIndex: 2,
+        content: { text: "Thiết lập hồ sơ. Tạo phiên phỏng vấn. Thực hành câu hỏi. Nhận phản hồi chi tiết." },
+        style: { color: "#343039", fontSize: 40, fontWeight: 560, lineHeight: 1.35, textAlign: "center" },
+        accessibility: { label: "Quy trình gồm thiết lập hồ sơ, tạo phiên, thực hành và nhận phản hồi.", readingOrder: 2 },
+        semantic: { purpose: "visual-source-text" }
+      },
+      {
+        id: "assistant-footer",
+        name: "Assistant evidence footer",
+        kind: "evidence-footer",
+        frame: { x: 76, y: 664, width: 1128, height: 28 },
+        zIndex: 4,
+        content: { source: "Deckory V2 text-to-visual local fixture", page: "03" },
+        accessibility: { label: "Nguồn: Deckory V2 text-to-visual local fixture", readingOrder: 3 }
       }
     ]
   }]

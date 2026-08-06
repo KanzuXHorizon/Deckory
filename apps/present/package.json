@@ -14,6 +14,7 @@
     "@deckory/schema": "workspace:*",
     "@deckory/template-gallery": "workspace:*",
     "@deckory/templates": "workspace:*",
+    "@deckory/visuals": "workspace:*",
     "lucide-react": "1.28.0",
     "motion": "13.0.0",
     "next": "16.3.0",

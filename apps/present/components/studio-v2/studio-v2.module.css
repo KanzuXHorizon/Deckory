@@ -204,6 +204,63 @@
   font: inherit;
 }
 
+.intelligencePanel {
+  padding: 16px;
+  border-bottom: 1px solid var(--studio-line);
+  background: color-mix(in srgb, var(--studio-panel-strong) 68%, transparent);
+}
+.intelligenceHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.intelligenceHeading h2 { margin: 4px 0 0; font-size: 15px; line-height: 1.25; }
+.intelligenceHeading > strong {
+  flex: none;
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--studio-accent) 55%, var(--studio-line));
+  border-radius: 999px;
+  color: #d7d4ff;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.recommendationList { display: grid; gap: 10px; margin-top: 12px; }
+.recommendationList > p { margin: 0; color: var(--studio-muted); font-size: 11px; }
+.recommendationCard {
+  display: grid;
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid var(--studio-line);
+  border-radius: 10px;
+  background: #12151a;
+}
+.recommendationCard > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.recommendationCard > div strong { font-size: 13px; }
+.recommendationCard > div span,
+.recommendationCard small { color: var(--studio-muted); font-size: 10px; }
+.recommendationCard p { margin: 0; color: #d6d9df; font-size: 11px; line-height: 1.45; }
+.recommendationCard ul { margin: 0; padding-left: 16px; color: #ffcf8d; font-size: 10px; }
+.recommendationCard button {
+  justify-self: start;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--studio-line);
+  border-radius: 7px;
+  background: #29264a;
+  color: #f3f1ff;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.recommendationCard button:disabled { opacity: .48; cursor: not-allowed; background: #1a1d23; }
+.lineage { display: grid; gap: 9px; margin-top: 14px; }
+.lineage h3 { margin: 0; font-size: 12px; }
+.lineage > div { display: grid; gap: 4px; padding: 8px 9px; border-left: 2px solid var(--studio-accent); background: #12151a; }
+.lineage span { color: var(--studio-muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.lineage strong { font-size: 10px; line-height: 1.4; }
+
 .emptyInspector { padding: 24px 16px; color: var(--studio-muted); }
 .error {
   margin: 12px;
