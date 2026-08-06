@@ -587,6 +587,86 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
   }]
 };
 
+export const exportV2ProofDeck: DeckDocumentV2 = {
+  schemaVersion: 2,
+  id: "export-v2-proof",
+  revision: 1,
+  title: "Deckory V2 Export Proof",
+  locale: "vi-VN",
+  canvas: { width: 1280, height: 720, unit: "px" },
+  theme: { id: "deckory-editorial", tokens: {} },
+  assets: [{
+    id: "custom-radar-fallback",
+    type: "image",
+    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZpKQAAAAASUVORK5CYII=",
+    mediaType: "image/png",
+    width: 1,
+    height: 1,
+    source: { label: "Local fallback fixture" }
+  }],
+  slides: [{
+    id: "fallback-proof",
+    name: "Fallback Proof",
+    purpose: "export-fallback-proof",
+    conclusion: "Web Block luôn xuất bằng fallback đã công bố, không giả native-editable.",
+    notes: "Nêu rõ đây là fixture nội bộ để kiểm tra export, không phải visual sản phẩm. Chỉ vào capability report trước, sau đó xác nhận fallback PNG local xuất hiện trong artifact. Kết bằng nguyên tắc: unsupported hoặc fallback phải được công bố trước khi người dùng chạy export.",
+    background: { layers: [{ id: "paper", type: "solid", color: "#f7f7f4", opacity: 1 }] },
+    evidence: { source: "Deckory local export fixture", status: "illustrative" },
+    elements: [
+      {
+        id: "title",
+        name: "Title",
+        kind: "text",
+        frame: { x: 72, y: 60, width: 1136, height: 96 },
+        zIndex: 2,
+        content: { text: "Fallback phải được công bố trước khi xuất." },
+        style: { color: "#17191c", fontSize: 42, fontWeight: 760, lineHeight: 1.08 },
+        accessibility: { label: "Fallback phải được công bố trước khi xuất.", readingOrder: 1 }
+      },
+      {
+        id: "custom-radar",
+        name: "Custom radar",
+        kind: "web-block",
+        frame: { x: 160, y: 190, width: 960, height: 390 },
+        zIndex: 1,
+        content: {
+          sourceId: "custom-radar-source",
+          manifest: {
+            id: "custom-radar",
+            version: "1.0.0",
+            entry: "index.html",
+            framework: "html",
+            accessibleSummary: "Radar minh hoạ dùng fallback PNG local.",
+            staticFallback: { type: "png", assetId: "custom-radar-fallback" },
+            allowedImports: [],
+            payloadBytes: 64,
+            localAssetBytes: 0
+          }
+        },
+        style: { fill: "#ffffff", stroke: "#d8dad6", strokeWidth: 1, borderRadius: 18 },
+        accessibility: { label: "Radar minh hoạ dùng fallback PNG local.", readingOrder: 2 },
+        exportPolicy: {
+          html: "fallback",
+          svg: "fallback",
+          png: "fallback",
+          pdf: "fallback",
+          pptx: "unsupported",
+          fallbackAssetId: "custom-radar-fallback"
+        }
+      },
+      {
+        id: "footer",
+        name: "Evidence footer",
+        kind: "evidence-footer",
+        frame: { x: 72, y: 664, width: 1136, height: 28 },
+        zIndex: 3,
+        content: { source: "Deckory local export fixture · illustrative", page: "01" },
+        accessibility: { label: "Nguồn: Deckory local export fixture, illustrative.", readingOrder: 3 }
+      }
+    ]
+  }]
+};
+
 const sceneFoundationStructuralAudit = auditDeckV2(sceneFoundationDeck);
 export const sceneFoundationAudit = {
   ...sceneFoundationStructuralAudit,
@@ -601,6 +681,7 @@ export function resolveDeck(deckId?: string | null): DeckDocument {
 
 export function resolveAnyDeck(deckId?: string | null): AnyDeckDocument {
   if (deckId === sceneFoundationDeck.id) return sceneFoundationDeck;
+  if (deckId === exportV2ProofDeck.id) return exportV2ProofDeck;
   return resolveDeck(deckId);
 }
 

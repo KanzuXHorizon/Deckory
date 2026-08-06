@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { ExportDeck } from "../../components/export-deck";
-import { deckCatalog, defaultDeck, sceneFoundationDeck } from "../../lib/deck-catalog";
+import { deckCatalog, defaultDeck, exportV2ProofDeck, sceneFoundationDeck } from "../../lib/deck-catalog";
 
 export default async function ExportPage({
   searchParams
@@ -11,7 +11,9 @@ export default async function ExportPage({
   const requestedDeckId = params.deck ?? defaultDeck.id;
   const deck = requestedDeckId === sceneFoundationDeck.id
     ? sceneFoundationDeck
-    : deckCatalog.find((candidate) => candidate.deck.id === requestedDeckId)?.deck;
+    : requestedDeckId === exportV2ProofDeck.id
+      ? exportV2ProofDeck
+      : deckCatalog.find((candidate) => candidate.deck.id === requestedDeckId)?.deck;
 
   if (!deck) notFound();
   return <ExportDeck deck={deck} />;

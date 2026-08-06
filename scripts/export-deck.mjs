@@ -77,6 +77,11 @@ try {
   const slideCount = await slides.count();
   if (slideCount === 0) throw new Error("Deck không có slide để xuất.");
 
+  const capabilityJson = page.locator('[data-export-capability-json="true"]');
+  const capabilityReport = await capabilityJson.count() > 0
+    ? JSON.parse(await capabilityJson.textContent() ?? "null")
+    : undefined;
+
   const files = [];
   const keepPng = ["png", "all"].includes(options.format);
   const wantsJpeg = ["jpg", "jpeg", "all"].includes(options.format);
@@ -151,6 +156,7 @@ try {
     generatedAt: new Date().toISOString(),
     renderer: "Deckory browser export / Chromium",
     canvas: { width: 1280, height: 720, aspectRatio: "16:9" },
+    ...(capabilityReport ? { capabilityReport } : {}),
     files
   };
   const manifestPath = join(outputRoot, `${safeFileName(options.deck)}-export.json`);

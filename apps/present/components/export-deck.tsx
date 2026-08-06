@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Copy, FileDown, Images, Presentation, Printer } from "lucide-react";
+import { SceneRenderer, resolveDeckExportReport, type ExportCapabilityRegistry, type SceneRendererExtensions } from "@deckory/renderer";
 import type { DeckDocument, DeckDocumentV2, SceneSlide, Slide } from "@deckory/schema";
 import { deckThemeClassName } from "../lib/deck-theme";
 import { isDeckDocumentV2 } from "../lib/deck-version";
@@ -10,9 +11,34 @@ import { createDeckExportCommand, type DeckExportCliFormat } from "../lib/export
 import { DeckoryBrand } from "./brand-mark";
 import { SlideFrame } from "./slide-frame";
 
+const EMPTY_EXPORT_REGISTRY: ExportCapabilityRegistry = {
+  resolveComponent: () => undefined
+};
+
+function fallbackAssetId(manifest: Record<string, unknown>): string | undefined {
+  const fallback = manifest.staticFallback;
+  if (!fallback || typeof fallback !== "object") return undefined;
+  const assetId = (fallback as Record<string, unknown>).assetId;
+  return typeof assetId === "string" ? assetId : undefined;
+}
+
 export function ExportDeck({ deck }: { deck: DeckDocument | DeckDocumentV2 }) {
   const v2 = isDeckDocumentV2(deck);
   const themeClassName = v2 ? "deck-theme--editorial-light" : deckThemeClassName(deck);
+  const exportReport = useMemo(() => v2 ? resolveDeckExportReport(deck, EMPTY_EXPORT_REGISTRY) : undefined, [deck, v2]);
+  const rendererExtensions = useMemo<SceneRendererExtensions | undefined>(() => {
+    if (!v2) return undefined;
+    return {
+      exportTarget: "pdf",
+      webBlocks: {
+        resolve: ({ manifest }) => {
+          const assetId = fallbackAssetId(manifest);
+          const fallbackSrc = assetId ? deck.assets.find((asset) => asset.id === assetId)?.src : undefined;
+          return fallbackSrc ? { fallbackSrc } : undefined;
+        }
+      }
+    };
+  }, [deck, v2]);
   const [copyState, setCopyState] = useState<{ format: DeckExportCliFormat; status: "copied" | "error" } | null>(null);
   const resetTimerRef = useRef<number | null>(null);
 
@@ -74,6 +100,8 @@ export function ExportDeck({ deck }: { deck: DeckDocument | DeckDocumentV2 }) {
         <p>Mỗi trang chiếu được cố định ở 1280 × 720. Ghi chú diễn giả và các điều khiển trình chiếu không xuất hiện trong tài liệu xuất.</p>
       </section>
 
+      {exportReport ? <ExportCapabilityReport report={exportReport} /> : null}
+
       <section className="export-format-panel" aria-labelledby="export-format-title">
         <div>
           <span>ĐỊNH DẠNG XUẤT</span>
@@ -104,13 +132,11 @@ export function ExportDeck({ deck }: { deck: DeckDocument | DeckDocumentV2 }) {
             key={slide.id}
           >
             {v2 ? (
-              <SlideFrame
+              <SceneRenderer
                 slide={slide as SceneSlide}
-                deckId={deck.id}
                 assets={deck.assets}
-                sequenceStep={Number.MAX_SAFE_INTEGER}
-                reducedMotion
-                motionDisabled
+                mode="export"
+                {...(rendererExtensions ? { extensions: rendererExtensions } : {})}
               />
             ) : (
               <SlideFrame
@@ -126,6 +152,35 @@ export function ExportDeck({ deck }: { deck: DeckDocument | DeckDocumentV2 }) {
         ))}
       </div>
     </main>
+  );
+}
+
+function ExportCapabilityReport({
+  report
+}: {
+  report: ReturnType<typeof resolveDeckExportReport>;
+}) {
+  const fallbackElements = report.elements.filter((element) =>
+    [element.html, element.svg, element.png, element.pdf, element.pptx].includes("fallback"));
+  const unsupportedElements = report.elements.filter((element) =>
+    [element.html, element.svg, element.png, element.pdf, element.pptx].includes("unsupported"));
+  const fallbackAssets = [...new Set(fallbackElements.flatMap((element) => element.fallback?.assetId ? [element.fallback.assetId] : []))];
+
+  return (
+    <section className="export-capability-report" data-export-capability-report="true" aria-labelledby="export-capability-title">
+      <div>
+        <span>EXPORT CAPABILITY</span>
+        <h2 id="export-capability-title">Báo cáo khả năng xuất</h2>
+        <p>Capability được tính từ từng phần tử trước khi Chromium tạo PNG hoặc PDF. Fallback và unsupported không được trình bày như native-editable.</p>
+      </div>
+      <dl>
+        <div><dt>PNG</dt><dd>{report.targets.png.native + report.targets.png.nativeEditable} native · {report.targets.png.fallback} fallback · {report.targets.png.unsupported} unsupported</dd></div>
+        <div><dt>PDF</dt><dd>{report.targets.pdf.native + report.targets.pdf.nativeEditable} native · {report.targets.pdf.fallback} fallback · {report.targets.pdf.unsupported} unsupported</dd></div>
+        <div><dt>Toàn deck</dt><dd>{fallbackElements.length} thành phần dùng fallback · {unsupportedElements.length} thành phần không hỗ trợ</dd></div>
+      </dl>
+      {fallbackAssets.length > 0 ? <p className="export-capability-assets">Fallback asset: {fallbackAssets.join(", ")}</p> : null}
+      <pre hidden data-export-capability-json="true">{JSON.stringify(report)}</pre>
+    </section>
   );
 }
 

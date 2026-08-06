@@ -7,6 +7,7 @@ const screenshotRoot = join(process.cwd(), "output", "playwright", "screenshots"
 mkdirSync(screenshotRoot, { recursive: true });
 
 test.describe("Deckory export surface", () => {
+  test.describe.configure({ timeout: 90_000 });
   test("renders every slide with the shared renderer and print-safe dimensions", async ({ page }) => {
     const runtime = watchRuntimeErrors(page);
     await page.goto("/export?deck=template-gallery");

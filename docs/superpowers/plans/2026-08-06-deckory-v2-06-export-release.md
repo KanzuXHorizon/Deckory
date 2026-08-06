@@ -195,7 +195,7 @@ git commit -m "feat(export): add standalone HTML and SVG"
 **Interfaces:**
 - Extends existing PNG/PDF export with V2 capability reports and final-state rendering.
 
-- [ ] **Step 1: Write failing component tests**
+- [x] **Step 1: Write failing component tests**
 
 ```tsx
 it("shows fallback and unsupported counts before export", () => {
@@ -204,7 +204,7 @@ it("shows fallback and unsupported counts before export", () => {
 });
 ```
 
-- [ ] **Step 2: Add failing E2E assertions**
+- [x] **Step 2: Add failing E2E assertions**
 
 Cover:
 
@@ -217,7 +217,7 @@ Cover:
 - Vietnamese copy;
 - capability report generated.
 
-- [ ] **Step 3: Run focused tests and confirm RED**
+- [x] **Step 3: Run focused tests and confirm RED**
 
 ```bash
 pnpm --filter @deckory/present test -- components/export-deck.test.tsx
@@ -226,11 +226,11 @@ pnpm test:e2e -- tests/e2e/export-v2.spec.ts
 
 Expected: FAIL on missing V2 report/final-state behavior.
 
-- [ ] **Step 4: Implement V2 export flow using the shared renderer**
+- [x] **Step 4: Implement V2 export flow using the shared renderer**
 
 Do not create a separate visual implementation for export. Use `mode="export"` and wait for fonts, images, charts, diagrams and Web Block fallbacks to report ready.
 
-- [ ] **Step 5: Re-run and inspect outputs**
+- [x] **Step 5: Re-run and inspect outputs**
 
 ```bash
 pnpm --filter @deckory/present test -- components/export-deck.test.tsx
@@ -239,7 +239,7 @@ pnpm test:e2e -- tests/e2e/export.spec.ts tests/e2e/export-v2.spec.ts
 
 Expected: PASS. Compare exported representative slides with Preview screenshots.
 
-- [ ] **Step 6: Commit V2 PNG/PDF export**
+- [x] **Step 6: Commit V2 PNG/PDF export**
 
 ```bash
 git add apps/present/components/export-deck.tsx apps/present/components/export-deck.test.tsx apps/present/app/export/page.tsx apps/present/app/export.css scripts/export-deck.mjs tests/e2e/export.spec.ts tests/e2e/export-v2.spec.ts

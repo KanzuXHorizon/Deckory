@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { DeckDocument } from "@deckory/schema";
+import type { DeckDocument, DeckDocumentV2 } from "@deckory/schema";
 import { sceneFoundationDeck } from "../lib/deck-catalog";
 import { ExportDeck } from "./export-deck";
 
@@ -42,14 +42,70 @@ const deck: DeckDocument = {
 };
 
 describe("ExportDeck", () => {
-  it("renders V2 scenes through the same export boundary", () => {
+  it("renders V2 scenes in export mode and discloses the capability report", () => {
     const html = renderToStaticMarkup(<ExportDeck deck={sceneFoundationDeck} />);
 
     expect(html).toContain('data-export-deck-id="scene-foundation"');
     expect(html).toContain('data-export-slide-id="cover"');
     expect(html).toContain('class="scene-slide"');
+    expect(html).toContain('data-render-mode="export"');
     expect(html).toContain('data-element-id="title"');
     expect(html).toContain("Một scene graph dùng chung cho mọi bề mặt.");
+    expect(html).toContain('data-export-capability-report="true"');
+    expect(html).toContain("Báo cáo khả năng xuất");
+    expect(html).toContain('data-export-capability-json="true"');
+    expect(html).toContain("PDF");
+    expect(html).toContain("PNG");
+  });
+
+  it("shows fallback and unsupported counts before export", () => {
+    const webBlockDeck: DeckDocumentV2 = {
+      ...sceneFoundationDeck,
+      id: "web-block-export-proof",
+      title: "Web Block export proof",
+      visualIntelligence: {},
+      assets: [{
+        id: "custom-radar-fallback",
+        type: "image",
+        src: "data:image/png;base64,iVBORw0KGgo=",
+        mediaType: "image/png",
+        width: 640,
+        height: 360
+      }],
+      slides: [{
+        ...sceneFoundationDeck.slides[0]!,
+        id: "fallback-proof",
+        elements: [{
+          id: "custom-radar",
+          name: "Custom radar",
+          kind: "web-block",
+          frame: { x: 100, y: 100, width: 640, height: 360 },
+          zIndex: 1,
+          content: {
+            sourceId: "custom-radar-source",
+            manifest: {
+              id: "custom-radar",
+              version: "1.0.0",
+              entry: "index.html",
+              framework: "html",
+              accessibleSummary: "Radar minh hoạ",
+              staticFallback: { type: "png", assetId: "custom-radar-fallback" },
+              allowedImports: [],
+              payloadBytes: 64,
+              localAssetBytes: 0
+            }
+          },
+          accessibility: { label: "Radar minh hoạ" },
+          exportPolicy: { html: "fallback", svg: "fallback", png: "fallback", pdf: "fallback", pptx: "unsupported", fallbackAssetId: "custom-radar-fallback" }
+        }]
+      }]
+    };
+
+    const html = renderToStaticMarkup(<ExportDeck deck={webBlockDeck} />);
+    expect(html).toContain("1 thành phần dùng fallback");
+    expect(html).toContain("1 thành phần không hỗ trợ");
+    expect(html).toContain('data-web-block-status="static-export"');
+    expect(html).toContain("custom-radar-fallback");
   });
 
   it("renders every slide at a stable export boundary without speaker notes", () => {
