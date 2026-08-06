@@ -27,11 +27,12 @@
     "lint": "pnpm -r --if-present lint",
     "audit:decks": "node --experimental-strip-types --import ./scripts/register-typescript-loader.mjs scripts/audit-decks.ts",
     "assets:check": "node --experimental-strip-types --import ./scripts/register-typescript-loader.mjs scripts/check-assets.ts",
+    "performance:check": "node --experimental-strip-types --import ./scripts/register-typescript-loader.mjs scripts/check-route-bundles.ts",
     "export:deck": "node scripts/export-deck.mjs",
     "export:pptx-v2": "node scripts/export-pptx-v2.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:visual": "node scripts/run-e2e.mjs tests/e2e/visual-quality.spec.ts",
-    "quality:gate": "git diff --check && pnpm typecheck && pnpm lint && pnpm test && pnpm audit:decks -- --strict && pnpm assets:check && pnpm test:e2e"
+    "quality:gate": "git diff --check && pnpm typecheck && pnpm lint && pnpm test && pnpm audit:decks -- --strict && pnpm assets:check && pnpm build && pnpm performance:check && pnpm test:e2e"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
