@@ -17,7 +17,7 @@ ORIGINAL_DIRTY_CHECKOUT=F:\Deckory
 
 The original checkout was not used for implementation and was not reset, cleaned, staged or committed.
 
-The managed worktree writes a Windows Git pointer. Connector shell commands therefore used `git.exe`; package commands used Windows Node/pnpm through `cmd.exe /c`.
+The managed worktree writes a Windows Git pointer. Connector shell commands therefore used `git.exe`; package commands used Windows `node.exe` with the repository's Corepack/pnpm entrypoint.
 
 ## Commits
 
@@ -30,8 +30,16 @@ Implementation and request commits, in order:
 5. `86c80a20ac9e44929e8f682af5812c0d87ded3ac` — `feat(diagrams): add measured deterministic layouts`
 6. `901c85e3b4d6b7b89a4549d4c0f891904b7d2a14` — `feat(visuals): add catalog coverage inventory`
 7. `ed20ee3911b8e08c54b11168f7027b6587f26dc1` — `docs(visuals): record integration requests`
+8. `f13c8f5ffd6c03326ed1e1e388f08634b5b43cdb` — `docs(visuals): add track integration manifest`
+9. `54c95672bae59c2ab6a79c738c324c1e4c7d46c7` — `fix(visuals): harden recommendation evidence inputs`
+10. `0f0d27c4b4fdc462dbd33905a171262df86cb919` — `fix(story): strengthen narrative and claim diagnostics`
+11. `4f87c9436afef291d82d118f6ad1678efba67667` — `fix(evidence): validate datasets and transform lineage`
+12. `757f30e0570a240daea4f44e573a678aa68bdd78` — `fix(charts): preserve truthful editorial geometry`
+13. `09da854787503173b9aaa8aaacd6a991a7ae621b` — `fix(diagrams): validate complete graph layouts`
+14. `838cdbbd6a100baadd57b2f994a3882bc4cf8533` — `fix(visuals): harden adapter and fixture boundaries`
+15. `1feb709906820bd18340bc5e2ad1ebb9545b64c6` — `fix(story): make narrative contracts strict`
 
-The commit containing this manifest is reported by the session result because a Git commit cannot embed its own final SHA without changing that SHA.
+The final commit containing this refreshed manifest is reported by the session result because a Git commit cannot embed its own SHA without changing that SHA.
 
 ## Owned files changed
 
@@ -114,6 +122,7 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 
 **Functions/constants**
 
+- `visualIntents`
 - `classifyVisualIntent`
 - `recommendVisuals`
 - `visualCatalog`
@@ -126,7 +135,9 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 - `ExtractedClaimKind`
 - `ExtractedClaim`
 - `ExtractedSide`
+- `NumericClaimRole`
 - `NumericClaim`
+- `StructuredRelationship`
 - `VisualIntentHints`
 - `VisualIntentInput`
 - `VisualIntentAnalysis`
@@ -447,15 +458,16 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 - Adapter-only strategies: `elk-layered` and `elk-force`.
 - Typed nodes, ports, endpoints and edges with source/target direction validation.
 - Deterministic Vietnamese-safe text measurement fallback and line wrapping.
-- Fit, collision, missing-generated-layout and adapter-required diagnostics.
+- Fit, collision, missing-generated-layout, graph-cycle and adapter-required diagnostics.
 - Orthogonal/polyline/straight/spline routing contracts.
 - No raw ELK graph/layout options in public exports.
 
 ### Catalog and fixtures
 
-- 13 recommendation catalog entries with complete use/avoid, input, evidence, density, accessibility, renderer and export metadata.
+- 15 recommendation catalog entries with complete use/avoid, input, evidence, density, accessibility, renderer and export metadata.
+- All 27 public visual intents have at least one deterministic recommendation candidate.
 - 68 chart/diagram coverage entries: 30 chart variants plus 38 diagram families.
-- 71 stable fixture records after including recommendation-only composition/editorial fixtures.
+- 73 stable fixture records after including recommendation-only composition/editorial fixtures.
 - Every fixture is explicitly illustrative and requires visible evidence labeling.
 - Every fixture records unit coverage and `required-after-integration` browser review status.
 
@@ -479,7 +491,14 @@ Focused GREEN progression:
 - evidence/data lineage: 37 cumulative tests;
 - chart core/adapters: 56 cumulative tests;
 - diagram core/adapters: 76 cumulative tests;
-- inventory: 82 cumulative tests.
+- inventory: 82 cumulative tests;
+- recommendation evidence/input hardening: 87 cumulative tests;
+- narrative and claim diagnostics: 91 cumulative tests;
+- dataset and transform-lineage validation: 95 cumulative tests;
+- truthful chart geometry: 100 cumulative tests;
+- complete diagram graph validation: 105 cumulative tests;
+- adapter and fixture-boundary validation: 107 cumulative tests;
+- strict narrative contracts: 108 cumulative tests.
 
 Systematic fixes were made only after root causes were reproduced:
 
@@ -487,7 +506,15 @@ Systematic fixes were made only after root causes were reproduced:
 - stale inherited highlight/animation fixture metadata after changing chart variants;
 - `exactOptionalPropertyTypes` object construction;
 - explicit `id` to `portId` translation at the ELK boundary;
-- TypeScript exhaustiveness fallback for editorial geometry.
+- TypeScript exhaustiveness fallback for editorial geometry;
+- calendar years distinguished from quantitative chart evidence;
+- structured geography, relationship and evidence availability distinguished from intent labels;
+- missing closing, repeated conclusions and section-boundary narrative bridges;
+- polarity and temporal-scope claim preservation;
+- strict dataset row/column validation and collision-free transform lineage;
+- truthful zero-baseline chart geometry, bullet target domains and series-safe slope geometry;
+- complete traversal/generated-layout contracts, graph-cycle refusal and typed-port routing;
+- ELK request bounds/measurement validation and orphan-fixture diagnostics.
 
 ## Deterministic repeat evidence
 
@@ -535,7 +562,7 @@ pnpm --filter @deckory/visuals lint
 Results:
 
 - 18 test files passed;
-- 82 tests passed;
+- 108 tests passed;
 - 0 failed;
 - package typecheck passed;
 - package lint script passed.
@@ -545,13 +572,17 @@ Results:
 ```text
 pnpm test
 pnpm typecheck
+pnpm lint
+pnpm build
 ```
 
 Results:
 
-- 318 tests passed across workspace packages, app, deck and script suites;
+- 344 tests passed across workspace packages, app, deck and script suites;
 - 0 failed;
-- all available workspace typechecks passed.
+- all available workspace typechecks passed;
+- all available workspace lint scripts passed;
+- Next.js production build compiled and generated all Preview, Presenter, Studio and Export routes.
 
 ### Diff/ownership checks
 
