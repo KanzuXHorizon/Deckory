@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_WEB_BLOCK_MESSAGE_BYTES,
   WEB_BLOCK_PROTOCOL_VERSION,
   createWebBlockMessage,
   parseWebBlockMessage,
@@ -63,6 +64,18 @@ describe("versioned Web Block bridge", () => {
       path: ["value"],
       value: () => 1
     })).toThrow(/tuần tự/i);
+  });
+
+  it("rejects unsafe Inspector paths and oversized messages", () => {
+    expect(() => createWebBlockMessage("inspector-patch", "custom-radar", {
+      path: ["constructor", "prototype", "polluted"],
+      value: true
+    })).toThrow(/path|constructor/i);
+
+    expect(MAX_WEB_BLOCK_MESSAGE_BYTES).toBe(256 * 1024);
+    expect(() => createWebBlockMessage("interaction-state", "custom-radar", {
+      state: { value: "x".repeat(MAX_WEB_BLOCK_MESSAGE_BYTES) }
+    })).toThrow(/giới hạn|bytes/i);
   });
 
   it("bounds resize requests and export payloads", () => {

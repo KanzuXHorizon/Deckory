@@ -65,6 +65,17 @@ describe("Web Block source and manifest contracts", () => {
     expect(validateWebBlockSource(source, { ...validManifest, payloadBytes: 140 })).toMatchObject({ ok: true, diagnostics: [] });
   });
 
+  it("rejects a manifest that understates its actual source payload", () => {
+    const result = validateWebBlockSource({
+      entry: "index.tsx",
+      files: { "index.tsx": "export const value = 'payload';" }
+    }, { ...validManifest, payloadBytes: 1 });
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "manifest-payload-understated" })]
+    });
+  });
+
   it("rejects remote imports and imports outside the declared allowlist", () => {
     const remote = validateWebBlockSource({
       entry: "index.tsx",
@@ -86,6 +97,16 @@ describe("Web Block source and manifest contracts", () => {
     }, validManifest).diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "unsafe-path" })]));
 
     expect(validateWebBlockSource({
+      entry: "src/index.tsx",
+      files: {
+        "src/index.tsx": "import '../../outside';",
+        "outside.ts": "export {};"
+      }
+    }, { ...validManifest, entry: "src/index.tsx", payloadBytes: 100 }).diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "local-import-escapes-root" })])
+    );
+
+    expect(validateWebBlockSource({
       entry: "missing.tsx",
       files: { "index.tsx": "export {};" }
     }, validManifest).diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "entry-not-found" })]));
@@ -94,5 +115,17 @@ describe("Web Block source and manifest contracts", () => {
       entry: "index.tsx",
       files: { "index.tsx": "const run = new Function('return 1'); run();" }
     }, validManifest).diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "executable-constructor-denied" })]));
+  });
+
+  it("denies CommonJS and dynamic import execution paths", () => {
+    expect(validateWebBlockSource({
+      entry: "index.tsx",
+      files: { "index.tsx": "const fs = require('fs');" }
+    }, validManifest).diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "commonjs-require-denied" })]));
+
+    expect(validateWebBlockSource({
+      entry: "index.tsx",
+      files: { "index.tsx": "const moduleName = './feature'; import(moduleName);" }
+    }, validManifest).diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "dynamic-import-denied" })]));
   });
 });

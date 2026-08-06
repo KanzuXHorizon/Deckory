@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { defineSceneDeck, defineSceneSlide } from "./define-scene";
-import { jsx } from "./jsx-runtime";
+import { jsx, normalizeSceneChildren } from "./jsx-runtime";
 import { Group, Shape, Slide, Text } from "./primitives";
 
 const frame = { x: 72, y: 64, width: 700, height: 140 } as const;
@@ -57,6 +57,22 @@ describe("Scene JSX runtime", () => {
   it("rejects intrinsic HTML tags at the runtime boundary", () => {
     expect(() => jsx("div", { children: "Không hợp lệ" })).toThrow(/div.*không được hỗ trợ/i);
     expect(() => jsx("script", { children: "alert(1)" })).toThrow(/script.*không được hỗ trợ/i);
+  });
+
+  it("rejects forged scene-node objects that were not created by approved primitives", () => {
+    expect(() => normalizeSceneChildren({
+      nodeType: "element",
+      element: {
+        id: "forged",
+        name: "Forged",
+        kind: "text",
+        frame,
+        zIndex: 0,
+        content: { text: "Bypass" },
+        accessibility: { label: "Bypass" }
+      },
+      children: []
+    })).toThrow(/primitive|scene node.*không hợp lệ/i);
   });
 
   it("rejects executable handlers and function-valued props", () => {

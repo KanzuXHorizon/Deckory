@@ -66,9 +66,13 @@ export type WebBlockDiagnosticCode =
   | "entry-not-found"
   | "entry-mismatch"
   | "source-too-large"
+  | "manifest-payload-understated"
   | "remote-import-denied"
   | "import-not-allowed"
   | "local-import-not-found"
+  | "local-import-escapes-root"
+  | "commonjs-require-denied"
+  | "dynamic-import-denied"
   | "executable-constructor-denied";
 
 export interface WebBlockDiagnostic {
@@ -92,9 +96,8 @@ function freezeDeep<T>(value: T, seen = new Set<object>()): T {
 }
 
 function isSafeSourcePath(path: string): boolean {
-  if (path.startsWith("/") || path.startsWith("\\") || /^[A-Za-z]:/.test(path)) return false;
-  const normalized = path.replaceAll("\\", "/");
-  return !normalized.split("/").some((segment) => segment === ".." || segment === "" || segment === ".");
+  if (path.includes("\\") || path.startsWith("/") || /^[A-Za-z]:/.test(path)) return false;
+  return !path.split("/").some((segment) => segment === ".." || segment === "" || segment === ".");
 }
 
 function hasSupportedExtension(path: string): boolean {
@@ -107,15 +110,10 @@ function byteLength(value: string): number {
 
 function collectImportSpecifiers(source: string): string[] {
   const specifiers = new Set<string>();
-  const patterns = [
-    /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g,
-    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g
-  ];
-  for (const pattern of patterns) {
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(source)) !== null) {
-      if (match[1]) specifiers.add(match[1]);
-    }
+  const pattern = /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["']/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (match[1]) specifiers.add(match[1]);
   }
   return [...specifiers];
 }
@@ -128,15 +126,22 @@ function isLocalSpecifier(specifier: string): boolean {
   return specifier.startsWith("./") || specifier.startsWith("../");
 }
 
-function resolveLocalImport(fromFile: string, specifier: string): string {
-  const segments = fromFile.replaceAll("\\", "/").split("/");
+function resolveLocalImport(
+  fromFile: string,
+  specifier: string
+): { resolved?: string; escapedRoot: boolean } {
+  const segments = fromFile.split("/");
   segments.pop();
   for (const segment of specifier.split("/")) {
     if (segment === "." || segment === "") continue;
-    if (segment === "..") segments.pop();
-    else segments.push(segment);
+    if (segment === "..") {
+      if (segments.length === 0) return { escapedRoot: true };
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
   }
-  return segments.join("/");
+  return { resolved: segments.join("/"), escapedRoot: false };
 }
 
 function localImportExists(files: Record<string, string>, resolved: string): boolean {
@@ -173,10 +178,22 @@ export function validateWebBlockSource(
   if (totalBytes > MAX_WEB_BLOCK_SOURCE_BYTES) {
     diagnostics.push({ code: "source-too-large", message: `Web Block source vượt giới hạn ${MAX_WEB_BLOCK_SOURCE_BYTES} bytes.` });
   }
+  if (totalBytes > manifest.payloadBytes) {
+    diagnostics.push({
+      code: "manifest-payload-understated",
+      message: `Manifest khai báo ${manifest.payloadBytes} bytes nhưng source thực tế là ${totalBytes} bytes.`
+    });
+  }
 
   for (const [file, contents] of Object.entries(source.files)) {
     if (/\b(?:eval\s*\(|new\s+Function\s*\(|Function\s*\()/u.test(contents)) {
       diagnostics.push({ code: "executable-constructor-denied", file, message: "eval và Function constructor không được phép trong Web Block source." });
+    }
+    if (/\brequire\s*\(/u.test(contents)) {
+      diagnostics.push({ code: "commonjs-require-denied", file, message: "CommonJS require không được phép trong Web Block source." });
+    }
+    if (/\bimport\s*\(/u.test(contents)) {
+      diagnostics.push({ code: "dynamic-import-denied", file, message: "Dynamic import không được phép trong Web Block source." });
     }
     for (const specifier of collectImportSpecifiers(contents)) {
       if (isRemoteSpecifier(specifier)) {
@@ -184,8 +201,15 @@ export function validateWebBlockSource(
         continue;
       }
       if (isLocalSpecifier(specifier)) {
-        const resolved = resolveLocalImport(file, specifier);
-        if (!isSafeSourcePath(resolved) || !localImportExists(source.files, resolved)) {
+        const resolution = resolveLocalImport(file, specifier);
+        if (resolution.escapedRoot || !resolution.resolved) {
+          diagnostics.push({
+            code: "local-import-escapes-root",
+            file,
+            specifier,
+            message: `Local import vượt khỏi virtual source root: ${specifier}.`
+          });
+        } else if (!isSafeSourcePath(resolution.resolved) || !localImportExists(source.files, resolution.resolved)) {
           diagnostics.push({ code: "local-import-not-found", file, specifier, message: `Không tìm thấy local import: ${specifier}.` });
         }
         continue;

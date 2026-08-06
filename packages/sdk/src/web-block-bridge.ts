@@ -1,8 +1,16 @@
 import { z } from "zod";
 
 export const WEB_BLOCK_PROTOCOL_VERSION = "1.0" as const;
+export const MAX_WEB_BLOCK_MESSAGE_BYTES = 256 * 1024;
+const MAX_WEB_BLOCK_MESSAGE_DEPTH = 32;
+const MAX_WEB_BLOCK_MESSAGE_NODES = 10_000;
 
+const unsafePathSegments = new Set(["__proto__", "prototype", "constructor"]);
 const stableId = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+const inspectorPathSegment = z.union([
+  z.string().trim().min(1).refine((segment) => !unsafePathSegments.has(segment), "Inspector path chứa segment không an toàn"),
+  z.number().int().nonnegative()
+]);
 const common = {
   protocolVersion: z.literal(WEB_BLOCK_PROTOCOL_VERSION),
   blockId: stableId
@@ -37,7 +45,7 @@ const inspectorPatchMessage = z.object({
   ...common,
   type: z.literal("inspector-patch"),
   payload: z.object({
-    path: z.array(z.union([z.string().trim().min(1), z.number().int().nonnegative()])).min(1).max(32),
+    path: z.array(inspectorPathSegment).min(1).max(32),
     value: z.unknown()
   }).strict()
 }).strict();
@@ -82,7 +90,24 @@ function isPlainObject(value: object): boolean {
   return prototype === Object.prototype || prototype === null;
 }
 
-function assertSerializable(value: unknown, path: string, seen: Set<object>): void {
+interface SerializationBudget {
+  nodes: number;
+}
+
+function assertSerializable(
+  value: unknown,
+  path: string,
+  seen: Set<object>,
+  depth: number,
+  budget: SerializationBudget
+): void {
+  if (depth > MAX_WEB_BLOCK_MESSAGE_DEPTH) {
+    throw new TypeError(`Bridge payload tại ${path} vượt giới hạn độ sâu.`);
+  }
+  budget.nodes += 1;
+  if (budget.nodes > MAX_WEB_BLOCK_MESSAGE_NODES) {
+    throw new TypeError(`Bridge payload vượt giới hạn số node.`);
+  }
   if (value === null || value === undefined) return;
   const valueType = typeof value;
   if (valueType === "function" || valueType === "symbol" || valueType === "bigint") {
@@ -96,11 +121,11 @@ function assertSerializable(value: unknown, path: string, seen: Set<object>): vo
   if (seen.has(objectValue)) throw new TypeError(`Bridge payload tại ${path} chứa tham chiếu vòng và không thể tuần tự.`);
   seen.add(objectValue);
   if (Array.isArray(value)) {
-    value.forEach((item, index) => assertSerializable(item, `${path}[${index}]`, seen));
+    value.forEach((item, index) => assertSerializable(item, `${path}[${index}]`, seen, depth + 1, budget));
   } else {
     if (!isPlainObject(objectValue)) throw new TypeError(`Bridge payload tại ${path} phải là dữ liệu thuần có thể tuần tự.`);
     for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-      assertSerializable(child, `${path}.${key}`, seen);
+      assertSerializable(child, `${path}.${key}`, seen, depth + 1, budget);
     }
   }
   seen.delete(objectValue);
@@ -110,7 +135,11 @@ export function parseWebBlockMessage(value: unknown): WebBlockMessage {
   if (typeof value !== "object" || value === null || (value as { protocolVersion?: unknown }).protocolVersion !== WEB_BLOCK_PROTOCOL_VERSION) {
     throw new TypeError(`Web Block protocol không được hỗ trợ; yêu cầu ${WEB_BLOCK_PROTOCOL_VERSION}.`);
   }
-  assertSerializable(value, "message", new Set<object>());
+  assertSerializable(value, "message", new Set<object>(), 0, { nodes: 0 });
+  const serialized = JSON.stringify(value);
+  if (new TextEncoder().encode(serialized).byteLength > MAX_WEB_BLOCK_MESSAGE_BYTES) {
+    throw new TypeError(`Web Block bridge message vượt giới hạn ${MAX_WEB_BLOCK_MESSAGE_BYTES} bytes.`);
+  }
   return WebBlockMessageSchema.parse(value) as WebBlockMessage;
 }
 

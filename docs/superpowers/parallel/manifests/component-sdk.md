@@ -88,6 +88,7 @@ Runtime guarantees covered by tests:
 
 - intrinsic HTML strings such as `div` and `script` are rejected;
 - arbitrary capitalized functions are rejected unless marked as an approved scene primitive;
+- forged scene-node objects are rejected through internal provenance tracking; the primitive factory is not exposed by package entrypoints;
 - props beginning with `on`, including `onClick`, are rejected;
 - function, symbol, bigint, non-finite number, circular and non-plain-object values are rejected;
 - text is accepted only by text-capable primitives;
@@ -152,6 +153,8 @@ Resolution rules covered by tests:
 - exact version resolution wins;
 - no implicit major-version upgrade occurs;
 - a known older version may migrate only through the target definition's explicit `migrateProps`;
+- stable SemVer releases outrank prereleases during migration resolution;
+- every registry insertion revalidates metadata, strict schema and Inspector contracts and requires a frozen `registerDeckComponent` result;
 - registry sealing prevents registration after Presenter startup.
 
 ### Inspector metadata domain
@@ -210,10 +213,11 @@ export function patchComponentProps<Props>(
 Validation covered by tests:
 
 - duplicate field IDs fail;
-- duplicate stable update paths fail;
+- duplicate effective update paths fail while relative child paths remain scoped under their object group or list;
+- contradictory number/list ranges and duplicate option or data-table column values fail;
 - `__proto__`, `prototype` and `constructor` paths fail;
 - nested reads do not execute code;
-- patches are immutable;
+- patches are immutable and limited to paths declared by the Inspector schema, including indexed list-item paths;
 - every patch is validated against the complete strict component props schema before acceptance.
 
 ### Web Block source and manifest
@@ -265,11 +269,12 @@ Denied source capabilities covered by tests:
 
 - remote `http`, `https`, `data`, `blob`, `file`, protocol-relative and `node:` imports;
 - package imports outside the reviewed manifest allowlist;
-- unsafe and traversing file paths;
+- unsafe paths and local imports that escape the virtual source root;
 - missing entry files;
 - unsupported file extensions;
-- source larger than 1 MB;
+- source larger than 1 MB or larger than the manifest-declared `payloadBytes`;
 - declared local assets larger than 4 MB;
+- CommonJS `require` and all dynamic import execution paths;
 - `eval`, `Function` and `new Function` source constructs.
 
 ### Versioned Web Block bridge
@@ -278,6 +283,7 @@ Public contract:
 
 ```ts
 export const WEB_BLOCK_PROTOCOL_VERSION = "1.0";
+export const MAX_WEB_BLOCK_MESSAGE_BYTES = 262_144;
 
 type WebBlockMessageType =
   | "ready"
@@ -306,7 +312,8 @@ Bridge validation covered by tests:
 
 - unsupported protocol versions fail;
 - malformed block IDs fail;
-- non-serializable payloads fail;
+- non-serializable, excessively deep, excessively large or over-node-budget payloads fail;
+- unsafe Inspector patch paths fail;
 - iframe source mismatch fails;
 - any origin other than opaque sandbox origin `null` fails;
 - unexpected block IDs fail;
@@ -327,6 +334,11 @@ export interface ComponentHostDefinition<Props = unknown> {
   exportCapabilities: readonly ComponentExportCapability[];
 }
 
+export function createComponentHostResetKey(
+  element: ComponentHostElement,
+  props: unknown
+): string;
+
 export function TrustedComponentHost<Props>(props: {
   element: ComponentHostElement;
   definition?: ComponentHostDefinition<Props>;
@@ -343,7 +355,8 @@ Host behavior covered by tests:
 - accessible summary exists outside component output;
 - missing definition, invalid props, renderer failure and unsupported export are element-scoped fallbacks;
 - one custom component failure cannot blank the slide;
-- export capability is checked before rendering.
+- error boundaries remount when validated component props change;
+- export mode fails closed when the export target is omitted or unsupported.
 
 ### Web Block renderer host and sandbox policy
 
@@ -361,6 +374,11 @@ export function createWebBlockSrcDoc(
   bundle: CompiledWebBlockBundle,
   manifest: WebBlockHostManifest
 ): string;
+
+export function parseWebBlockHostMessage(
+  value: unknown,
+  expected: { protocolVersion: string; blockId: string }
+): WebBlockHostMessage | undefined;
 
 export function reduceWebBlockLifecycle(
   state: WebBlockLifecycleState,
@@ -404,7 +422,9 @@ trusted-types deckory-web-block
 Host behavior covered by tests:
 
 - sandbox never grants `allow-same-origin`;
-- executable bundle boundaries cannot break out of the static script tag;
+- executable bundle boundaries and embedded JSON literals cannot break out of the static script tag;
+- the bootloader exposes a frozen `__deckoryWebBlockBridge`; only the reviewed runtime signals actual `render-complete`;
+- lifecycle messages consumed by the host are strict, bounded and reject unexpected fields;
 - accessible summary is outside the iframe;
 - thumbnail mode disables pointer interaction;
 - export mode never executes the iframe and uses static fallback;
@@ -520,13 +540,41 @@ pnpm --filter @deckory/renderer typecheck
 Observed results:
 
 ```text
-@deckory/sdk: 6 test files, 32 tests passed, 0 failed
+@deckory/sdk: 6 test files, 40 tests passed, 0 failed
 @deckory/sdk typecheck: passed
-@deckory/renderer: 3 test files, 13 tests passed, 0 failed
+@deckory/renderer: 3 test files, 17 tests passed, 0 failed
 @deckory/renderer typecheck: passed
 ```
 
-Fresh final verification is run again after committing this manifest; the final session response records those results and the final manifest commit SHA.
+### Review and hardening batch
+
+A final branch review added focused RED tests and fixes for:
+
+- forged scene-node provenance;
+- registry insertion that bypasses `registerDeckComponent`;
+- stable-over-prerelease SemVer resolution;
+- contradictory Inspector ranges, duplicate option/column values, scoped child paths and undeclared patches;
+- manifest payload understatement, virtual-root escape, CommonJS and dynamic imports;
+- unsafe or oversized bridge messages;
+- export fail-closed behavior and component error-boundary reset keys;
+- srcdoc JSON-literal escaping, strict host lifecycle messages, lifecycle reset and explicit runtime completion.
+
+Fresh pre-commit quality gate:
+
+```text
+pnpm test: 290 passed, 0 failed
+pnpm typecheck: passed
+pnpm lint: passed
+pnpm build: passed
+@deckory/sdk: 6 test files, 40 passed
+@deckory/renderer: 3 test files, 17 passed
+git diff --check: passed
+frozen shared paths: unchanged
+allow-same-origin scan: clear
+trusted eval/new Function scan: clear
+```
+
+The final session response records the hardening commit SHA.
 
 ## Changed production files
 
@@ -540,6 +588,7 @@ packages/sdk/src/inspector-schema.ts
 packages/sdk/src/jsx-dev-runtime.ts
 packages/sdk/src/jsx-runtime.ts
 packages/sdk/src/primitives.ts
+packages/sdk/src/scene-node-internals.ts
 packages/sdk/src/web-block-bridge.ts
 packages/sdk/src/web-block.ts
 packages/renderer/src/component-host.tsx

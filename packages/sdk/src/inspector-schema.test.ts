@@ -80,18 +80,78 @@ describe("Inspector metadata contracts", () => {
     ])).toThrow(/path.*title.*trùng/i);
   });
 
+  it("rejects contradictory ranges and duplicate option or column values", () => {
+    expect(() => createInspectorSchema([
+      { id: "score", type: "number", label: "Điểm", path: ["score"], min: 100, max: 0 }
+    ])).toThrow(/min.*max/i);
+    expect(() => createInspectorSchema([
+      {
+        id: "items",
+        type: "list",
+        label: "Danh sách",
+        path: ["items"],
+        minItems: 5,
+        maxItems: 2,
+        item: { id: "item", type: "text", label: "Nhãn", path: ["label"] }
+      }
+    ])).toThrow(/minItems.*maxItems/i);
+    expect(() => createInspectorSchema([
+      {
+        id: "tone",
+        type: "select",
+        label: "Sắc thái",
+        path: ["tone"],
+        options: [{ label: "A", value: "same" }, { label: "B", value: "same" }]
+      }
+    ])).toThrow(/option.*same.*trùng/i);
+    expect(() => createInspectorSchema([
+      {
+        id: "rows",
+        type: "data-table",
+        label: "Dữ liệu",
+        path: ["rows"],
+        columns: [{ id: "label", label: "A" }, { id: "label", label: "B" }]
+      }
+    ])).toThrow(/column.*label.*trùng/i);
+  });
+
   it("reads stable nested values without evaluating code", () => {
     expect(getInspectorValue(props, ["layout", "gap"])).toBe(16);
     expect(getInspectorValue(props, ["items", 0, "label"])).toBe("First");
   });
 
-  it("patches immutably and validates the complete props object", () => {
+  it("patches declared nested paths immutably and validates the complete props object", () => {
     const valid = patchComponentProps(definition, props, ["score"], 95);
     expect(valid).toMatchObject({ ok: true, props: { score: 95 } });
     expect(props.score).toBe(80);
 
+    const nested = patchComponentProps(definition, props, ["layout", "gap"], 24);
+    expect(nested).toMatchObject({ ok: true, props: { layout: { gap: 24 } } });
+    const listItem = patchComponentProps(definition, props, ["items", 0, "label"], "Updated");
+    expect(listItem).toMatchObject({ ok: true, props: { items: [{ label: "Updated" }] } });
+
     const invalid = patchComponentProps(definition, props, ["score"], 120);
     expect(invalid).toMatchObject({ ok: false });
+    expect(() => patchComponentProps(definition, props, ["undeclared"], true)).toThrow(/không được khai báo/i);
+  });
+
+  it("scopes relative child paths under their object groups", () => {
+    expect(() => createInspectorSchema([
+      {
+        id: "layout-a",
+        type: "object-group",
+        label: "Bố cục A",
+        path: ["layoutA"],
+        fields: [{ id: "gap-a", type: "number", label: "Khoảng cách", path: ["gap"] }]
+      },
+      {
+        id: "layout-b",
+        type: "object-group",
+        label: "Bố cục B",
+        path: ["layoutB"],
+        fields: [{ id: "gap-b", type: "number", label: "Khoảng cách", path: ["gap"] }]
+      }
+    ])).not.toThrow();
   });
 
   it("rejects prototype-pollution update paths", () => {

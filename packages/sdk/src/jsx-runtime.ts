@@ -1,3 +1,9 @@
+import {
+  approveSceneNode,
+  freezeSceneValue,
+  isApprovedSceneNode
+} from "./scene-node-internals";
+
 export type SceneTextDescription = Readonly<{
   nodeType: "text";
   value: string;
@@ -78,17 +84,6 @@ function assertSerializable(value: unknown, path: string, seen: Set<object>): vo
   seen.delete(objectValue);
 }
 
-function freezeDeep<T>(value: T, seen = new Set<object>()): T {
-  if (value === null || typeof value !== "object") return value;
-  const objectValue = value as object;
-  if (seen.has(objectValue)) return value;
-  seen.add(objectValue);
-  for (const child of Object.values(value as Record<string, unknown>)) {
-    freezeDeep(child, seen);
-  }
-  return Object.freeze(value);
-}
-
 export function normalizeSceneChildren(value: unknown): readonly SceneNodeDescription[] {
   const output: SceneNodeDescription[] = [];
 
@@ -99,11 +94,14 @@ export function normalizeSceneChildren(value: unknown): readonly SceneNodeDescri
       return;
     }
     if (typeof child === "string" || typeof child === "number") {
-      output.push(freezeDeep({ nodeType: "text", value: String(child) } as const));
+      output.push(approveSceneNode(freezeSceneValue({ nodeType: "text", value: String(child) } as const)));
       return;
     }
     if (typeof child === "object" && child !== null && "nodeType" in child) {
-      const node = child as SceneNodeDescription;
+      if (!isApprovedSceneNode(child)) {
+        throw new TypeError("Scene node không hợp lệ; chỉ node do primitive Deckory đã phê duyệt tạo ra mới được chấp nhận.");
+      }
+      const node = child;
       if (node.nodeType === "fragment") {
         node.children.forEach(visit);
       } else {
@@ -115,19 +113,7 @@ export function normalizeSceneChildren(value: unknown): readonly SceneNodeDescri
   };
 
   visit(value);
-  return freezeDeep(output);
-}
-
-export function createScenePrimitive<Props>(
-  primitiveName: string,
-  factory: (props: Props) => SceneNodeDescription
-): ScenePrimitive<Props> {
-  const primitive = ((props: Props) => factory(props)) as ScenePrimitive<Props>;
-  Object.defineProperties(primitive, {
-    __deckoryScenePrimitive: { value: true, enumerable: false },
-    primitiveName: { value: primitiveName, enumerable: false }
-  });
-  return Object.freeze(primitive);
+  return freezeSceneValue(output);
 }
 
 function isScenePrimitive(value: unknown): value is ScenePrimitive<any> {
@@ -147,10 +133,10 @@ export function jsx(
   }
 
   if (type === Fragment) {
-    return freezeDeep({
+    return approveSceneNode(freezeSceneValue({
       nodeType: "fragment",
       children: normalizeSceneChildren(safeProps.children)
-    } as const);
+    } as const));
   }
 
   if (!isScenePrimitive(type)) {
@@ -160,7 +146,7 @@ export function jsx(
 
   const node = type(safeProps);
   assertSerializable(node, `primitive:${type.primitiveName}`, new Set<object>());
-  return freezeDeep(node);
+  return freezeSceneValue(node);
 }
 
 export const jsxs = jsx;

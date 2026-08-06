@@ -55,7 +55,8 @@ The compiler worker must:
 - expose no HTTP resolver;
 - resolve only local supplied files and the reviewed runtime imports;
 - accept only TS, TSX, JS, JSX, CSS and HTML files;
-- enforce the existing 1 MB source budget;
+- enforce the existing 1 MB source budget and reject source larger than manifest `payloadBytes`;
+- reject CommonJS `require`, dynamic imports and any import that escapes the supplied virtual source root;
 - stop compilation after 1.5 seconds;
 - call `esbuild.stop()` when disposed;
 - return code and CSS separately;
@@ -64,6 +65,14 @@ The compiler worker must:
 ## 3. Reviewed Web Block runtime package
 
 Before enabling the currently reserved import `@deckory/web-block-runtime`, create a repository-controlled package or virtual compiler module with a versioned public contract. It must not expose parent DOM, Deckory state, storage, navigation, network, dynamic import resolution, `eval` or `Function`.
+
+The runtime must call the frozen bootloader bridge at `globalThis.__deckoryWebBlockBridge` only after the visual is actually mounted:
+
+```ts
+__deckoryWebBlockBridge.renderComplete({ width, height });
+```
+
+It must call `renderError(message, code?)` for handled failures. The bootloader no longer emits an unconditional completion signal, so a block that never reports completion correctly reaches the 1.5-second fallback.
 
 Until that module exists, fixtures should use only:
 
@@ -80,7 +89,7 @@ Coordinator-owned files and work:
 - add `@deckory/sdk` to the appropriate `apps/present/package.json` dependency list;
 - wire repository-controlled component packages into a `ComponentRegistry`;
 - seal the registry before Presenter audience rendering begins;
-- generate Studio Inspector controls from `InspectorSchema`;
+- generate Studio Inspector controls from `InspectorSchema`, compose relative child paths under object/list parents and dispatch only paths declared by the schema;
 - add component catalog cards and capability disclosures;
 - implement the advanced Web Block source editor;
 - implement the compiler worker and source diagnostics;

@@ -117,25 +117,67 @@ function freezeDeep<T>(value: T, seen = new Set<object>()): T {
   return Object.freeze(value);
 }
 
-function visitFields(fields: readonly InspectorField[], callback: (field: InspectorField) => void): void {
+type InspectorPathPatternSegment = InspectorPathSegment | "*";
+type InspectorPathPattern = readonly InspectorPathPatternSegment[];
+
+function visitFields(
+  fields: readonly InspectorField[],
+  parentPath: InspectorPathPattern,
+  callback: (field: InspectorField, effectivePath: InspectorPathPattern) => void
+): void {
   for (const field of fields) {
-    callback(field);
-    if (field.type === "object-group") visitFields(field.fields, callback);
-    if (field.type === "list") visitFields([field.item], callback);
+    const effectivePath = [...parentPath, ...field.path];
+    callback(field, effectivePath);
+    if (field.type === "object-group") visitFields(field.fields, effectivePath, callback);
+    if (field.type === "list") visitFields([field.item], [...effectivePath, "*"], callback);
   }
+}
+
+function inspectorPathPatterns(fields: readonly InspectorField[]): readonly InspectorPathPattern[] {
+  const patterns: InspectorPathPattern[] = [];
+  visitFields(fields, [], (_field, effectivePath) => patterns.push(effectivePath));
+  return patterns;
+}
+
+function matchesInspectorPath(pattern: InspectorPathPattern, path: InspectorPath): boolean {
+  if (pattern.length !== path.length) return false;
+  return pattern.every((segment, index) => segment === "*"
+    ? typeof path[index] === "number"
+    : segment === path[index]);
 }
 
 export function createInspectorSchema(fields: readonly InspectorField[]): InspectorSchema {
   const parsed = InspectorSchemaSchema.parse(fields);
   const ids = new Set<string>();
   const paths = new Set<string>();
-  visitFields(parsed, (field) => {
+  visitFields(parsed, [], (field, effectivePath) => {
     assertSafePath(field.path);
     if (ids.has(field.id)) throw new TypeError(`ID Inspector "${field.id}" bị trùng.`);
     ids.add(field.id);
-    const pathKey = JSON.stringify(field.path);
-    if (paths.has(pathKey)) throw new TypeError(`Inspector path "${field.path.join(".")}" bị trùng.`);
+    const pathKey = JSON.stringify(effectivePath);
+    if (paths.has(pathKey)) throw new TypeError(`Inspector path "${effectivePath.join(".")}" bị trùng.`);
     paths.add(pathKey);
+
+    if (field.type === "number" && field.min !== undefined && field.max !== undefined && field.min > field.max) {
+      throw new TypeError(`Inspector field ${field.id} yêu cầu min không lớn hơn max.`);
+    }
+    if (field.type === "list" && field.minItems !== undefined && field.maxItems !== undefined && field.minItems > field.maxItems) {
+      throw new TypeError(`Inspector field ${field.id} yêu cầu minItems không lớn hơn maxItems.`);
+    }
+    if (field.type === "select" || field.type === "segmented") {
+      const values = new Set<string>();
+      for (const option of field.options) {
+        if (values.has(option.value)) throw new TypeError(`Inspector option "${option.value}" bị trùng trong field ${field.id}.`);
+        values.add(option.value);
+      }
+    }
+    if (field.type === "data-table") {
+      const columns = new Set<string>();
+      for (const column of field.columns) {
+        if (columns.has(column.id)) throw new TypeError(`Inspector column "${column.id}" bị trùng trong field ${field.id}.`);
+        columns.add(column.id);
+      }
+    }
   });
   return freezeDeep(parsed);
 }
@@ -181,6 +223,11 @@ export function patchComponentProps<Props>(
   path: InspectorPath,
   value: unknown
 ): ComponentPropsPatchResult<Props> {
+  assertSafePath(path);
+  const declared = inspectorPathPatterns(definition.inspector).some((pattern) => matchesInspectorPath(pattern, path));
+  if (!declared) {
+    throw new TypeError(`Inspector path "${path.join(".")}" không được khai báo cho component ${definition.id}@${definition.version}.`);
+  }
   const candidate = setInspectorValue(currentProps, path, value);
   const parsed = definition.propsSchema.safeParse(candidate);
   if (!parsed.success) {

@@ -8,12 +8,12 @@ import type {
 } from "@deckory/schema/v2";
 import { defineWebBlockManifest, type WebBlockManifest } from "./web-block";
 import {
-  createScenePrimitive,
   normalizeSceneChildren,
   type SceneElementDescription,
   type SceneNodeDescription,
   type SceneSlideDescription
 } from "./jsx-runtime";
+import { createScenePrimitive } from "./scene-node-internals";
 
 type Accessibility = SceneElement["accessibility"];
 type ExportPolicy = NonNullable<SceneElement["exportPolicy"]>;

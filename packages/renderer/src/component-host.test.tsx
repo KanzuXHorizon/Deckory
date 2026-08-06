@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   TrustedComponentHost,
+  createComponentHostResetKey,
   type ComponentHostDefinition,
   type ComponentHostElement
 } from "./component-host";
@@ -84,5 +85,24 @@ describe("TrustedComponentHost", () => {
     }));
     expect(html).toContain('data-component-status="export-unsupported"');
     expect(html).not.toContain("<output>82</output>");
+  });
+
+  it("does not render an export when the export target was omitted", () => {
+    const html = renderToStaticMarkup(createElement(TrustedComponentHost, {
+      element,
+      definition,
+      mode: "export"
+    }));
+    expect(html).toContain('data-component-status="export-unsupported"');
+    expect(html).not.toContain("<output>82</output>");
+  });
+
+  it("changes the error-boundary reset key when validated props change", () => {
+    const first = createComponentHostResetKey(element, { value: 82 });
+    const second = createComponentHostResetKey({
+      ...element,
+      content: { ...element.content, props: { value: 83 } }
+    }, { value: 83 });
+    expect(first).not.toBe(second);
   });
 });

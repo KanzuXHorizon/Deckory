@@ -6,6 +6,7 @@ import {
   WebBlockHost,
   createWebBlockSandboxPolicy,
   createWebBlockSrcDoc,
+  parseWebBlockHostMessage,
   reduceWebBlockLifecycle,
   shouldUseWebBlockFallback,
   type WebBlockHostElement
@@ -41,14 +42,19 @@ describe("Web Block sandbox policy and host", () => {
     expect(policy.csp).toContain("navigate-to 'none'");
   });
 
-  it("escapes bundle boundaries instead of allowing srcdoc breakout", () => {
+  it("escapes bundle boundaries and embedded JSON literals instead of allowing srcdoc breakout", () => {
     const html = createWebBlockSrcDoc({
       ...bundle,
+      protocolVersion: "1.0</script><script>window.parent.document.body.remove()</script>",
       code: "document.body.dataset.safe='yes';</script><script>window.parent.document.body.remove()</script>"
-    }, element.manifest);
+    }, {
+      ...element.manifest,
+      id: "custom-radar</script><script>window.parent.document.body.remove()</script>"
+    });
     expect(html).toContain("default-src 'none'");
     expect(html).not.toContain("</script><script>window.parent");
     expect(html).toContain("<\\/script><script>window.parent");
+    expect(html).toContain("\\u003c/script\\u003e\\u003cscript\\u003e");
     expect(html).toContain("Biểu đồ radar tùy chỉnh");
   });
 
@@ -64,6 +70,13 @@ describe("Web Block sandbox policy and host", () => {
     expect(html).toContain('data-web-block-status="booting"');
     expect(html).toContain('data-web-block-accessible-summary="true"');
     expect(html).toContain('title="Biểu đồ radar tùy chỉnh"');
+  });
+
+  it("requires the reviewed runtime to signal actual render completion", () => {
+    const html = createWebBlockSrcDoc(bundle, element.manifest);
+    expect(html).toContain("__deckoryWebBlockBridge");
+    expect(html).toContain("renderComplete");
+    expect(html).not.toContain(`${bundle.code}\n    post("render-complete", {});`);
   });
 
   it("uses the mandatory static fallback for export and failures", () => {
@@ -96,15 +109,39 @@ describe("Web Block sandbox policy and host", () => {
     expect(html).toContain("pointer-events:none");
   });
 
-  it("models ready, rendered, error and timeout states deterministically", () => {
+  it("models ready, rendered, reset, error and timeout states deterministically", () => {
     expect(WEB_BLOCK_RENDER_TIMEOUT_MS).toBe(1500);
     const ready = reduceWebBlockLifecycle({ status: "booting" }, { type: "ready" });
     expect(ready).toEqual({ status: "ready" });
     const rendered = reduceWebBlockLifecycle(ready, { type: "render-complete" });
     expect(rendered).toEqual({ status: "rendered" });
+    expect(reduceWebBlockLifecycle(rendered, { type: "reset" })).toEqual({ status: "booting" });
     const timedOut = reduceWebBlockLifecycle({ status: "booting" }, { type: "timeout" });
     expect(timedOut).toEqual({ status: "timed-out" });
     expect(shouldUseWebBlockFallback(timedOut)).toBe(true);
     expect(shouldUseWebBlockFallback({ status: "error", message: "failed" })).toBe(true);
+  });
+
+  it("strictly validates the bounded lifecycle messages consumed by the host", () => {
+    expect(parseWebBlockHostMessage({
+      protocolVersion: "1.0",
+      blockId: "custom-radar",
+      type: "render-error",
+      payload: { message: "failed" }
+    }, { protocolVersion: "1.0", blockId: "custom-radar" })).toMatchObject({ type: "render-error" });
+
+    expect(parseWebBlockHostMessage({
+      protocolVersion: "1.0",
+      blockId: "custom-radar",
+      type: "render-error",
+      payload: { message: "x".repeat(2_001) }
+    }, { protocolVersion: "1.0", blockId: "custom-radar" })).toBeUndefined();
+
+    expect(parseWebBlockHostMessage({
+      protocolVersion: "1.0",
+      blockId: "custom-radar",
+      type: "render-complete",
+      payload: { unexpected: true }
+    }, { protocolVersion: "1.0", blockId: "custom-radar" })).toBeUndefined();
   });
 });

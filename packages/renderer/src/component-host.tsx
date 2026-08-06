@@ -46,6 +46,19 @@ function fallbackSummary(element: ComponentHostElement): string {
   return element.accessibility.label ?? element.accessibility.description ?? element.name;
 }
 
+export function createComponentHostResetKey(
+  element: ComponentHostElement,
+  props: unknown
+): string {
+  let serializedProps: string;
+  try {
+    serializedProps = JSON.stringify(props) ?? "undefined";
+  } catch {
+    serializedProps = "unserializable";
+  }
+  return `${element.id}:${element.content.componentId}@${element.content.version}:${serializedProps}`;
+}
+
 function ComponentFallback({
   element,
   status,
@@ -110,7 +123,7 @@ export function TrustedComponentHost<Props>({
     return <ComponentFallback element={element} status="missing" summary={baseSummary} />;
   }
 
-  if (mode === "export" && exportTarget && !definition.exportCapabilities.includes(exportTarget)) {
+  if (mode === "export" && (!exportTarget || !definition.exportCapabilities.includes(exportTarget))) {
     return <ComponentFallback element={element} status="export-unsupported" summary={baseSummary} />;
   }
 
@@ -138,6 +151,7 @@ export function TrustedComponentHost<Props>({
   }
 
   const summaryId = `${element.id}-component-summary`;
+  const resetKey = createComponentHostResetKey(element, props);
   return (
     <div
       data-component-host={element.id}
@@ -147,7 +161,7 @@ export function TrustedComponentHost<Props>({
       aria-describedby={summaryId}
     >
       <span id={summaryId} data-component-accessible-summary="true" style={visuallyHiddenStyle}>{summary}</span>
-      <TrustedComponentErrorBoundary fallback={errorFallback}>
+      <TrustedComponentErrorBoundary key={resetKey} fallback={errorFallback}>
         {output}
       </TrustedComponentErrorBoundary>
     </div>

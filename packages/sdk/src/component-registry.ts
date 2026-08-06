@@ -52,24 +52,54 @@ export interface RegisterDeckComponentInput<Schema extends StrictObjectSchema> {
   migrateProps?: (context: DeckComponentMigrationContext) => unknown | undefined;
 }
 
-function parseVersion(version: string): readonly [number, number, number] {
+interface ParsedSemanticVersion {
+  core: readonly [number, number, number];
+  prerelease: readonly string[];
+}
+
+function parseVersion(version: string): ParsedSemanticVersion {
   const match = semanticVersionPattern.exec(version);
   if (!match) throw new TypeError(`Phiên bản component "${version}" không phải semantic version hợp lệ.`);
-  return [Number(match[1]), Number(match[2]), Number(match[3])];
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease: match[4] ? match[4].split(".") : []
+  };
+}
+
+function comparePrereleaseIdentifier(left: string, right: string): number {
+  const leftNumeric = /^\d+$/.test(left);
+  const rightNumeric = /^\d+$/.test(right);
+  if (leftNumeric && rightNumeric) return Number(left) - Number(right);
+  if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
+  return left.localeCompare(right);
 }
 
 function compareVersions(left: string, right: string): number {
   const a = parseVersion(left);
   const b = parseVersion(right);
   for (let index = 0; index < 3; index += 1) {
-    const difference = (a[index] ?? 0) - (b[index] ?? 0);
+    const difference = (a.core[index] ?? 0) - (b.core[index] ?? 0);
     if (difference !== 0) return difference;
   }
-  return left.localeCompare(right);
+  if (a.prerelease.length === 0 || b.prerelease.length === 0) {
+    if (a.prerelease.length === b.prerelease.length) return 0;
+    return a.prerelease.length === 0 ? 1 : -1;
+  }
+  const length = Math.max(a.prerelease.length, b.prerelease.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftIdentifier = a.prerelease[index];
+    const rightIdentifier = b.prerelease[index];
+    if (leftIdentifier === undefined || rightIdentifier === undefined) {
+      return leftIdentifier === undefined ? -1 : 1;
+    }
+    const difference = comparePrereleaseIdentifier(leftIdentifier, rightIdentifier);
+    if (difference !== 0) return difference;
+  }
+  return 0;
 }
 
 function majorVersion(version: string): number {
-  return parseVersion(version)[0];
+  return parseVersion(version).core[0];
 }
 
 function isStrictObjectSchema(schema: StrictObjectSchema): boolean {
@@ -164,6 +194,11 @@ export class ComponentRegistry {
 
   register<Props, Schema extends StrictObjectSchema>(definition: DeckComponentDefinition<Props, Schema>): this {
     if (this.#sealed) throw new Error("ComponentRegistry đã khóa cho Presenter và không nhận đăng ký mới.");
+    assertDefinitionMetadata(definition);
+    createInspectorSchema(definition.inspector);
+    if (!Object.isFrozen(definition)) {
+      throw new TypeError(`Component ${definition.id}@${definition.version} phải được tạo bằng registerDeckComponent.`);
+    }
     const key = `${definition.id}@${definition.version}`;
     if (this.#definitions.has(key)) throw new Error(`Component ${key} đã đăng ký.`);
     this.#definitions.set(key, definition);

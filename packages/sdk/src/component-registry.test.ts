@@ -32,6 +32,16 @@ describe("trusted component registry", () => {
     expect(() => registry.register(scoreRing)).toThrow(/score-ring@1\.0\.0.*đã đăng ký/i);
   });
 
+  it("revalidates definitions registered without the trusted factory", () => {
+    const bypassedDefinition = {
+      ...scoreRing,
+      id: "Unsafe ID",
+      propsSchema: z.object({ value: z.number() })
+    } as typeof scoreRing;
+
+    expect(() => new ComponentRegistry().register(bypassedDefinition)).toThrow(/stable kebab-case|propsSchema.*strict/i);
+  });
+
   it("requires strict Zod object props schemas", () => {
     expect(() => registerDeckComponent({
       ...scoreRing,
@@ -89,6 +99,26 @@ describe("trusted component registry", () => {
       status: "missing",
       componentId: "score-ring",
       requestedVersion: "3.0.0"
+    });
+  });
+
+  it("prefers a stable semantic version over its prerelease during migration", () => {
+    const registry = new ComponentRegistry([
+      registerDeckComponent({
+        ...scoreRing,
+        version: "1.2.0-beta.2",
+        migrateProps: ({ props }) => props
+      }),
+      registerDeckComponent({
+        ...scoreRing,
+        version: "1.2.0",
+        migrateProps: ({ props }) => props
+      })
+    ]);
+
+    expect(registry.resolveInstance("score-ring", "1.0.0", { value: 72 })).toMatchObject({
+      status: "ready",
+      resolvedVersion: "1.2.0"
     });
   });
 
