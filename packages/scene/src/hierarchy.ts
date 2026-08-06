@@ -93,6 +93,26 @@ function updateGroupChildren(element: SceneElement, updater: (ids: string[]) => 
   return { ...element, content: { children: updater(element.content.children ?? []) } };
 }
 
+function hasNonIdentityTransform(element: SceneElement): boolean {
+  const transform = element.transform;
+  if (!transform) return false;
+  return (transform.rotation ?? 0) !== 0
+    || (transform.scaleX ?? 1) !== 1
+    || (transform.scaleY ?? 1) !== 1
+    || (transform.skewX ?? 0) !== 0
+    || (transform.skewY ?? 0) !== 0;
+}
+
+function hasTransformedAncestry(slide: SceneSlide, parentId: string | undefined): boolean {
+  let currentId = parentId;
+  while (currentId) {
+    const current = requireElement(slide, currentId);
+    if (hasNonIdentityTransform(current)) return true;
+    currentId = current.parentId;
+  }
+  return false;
+}
+
 export function groupElements(
   slide: SceneSlide,
   elementIds: readonly string[],
@@ -167,6 +187,9 @@ export function ungroupElement(slide: SceneSlide, groupId: string): HierarchyTra
   }
   const directChildren = slide.elements.filter((element) => element.parentId === groupId);
   if (directChildren.length === 0) throw new Error(`Nhóm "${groupId}" không có thành phần con.`);
+  if (hasNonIdentityTransform(group)) {
+    throw new Error(`Không thể ungroup "${groupId}" khi container đang có transform xoay, scale hoặc skew; hãy reset transform trước để giữ nguyên hình học.`);
+  }
 
   const childIds = new Set(directChildren.map((element) => element.id));
   let nextElements = slide.elements
@@ -204,6 +227,9 @@ export function reparentElements(slide: SceneSlide, elementIds: readonly string[
   const selectedIds = new Set(elementIds);
   if (selectedIds.size !== elementIds.length) throw new Error("Danh sách reparent chứa ID trùng.");
   const selected = elementIds.map((id) => requireElement(slide, id));
+  if (selected.some((element) => hasSelectedAncestor(slide, selectedIds, element))) {
+    throw new Error("Không thể reparent đồng thời một thành phần cha và hậu duệ của nó.");
+  }
   if (newParentId !== undefined) {
     const parent = requireElement(slide, newParentId);
     for (const id of elementIds) {
@@ -213,6 +239,13 @@ export function reparentElements(slide: SceneSlide, elementIds: readonly string[
     }
     if (parent.kind !== "group" && parent.kind !== "stack" && parent.kind !== "grid") {
       throw new Error(`Thành phần "${newParentId}" không thể chứa thành phần con.`);
+    }
+  }
+
+  for (const element of selected) {
+    if (element.parentId === newParentId) continue;
+    if (hasTransformedAncestry(slide, element.parentId) || hasTransformedAncestry(slide, newParentId)) {
+      throw new Error(`Không thể reparent "${element.id}" qua hierarchy có transform xoay, scale hoặc skew; hãy reset transform trước.`);
     }
   }
 

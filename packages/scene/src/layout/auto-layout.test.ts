@@ -71,6 +71,40 @@ describe("auto layout", () => {
     expect(result.frames.d).toEqual({ x: 310, y: 218, width: 230, height: 122 });
   });
 
+  it("preserves the specific fill-allocation diagnostic", () => {
+    const result = layoutStack({
+      frame: { x: 0, y: 0, width: 220, height: 120 },
+      direction: "horizontal",
+      padding: 20,
+      gap: 20,
+      align: "start",
+      justify: "start",
+      wrap: false,
+      children: [fill("a", 60), fill("b", 60), fill("c", 60)]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.diagnostics[0]?.message).toMatch(/nội dung cần/i);
+      expect(result.diagnostics[0]?.elementIds).toEqual(["a", "b", "c"]);
+    }
+  });
+
+  it("rejects duplicate child IDs before frame allocation", () => {
+    const result = layoutGrid({
+      frame: { x: 0, y: 0, width: 400, height: 200 },
+      columns: 2,
+      padding: 20,
+      columnGap: 16,
+      rowGap: 16,
+      align: "stretch",
+      children: [fixed("duplicate", 80, 60), fixed("duplicate", 80, 60)]
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.diagnostics[0]?.code).toBe("invalid-layout-input");
+  });
+
   it("returns a diagnostic when minimum child sizes cannot fit", () => {
     const result = layoutStack({
       frame: { x: 0, y: 0, width: 240, height: 120 },

@@ -30,6 +30,19 @@ describe("layout sizing policies", () => {
     })).toEqual({ ok: true, value: { width: 240, height: 135 } });
   });
 
+  it("rejects an aspect-ratio result that violates the dependent-axis minimum", () => {
+    const result = resolveCoupledSize({
+      width: { mode: "fixed", value: 240, aspectRatio: 2 },
+      height: { mode: "hug-content", min: 150 },
+      fixedSize: { width: 240, height: 160 },
+      intrinsicSize: { width: 240, height: 160 },
+      availableSize: { width: 600, height: 400 }
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.diagnostics[0]?.code).toBe("sizing-minimum-does-not-fit");
+  });
+
   it("rejects fill when available space is below the declared minimum", () => {
     const result = resolveSizingPolicy({
       policy: { mode: "fill-container", min: 180 },

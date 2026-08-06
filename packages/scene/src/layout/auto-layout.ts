@@ -58,6 +58,22 @@ function finiteNonNegative(value: number, label: string): void {
   if (!Number.isFinite(value) || value < 0) throw new RangeError(`${label} must be finite and non-negative`);
 }
 
+function validateUniqueChildren(children: readonly AutoLayoutChild[]): LayoutFailure | undefined {
+  const ids = new Set<string>();
+  for (const child of children) {
+    if (ids.has(child.id)) {
+      return failure({
+        code: "invalid-layout-input",
+        message: `Auto layout chứa ID thành phần bị trùng: "${child.id}".`,
+        recommendation: "Đổi ID trùng trước khi tính bố cục.",
+        elementIds: [child.id]
+      });
+    }
+    ids.add(child.id);
+  }
+  return undefined;
+}
+
 function sizingForAxis(child: AutoLayoutChild, axis: "width" | "height"): LayoutSizingPolicy {
   return axis === "width" ? child.width : child.height;
 }
@@ -193,6 +209,8 @@ function toFrame(
 }
 
 export function layoutStack(input: StackLayoutInput): AutoLayoutResult {
+  const duplicateFailure = validateUniqueChildren(input.children);
+  if (duplicateFailure) return duplicateFailure;
   finiteNonNegative(input.gap, "Stack gap");
   finiteNonNegative(input.lineGap ?? input.gap, "Stack line gap");
   const padding = normalizePadding(input.padding);
@@ -277,10 +295,11 @@ export function layoutStack(input: StackLayoutInput): AutoLayoutResult {
 
   const frames: Record<string, Frame> = {};
   let crossCursor = frameCrossStart + crossPaddingStart;
-  lineItems.forEach((line, lineIndex) => {
+  for (let lineIndex = 0; lineIndex < lineItems.length; lineIndex += 1) {
+    const line = lineItems[lineIndex]!;
     const lineCross = lineCrossSizes[lineIndex]!;
     const sizes = allocateFillSizes(line, availableMain, input.gap);
-    if (!Array.isArray(sizes)) return;
+    if (!Array.isArray(sizes)) return sizes;
     const baseContent = sizes.reduce((sum, size) => sum + size, 0) + Math.max(0, line.length - 1) * input.gap;
     const justification = justifyOffsets(input.justify, availableMain, baseContent, line.length, input.gap);
     let mainCursor = frameMainStart + mainPaddingStart + justification.offset;
@@ -295,14 +314,6 @@ export function layoutStack(input: StackLayoutInput): AutoLayoutResult {
     });
 
     crossCursor += lineCross + lineGap;
-  });
-
-  if (Object.keys(frames).length !== input.children.length) {
-    return failure({
-      code: "auto-layout-does-not-fit",
-      message: "Không thể phân bổ kích thước fill-container cho tất cả thành phần.",
-      recommendation: "Kiểm tra min/max sizing hoặc tăng kích thước khung cha."
-    });
   }
 
   return { ok: true, frames, lines: lineItems.map((line) => line.map((item) => item.child.id)) };
@@ -324,6 +335,8 @@ function resolveGridAxisSize(policy: LayoutSizingPolicy, fixedSize: number, intr
 }
 
 export function layoutGrid(input: GridLayoutInput): AutoLayoutResult {
+  const duplicateFailure = validateUniqueChildren(input.children);
+  if (duplicateFailure) return duplicateFailure;
   if (!Number.isInteger(input.columns) || input.columns <= 0) throw new RangeError("Grid columns must be a positive integer");
   if (input.rows !== undefined && (!Number.isInteger(input.rows) || input.rows <= 0)) throw new RangeError("Grid rows must be a positive integer");
   finiteNonNegative(input.columnGap, "Grid column gap");

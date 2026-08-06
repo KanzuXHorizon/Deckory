@@ -21,6 +21,22 @@ describe("scene alignment", () => {
     expect(result[2]!.frame.x).toBe(330);
   });
 
+  it("uses the actual outer edge when a wider middle element extends furthest", () => {
+    const result = tryDistributeElements([
+      { id: "a", frame: { x: 0, y: 0, width: 20, height: 40 } },
+      { id: "b", frame: { x: 50, y: 0, width: 120, height: 40 } },
+      { id: "c", frame: { x: 100, y: 0, width: 20, height: 40 } }
+    ], "horizontal");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.map((change) => [change.elementId, change.frame.x])).toEqual([
+      ["a", 0],
+      ["b", 25],
+      ["c", 150]
+    ]);
+  });
+
   it("maps one toolbar action to one transform-elements command", () => {
     const command = createAlignmentCommand("cover", elements, { type: "align", mode: "middle" });
     expect(command.type).toBe("transform-elements");

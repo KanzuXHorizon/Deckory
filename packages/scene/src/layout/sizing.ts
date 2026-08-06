@@ -1,5 +1,5 @@
 import { roundSceneNumber } from "../geometry";
-import { failure, type LayoutValueResult } from "./types";
+import { failure, type LayoutFailure, type LayoutValueResult } from "./types";
 
 export type LayoutSizingMode = "fixed" | "hug-content" | "fill-container";
 
@@ -69,6 +69,36 @@ export function resolveSizingPolicy(input: ResolveSizingPolicyInput): LayoutValu
   return { ok: true, value: roundSceneNumber(value) };
 }
 
+function validateResolvedAxis(
+  value: number,
+  policy: LayoutSizingPolicy,
+  availableSize: number,
+  axisLabel: "chiều rộng" | "chiều cao"
+): LayoutFailure | undefined {
+  if (policy.min !== undefined && value < policy.min) {
+    return failure({
+      code: "sizing-minimum-does-not-fit",
+      message: `Tỷ lệ khung hình tạo ${axisLabel} ${value}px, thấp hơn mức tối thiểu ${policy.min}px.`,
+      recommendation: "Tăng trục chủ đạo, giảm kích thước tối thiểu hoặc bỏ ràng buộc tỷ lệ."
+    });
+  }
+  if (policy.max !== undefined && value > policy.max) {
+    return failure({
+      code: "sizing-maximum-exceeded",
+      message: `Tỷ lệ khung hình tạo ${axisLabel} ${value}px, vượt mức tối đa ${policy.max}px.`,
+      recommendation: "Giảm trục chủ đạo, tăng giới hạn tối đa hoặc bỏ ràng buộc tỷ lệ."
+    });
+  }
+  if (value > availableSize) {
+    return failure({
+      code: "sizing-minimum-does-not-fit",
+      message: `Tỷ lệ khung hình cần ${axisLabel} ${value}px nhưng vùng khả dụng chỉ có ${availableSize}px.`,
+      recommendation: "Tăng khung cha hoặc giảm kích thước trục chủ đạo."
+    });
+  }
+  return undefined;
+}
+
 export type ResolveCoupledSizeInput = {
   width: LayoutSizingPolicy;
   height: LayoutSizingPolicy;
@@ -105,14 +135,12 @@ export function resolveCoupledSize(input: ResolveCoupledSizeInput): LayoutValueR
       resolvedWidth = roundSceneNumber(resolvedHeight * ratio);
     }
 
-    if (resolvedWidth > input.availableSize.width || resolvedHeight > input.availableSize.height) {
-      return failure({
-        code: "sizing-minimum-does-not-fit",
-        message: "Tỷ lệ khung hình không thể vừa vùng khả dụng mà vẫn giữ kích thước đã khai báo.",
-        recommendation: "Tăng khung cha hoặc bỏ ràng buộc tỷ lệ ở một trục."
-      });
-    }
   }
+
+  const widthFailure = validateResolvedAxis(resolvedWidth, input.width, input.availableSize.width, "chiều rộng");
+  if (widthFailure) return widthFailure;
+  const heightFailure = validateResolvedAxis(resolvedHeight, input.height, input.availableSize.height, "chiều cao");
+  if (heightFailure) return heightFailure;
 
   return { ok: true, value: { width: resolvedWidth, height: resolvedHeight } };
 }

@@ -64,9 +64,10 @@ export function tryDistributeElements(
     return delta || left.id.localeCompare(right.id);
   });
   const first = sorted[0]!;
-  const last = sorted.at(-1)!;
   const outerStart = horizontal ? first.frame.x : first.frame.y;
-  const outerEnd = horizontal ? last.frame.x + last.frame.width : last.frame.y + last.frame.height;
+  const outerEnd = Math.max(...sorted.map((element) => horizontal
+    ? element.frame.x + element.frame.width
+    : element.frame.y + element.frame.height));
   const totalSize = sorted.reduce((sum, element) => sum + (horizontal ? element.frame.width : element.frame.height), 0);
   const gap = (outerEnd - outerStart - totalSize) / (sorted.length - 1);
 

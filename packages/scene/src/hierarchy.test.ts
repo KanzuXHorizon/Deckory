@@ -44,6 +44,32 @@ describe("scene hierarchy", () => {
     expect(result.slide.elements.find((element) => element.id === "a")?.parentId).toBe("outer");
   });
 
+  it("rejects reparenting a parent and its descendant in one transaction", () => {
+    expect(() => reparentElements(slide, ["inner", "leaf"], undefined)).toThrow(/cha và hậu duệ/i);
+  });
+
+  it("rejects ungrouping a transformed container instead of changing visual geometry", () => {
+    const transformed = {
+      ...slide,
+      elements: slide.elements.map((element) => element.id === "inner"
+        ? { ...element, transform: { rotation: 12 } }
+        : element)
+    } as SceneSlide;
+
+    expect(() => ungroupElement(transformed, "inner")).toThrow(/transform|xoay/i);
+  });
+
+  it("rejects reparenting across transformed coordinate spaces", () => {
+    const transformed = {
+      ...slide,
+      elements: slide.elements.map((element) => element.id === "outer"
+        ? { ...element, transform: { scaleX: 1.2, scaleY: 1.2 } }
+        : element)
+    } as SceneSlide;
+
+    expect(() => reparentElements(transformed, ["a"], "outer")).toThrow(/transform|tỷ lệ/i);
+  });
+
   it("rejects hierarchy cycles with an actionable Vietnamese diagnostic", () => {
     expect(() => reparentElements(slide, ["outer"], "leaf")).toThrow(/chu kỳ/i);
   });
