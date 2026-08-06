@@ -279,6 +279,7 @@ export const DiagramSpecSchema = z
       }
     });
 
+    const parentByNodeId = new Map<string, string>();
     spec.nodes.forEach((node, index) => {
       if (node.parentId && !nodeById.has(node.parentId)) {
         context.addIssue({
@@ -287,7 +288,33 @@ export const DiagramSpecSchema = z
           message: `Parent node does not exist: ${node.parentId}.`
         });
       }
+      if (node.parentId === node.id) {
+        context.addIssue({
+          code: "custom",
+          path: ["nodes", index, "parentId"],
+          message: `Node cannot parent itself: ${node.id}.`
+        });
+      } else if (node.parentId) {
+        parentByNodeId.set(node.id, node.parentId);
+      }
     });
+
+    for (const node of spec.nodes) {
+      const visited = new Set<string>([node.id]);
+      let parentId = parentByNodeId.get(node.id);
+      while (parentId) {
+        if (visited.has(parentId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["nodes"],
+            message: `Parent hierarchy cycle detected from node ${node.id} through ${parentId}.`
+          });
+          break;
+        }
+        visited.add(parentId);
+        parentId = parentByNodeId.get(parentId);
+      }
+    }
 
     const traversalIds = new Set<string>();
     spec.accessibleTraversalOrder.forEach((nodeId, index) => {
@@ -307,6 +334,14 @@ export const DiagramSpecSchema = z
       }
       traversalIds.add(nodeId);
     });
+    if (traversalIds.size !== nodeById.size) {
+      const missing = [...nodeById.keys()].filter((nodeId) => !traversalIds.has(nodeId));
+      context.addIssue({
+        code: "custom",
+        path: ["accessibleTraversalOrder"],
+        message: `Traversal must contain every node exactly once; missing: ${missing.join(", ")}.`
+      });
+    }
 
     const overrideIds = new Set<string>();
     spec.manualOverrides.forEach((override, index) => {
@@ -328,7 +363,31 @@ export const DiagramSpecSchema = z
     });
 
     if (spec.generatedLayout) {
+      if (spec.generatedLayout.strategy === "manual") {
+        context.addIssue({
+          code: "custom",
+          path: ["generatedLayout", "strategy"],
+          message: "Generated layout strategy cannot be manual; manual positions belong in manualOverrides."
+        });
+      }
+      if (spec.layout !== "manual" && spec.generatedLayout.strategy !== spec.layout) {
+        context.addIssue({
+          code: "custom",
+          path: ["generatedLayout", "strategy"],
+          message: `Generated layout strategy ${spec.generatedLayout.strategy} does not match selected layout ${spec.layout}.`
+        });
+      }
+
+      const generatedNodeIds = new Set<string>();
       spec.generatedLayout.nodes.forEach((node, index) => {
+        if (generatedNodeIds.has(node.nodeId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["generatedLayout", "nodes", index, "nodeId"],
+            message: `Duplicate generated layout node: ${node.nodeId}.`
+          });
+        }
+        generatedNodeIds.add(node.nodeId);
         if (!nodeById.has(node.nodeId)) {
           context.addIssue({
             code: "custom",
@@ -337,7 +396,25 @@ export const DiagramSpecSchema = z
           });
         }
       });
+      if (generatedNodeIds.size !== nodeById.size) {
+        const missing = [...nodeById.keys()].filter((nodeId) => !generatedNodeIds.has(nodeId));
+        context.addIssue({
+          code: "custom",
+          path: ["generatedLayout", "nodes"],
+          message: `Generated layout must contain every node exactly once; missing node(s): ${missing.join(", ")}.`
+        });
+      }
+
+      const generatedEdgeIds = new Set<string>();
       spec.generatedLayout.edges.forEach((edge, index) => {
+        if (generatedEdgeIds.has(edge.edgeId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["generatedLayout", "edges", index, "edgeId"],
+            message: `Duplicate generated layout edge: ${edge.edgeId}.`
+          });
+        }
+        generatedEdgeIds.add(edge.edgeId);
         if (!edgeIds.has(edge.edgeId)) {
           context.addIssue({
             code: "custom",
@@ -346,6 +423,14 @@ export const DiagramSpecSchema = z
           });
         }
       });
+      if (generatedEdgeIds.size !== edgeIds.size) {
+        const missing = [...edgeIds].filter((edgeId) => !generatedEdgeIds.has(edgeId));
+        context.addIssue({
+          code: "custom",
+          path: ["generatedLayout", "edges"],
+          message: `Generated layout must contain every edge exactly once; missing edge(s): ${missing.join(", ")}.`
+        });
+      }
     }
   });
 

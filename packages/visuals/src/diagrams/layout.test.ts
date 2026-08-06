@@ -65,7 +65,20 @@ describe("layoutDiagram", () => {
           { nodeId: "analyze", x: 520, y: 40, width: 180, height: 80 },
           { nodeId: "publish", x: 760, y: 40, width: 180, height: 80 }
         ],
-        edges: []
+        edges: [
+          {
+            edgeId: "prepare-validate",
+            points: [{ x: 220, y: 80 }, { x: 280, y: 80 }]
+          },
+          {
+            edgeId: "validate-analyze",
+            points: [{ x: 460, y: 80 }, { x: 520, y: 80 }]
+          },
+          {
+            edgeId: "analyze-publish",
+            points: [{ x: 700, y: 80 }, { x: 760, y: 80 }]
+          }
+        ]
       },
       manualOverrides: [{ nodeId: "validate", x: 300, y: 180 }]
     });
@@ -105,6 +118,78 @@ describe("layoutDiagram", () => {
       code: "diagram-does-not-fit",
       recommendation: expect.stringMatching(/tách|giảm|canvas/i)
     });
+  });
+
+  it("rejects a directed cycle when tree layout is requested", () => {
+    const spec = DiagramSpecSchema.parse({
+      ...processSpec("tree"),
+      edges: [
+        ...processSpec("tree").edges,
+        {
+          id: "publish-prepare",
+          source: { nodeId: "publish" },
+          target: { nodeId: "prepare" },
+          kind: "sequence"
+        }
+      ]
+    });
+
+    const result = layoutDiagram(spec, { x: 0, y: 0, width: 1080, height: 520 });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "graph-cycle" })]
+    });
+  });
+
+  it("routes typed ports from their declared node sides", () => {
+    const base = processSpec("manual");
+    const spec = DiagramSpecSchema.parse({
+      ...base,
+      nodes: [
+        {
+          id: "prepare",
+          label: "Prepare",
+          kind: "step",
+          ports: [{ id: "bottom-out", direction: "out", side: "bottom" }]
+        },
+        {
+          id: "validate",
+          label: "Validate",
+          kind: "step",
+          ports: [{ id: "top-in", direction: "in", side: "top" }]
+        }
+      ],
+      edges: [
+        {
+          id: "prepare-validate",
+          source: { nodeId: "prepare", portId: "bottom-out" },
+          target: { nodeId: "validate", portId: "top-in" },
+          kind: "sequence"
+        }
+      ],
+      generatedLayout: {
+        strategy: "tree",
+        nodes: [
+          { nodeId: "prepare", x: 100, y: 40, width: 160, height: 80 },
+          { nodeId: "validate", x: 100, y: 220, width: 160, height: 80 }
+        ],
+        edges: [
+          {
+            edgeId: "prepare-validate",
+            points: [{ x: 180, y: 120 }, { x: 180, y: 220 }]
+          }
+        ]
+      },
+      accessibleTraversalOrder: ["prepare", "validate"]
+    });
+
+    const result = layoutDiagram(spec, { x: 0, y: 0, width: 500, height: 400 });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.diagnostics[0]?.message);
+    expect(result.edges[0]?.points[0]).toEqual({ x: 180, y: 120 });
+    expect(result.edges[0]?.points.at(-1)).toEqual({ x: 180, y: 220 });
   });
 
   it("routes edges from node boundaries and reports no collisions", () => {

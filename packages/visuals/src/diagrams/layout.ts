@@ -1,5 +1,4 @@
 import type {
-  DiagramDirection,
   DiagramLayoutStrategy,
   DiagramPoint,
   DiagramSpec
@@ -30,7 +29,8 @@ export type DiagramLayoutDiagnosticCode =
   | "diagram-does-not-fit"
   | "node-collision"
   | "adapter-required"
-  | "missing-generated-layout";
+  | "missing-generated-layout"
+  | "graph-cycle";
 
 export type DiagramLayoutDiagnostic = {
   code: DiagramLayoutDiagnosticCode;
@@ -127,26 +127,31 @@ function collisionPairs(nodes: readonly PositionedNode[]): string[][] {
   return pairs;
 }
 
-function orientPoint(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  direction: DiagramDirection
-): { x: number; y: number } {
-  switch (direction) {
-    case "left-to-right":
-      return { x, y };
-    case "right-to-left":
-      return { x: width - x, y };
-    case "top-to-bottom":
-      return { x: y * (width / Math.max(height, 1)), y: x * (height / Math.max(width, 1)) };
-    case "bottom-to-top":
-      return {
-        x: y * (width / Math.max(height, 1)),
-        y: height - x * (height / Math.max(width, 1))
-      };
+function directedCycleNodeIds(spec: DiagramSpec): string[] {
+  const nodeIds = spec.nodes.map((node) => node.id);
+  const incoming = new Map(nodeIds.map((id) => [id, 0]));
+  const outgoing = new Map(nodeIds.map((id) => [id, [] as string[]]));
+  for (const edge of spec.edges) {
+    incoming.set(edge.target.nodeId, (incoming.get(edge.target.nodeId) ?? 0) + 1);
+    outgoing.get(edge.source.nodeId)?.push(edge.target.nodeId);
   }
+  const queue = nodeIds
+    .filter((id) => (incoming.get(id) ?? 0) === 0)
+    .sort((a, b) => a.localeCompare(b, "en"));
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) continue;
+    for (const target of outgoing.get(current) ?? []) {
+      incoming.set(target, (incoming.get(target) ?? 1) - 1);
+      if (incoming.get(target) === 0) {
+        queue.push(target);
+        queue.sort((a, b) => a.localeCompare(b, "en"));
+      }
+    }
+  }
+  return nodeIds
+    .filter((id) => (incoming.get(id) ?? 0) > 0)
+    .sort((a, b) => a.localeCompare(b, "en"));
 }
 
 function topologicalLevels(spec: DiagramSpec): Map<string, number> {
@@ -411,13 +416,40 @@ function boundaryPoint(from: PositionedNode, to: PositionedNode): DiagramPoint {
   };
 }
 
+function endpointBoundaryPoint(
+  node: PositionedNode,
+  toward: PositionedNode,
+  portId: string | undefined,
+  specNode: DiagramSpec["nodes"][number]
+): DiagramPoint {
+  const port = portId
+    ? specNode.ports.find((candidate) => candidate.id === portId)
+    : undefined;
+  switch (port?.side) {
+    case "top":
+      return { x: round(node.x + node.width / 2), y: round(node.y) };
+    case "right":
+      return { x: round(node.x + node.width), y: round(node.y + node.height / 2) };
+    case "bottom":
+      return { x: round(node.x + node.width / 2), y: round(node.y + node.height) };
+    case "left":
+      return { x: round(node.x), y: round(node.y + node.height / 2) };
+    case "auto":
+    case undefined:
+      return boundaryPoint(node, toward);
+  }
+}
+
 function routeEdges(spec: DiagramSpec, nodes: readonly PositionedNode[]): LaidOutDiagramEdge[] {
   const byId = new Map(nodes.map((node) => [node.nodeId, node]));
+  const specNodeById = new Map(spec.nodes.map((node) => [node.id, node]));
   return spec.edges.map((edge) => {
     const source = byId.get(edge.source.nodeId)!;
     const target = byId.get(edge.target.nodeId)!;
-    const start = boundaryPoint(source, target);
-    const end = boundaryPoint(target, source);
+    const sourceSpec = specNodeById.get(edge.source.nodeId)!;
+    const targetSpec = specNodeById.get(edge.target.nodeId)!;
+    const start = endpointBoundaryPoint(source, target, edge.source.portId, sourceSpec);
+    const end = endpointBoundaryPoint(target, source, edge.target.portId, targetSpec);
     let points: DiagramPoint[];
     if (spec.edgeRouting === "orthogonal") {
       const horizontalFirst = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y);
@@ -450,6 +482,18 @@ export function layoutDiagram(
       `${spec.layout} cần ELK adapter được coordinator tích hợp.`,
       "Gọi createElkLayoutRequest và cung cấp ElkLayoutAdapter, không nhúng raw ELK payload vào document."
     );
+  }
+  if (spec.layout === "tree") {
+    const cycleNodeIds = directedCycleNodeIds(spec);
+    if (cycleNodeIds.length > 0) {
+      return fail(
+        spec.layout,
+        "graph-cycle",
+        `Tree layout không chấp nhận directed cycle giữa các node: ${cycleNodeIds.join(", ")}.`,
+        "Chọn cycle layout, loại bỏ cạnh tạo vòng hoặc đổi relationship semantics.",
+        cycleNodeIds
+      );
+    }
   }
 
   const measured = measureDiagramNodes(spec);
