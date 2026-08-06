@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SceneElement } from "@deckory/schema/v2";
-import { buildLayersTree, createLayerPatchCommand, filterLayersTree, moveLayerFocus, resolveLayerDropIntent, resolveLayerRename, resolveLayerTreeKey } from "./layers-model";
+import { buildLayersTree, createLayerPatchCommand, filterLayersTree, layerDropPositionFromPointer, moveLayerFocus, resolveLayerDropIntent, resolveLayerRename, resolveLayerTreeKey } from "./layers-model";
 
 const elements: SceneElement[] = [
   { id: "title", name: "Tiêu đề", kind: "text", frame: { x: 72, y: 64, width: 600, height: 120 }, zIndex: 1, content: { text: "Deckory" }, accessibility: { label: "Deckory" } },
@@ -50,6 +50,13 @@ describe("Layers model", () => {
 
   it("rejects an empty layer name before creating a command", () => {
     expect(() => createLayerPatchCommand("cover", "feature-b", { name: "   " })).toThrow(/tên layer/i);
+  });
+
+  it("maps pointer position to before, inside and after drop zones", () => {
+    expect(layerDropPositionFromPointer({ clientY: 102, top: 100, height: 40 }, true)).toBe("before");
+    expect(layerDropPositionFromPointer({ clientY: 120, top: 100, height: 40 }, true)).toBe("inside");
+    expect(layerDropPositionFromPointer({ clientY: 138, top: 100, height: 40 }, true)).toBe("after");
+    expect(layerDropPositionFromPointer({ clientY: 120, top: 100, height: 40 }, false)).toBe("after");
   });
 
   it("resolves drag reorder and reparent intents without creating cycles", () => {

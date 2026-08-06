@@ -42,6 +42,20 @@ describe("LayersPanel", () => {
     expect(html).toContain('aria-keyshortcuts="F2"');
   });
 
+  it("exposes optional drag targets for reorder and reparent integration", () => {
+    const html = renderToStaticMarkup(<LayersPanel
+      elements={elements}
+      selectedIds={[]}
+      searchQuery=""
+      onSelect={() => undefined}
+      onPatch={() => undefined}
+      onMove={() => undefined}
+    />);
+
+    expect(html).toContain('draggable="true"');
+    expect(html).toContain('data-layer-drop-target="group"');
+  });
+
   it("renders a clear empty search state", () => {
     const html = renderToStaticMarkup(<LayersPanel
       elements={elements}

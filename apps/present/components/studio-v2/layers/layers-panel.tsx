@@ -1,13 +1,16 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
 import type { SceneElement } from "@deckory/schema/v2";
 import {
   buildLayersTree,
   filterLayersTree,
   flattenLayersTree,
+  layerDropPositionFromPointer,
+  resolveLayerDropIntent,
   resolveLayerRename,
   resolveLayerTreeKey,
+  type LayerDropIntent,
   type LayerNode,
   type LayerPatch
 } from "./layers-model";
@@ -21,6 +24,7 @@ export type LayersPanelProps = {
   onSearchChange?: (query: string) => void;
   onSelect: (elementId: string, additive: boolean) => void;
   onPatch: (elementId: string, patch: Partial<LayerPatch>) => void;
+  onMove?: (intent: LayerDropIntent) => void;
 };
 
 type LayerTreeItemProps = {
@@ -34,6 +38,7 @@ type LayerTreeItemProps = {
   renameValue: string;
   onSelect: LayersPanelProps["onSelect"];
   onPatch: LayersPanelProps["onPatch"];
+  onMove: LayersPanelProps["onMove"];
   onFocusRequest: (elementId: string) => void;
   onRenameStart: (node: LayerNode) => void;
   onRenameValueChange: (value: string) => void;
@@ -52,6 +57,7 @@ function LayerTreeItem({
   renameValue,
   onSelect,
   onPatch,
+  onMove,
   onFocusRequest,
   onRenameStart,
   onRenameValueChange,
@@ -74,6 +80,25 @@ function LayerTreeItem({
       onSelect(action.elementId, action.additive);
     }
     if (action.type === "rename") onRenameStart(node);
+  };
+  const canContain = node.element.kind === "group" || node.element.kind === "stack" || node.element.kind === "grid";
+  const handleDragStart = (event: DragEvent<HTMLButtonElement>) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-deckory-layer-id", node.id);
+  };
+  const handleDragOver = (event: DragEvent<HTMLButtonElement>) => {
+    if (!onMove) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
+  const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
+    if (!onMove) return;
+    event.preventDefault();
+    const draggedId = event.dataTransfer.getData("application/x-deckory-layer-id");
+    if (!draggedId) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position = layerDropPositionFromPointer({ clientY: event.clientY, top: bounds.top, height: bounds.height }, canContain);
+    onMove(resolveLayerDropIntent(tree, draggedId, node.id, position));
   };
 
   return (
@@ -112,6 +137,11 @@ function LayerTreeItem({
             tabIndex={focusId === node.id ? 0 : -1}
             data-layer-select-id={node.id}
             aria-keyshortcuts="F2"
+            draggable={onMove !== undefined}
+            data-layer-drop-target={node.id}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             onFocus={() => onFocusRequest(node.id)}
             onClick={handleSelect}
             onKeyDown={handleTreeKey}
@@ -159,6 +189,7 @@ function LayerTreeItem({
               renameValue={renameValue}
               onSelect={onSelect}
               onPatch={onPatch}
+              onMove={onMove}
               onFocusRequest={onFocusRequest}
               onRenameStart={onRenameStart}
               onRenameValueChange={onRenameValueChange}
@@ -179,7 +210,8 @@ export function LayersPanel({
   searchQuery,
   onSearchChange,
   onSelect,
-  onPatch
+  onPatch,
+  onMove
 }: LayersPanelProps) {
   const tree = filterLayersTree(buildLayersTree(elements), searchQuery);
   const visibleIds = flattenLayersTree(tree).map((node) => node.id);
@@ -257,6 +289,7 @@ export function LayersPanel({
               renameValue={renameValue}
               onSelect={onSelect}
               onPatch={onPatch}
+              onMove={onMove}
               onFocusRequest={focusLayer}
               onRenameStart={startRename}
               onRenameValueChange={setRenameValue}

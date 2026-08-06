@@ -122,6 +122,20 @@ export function resolveLayerTreeKey(
 
 export type LayerDropPosition = "before" | "inside" | "after";
 
+export function layerDropPositionFromPointer(
+  input: { clientY: number; top: number; height: number },
+  canContain: boolean
+): LayerDropPosition {
+  if (![input.clientY, input.top, input.height].every(Number.isFinite) || input.height <= 0) {
+    throw new RangeError("Layer drop geometry must be finite with positive height");
+  }
+  const ratio = (input.clientY - input.top) / input.height;
+  if (ratio <= 0.25) return "before";
+  if (ratio >= 0.75) return "after";
+  if (canContain) return "inside";
+  return ratio < 0.5 ? "before" : "after";
+}
+
 export type LayerDropIntent = {
   elementId: string;
   parentId?: string;
