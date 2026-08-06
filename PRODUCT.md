@@ -12,7 +12,7 @@ Deckory phục vụ người tạo bài thuyết trình, designer và agent cầ
 
 ## Product Purpose
 
-Deckory cung cấp một document model có type cho slide, một bộ visual grammar có thể tái sử dụng và các bề mặt Hub, Studio, Preview, Present cùng đọc một nguồn dữ liệu. Thành công nghĩa là người dùng có thể tạo hoặc điều chỉnh một câu chuyện trực quan, phát hiện lỗi cấu trúc trước khi trình chiếu và mở bản trình chiếu đáng tin cậy mà không phải chỉnh JSX thủ công.
+Deckory cung cấp document model V1 và Scene V2 có type cho slide, một visual grammar có thể tái sử dụng và các bề mặt Hub, Studio, Preview, Present, Export cùng đọc một nguồn dữ liệu. Thành công nghĩa là người dùng có thể tạo hoặc điều chỉnh một câu chuyện trực quan, phát hiện lỗi cấu trúc/evidence trước khi trình chiếu và tạo artifact đáng tin cậy mà không phải chỉnh JSX thủ công.
 
 ## Positioning
 
@@ -20,15 +20,19 @@ Deckory không phải trình tạo PowerPoint bằng prompt. Điểm khác biệ
 
 ## Operating Context
 
-Deck được quản lý trong Hub, chỉnh trong Studio, kiểm tra bằng Preview và trình chiếu trong Presenter. Dữ liệu minh hoạ phải được ghi nhãn rõ; speaker notes chỉ xuất hiện ở chế độ người thuyết trình. Canvas giữ tỷ lệ 16:9 và scale theo viewport thay vì reflow phá bố cục.
+Deck được quản lý trong Hub, chỉnh trong Studio, kiểm tra bằng Preview, trình chiếu trong Presenter và xuất qua capability-aware pipeline. Dữ liệu minh hoạ phải được ghi nhãn rõ; speaker notes chỉ xuất hiện ở chế độ người thuyết trình. Canvas giữ tỷ lệ 16:9 và scale theo viewport thay vì reflow phá bố cục. Offline nghĩa là toàn bộ runtime asset và export dependency nằm cục bộ; không đồng nghĩa với cloud/PWA sync.
 
 ## Capabilities and Constraints
 
-- Deck là dữ liệu có cấu trúc theo `DeckDocument` và phải đi qua `validateDeck`.
-- Chỉ dùng layout và component semantic đã hỗ trợ; không đưa JSX tùy ý, inline coordinate hoặc remote asset vào deck.
-- Editor giai đoạn hiện tại lưu draft trong trình duyệt và không tuyên bố collaboration hoặc cloud persistence.
-- Presenter hỗ trợ keyboard, sequence reveal, notes, overview, fullscreen và offline readiness.
-- Hub, Studio, Preview và Present phải dùng chung renderer.
+- Deck là dữ liệu có cấu trúc theo `DeckDocument` hoặc `DeckDocumentV2` và phải đi qua validation tương ứng.
+- Scene V2 dùng frame/constraint typed; không đưa executable JSX, remote runtime asset hoặc handler tùy ý vào document.
+- Editor hiện lưu draft/checkpoint trong trình duyệt và không tuyên bố collaboration hoặc cloud persistence.
+- Presenter V2 hỗ trợ multi-slide keyboard navigation, overview, fullscreen và private notes; audience mode không render notes.
+- Native editorial charts nằm trong core renderer; advanced chart dùng ECharts SVG lazy-loaded và final-state export.
+- Export phải công bố `native`, `native-editable`, `fallback` hoặc `unsupported` trước khi tạo artifact.
+- Native PPTX hiện chỉ cam kết editable cho primitive đã hỗ trợ; chart, diagram và custom content không được mô tả như fully editable.
+- `elk-layered` và `elk-force` vẫn yêu cầu worker adapter riêng; deck production không được phụ thuộc vào capability chưa xác nhận.
+- Hub, Studio, Preview, Present và Export phải dùng chung renderer/scene semantics.
 
 ## Brand Commitments
 
@@ -36,9 +40,11 @@ Tên sản phẩm là Deckory. Ngôn ngữ giao diện chính là tiếng Việt
 
 ## Evidence on Hand
 
-- Deck tham chiếu: `decks/deckory-story/deck.ts`.
-- Schema và validation: `packages/schema/src/index.ts`.
-- Presenter và renderer: `apps/present/components/presenter.tsx`, `apps/present/components/slide-frame.tsx`.
+- Deck tham chiếu V1/V2: `decks/deckory-story/`, `decks/deckory-story-v2/`, `decks/myinterview-defense-v2/`.
+- Schema và validation: `packages/schema/src/index.ts`, `packages/schema/src/v2.ts`.
+- Shared renderer và multi-slide surface: `packages/renderer/`, `apps/present/components/scene-deck-surface.tsx`.
+- Export/capability contract: `docs/EXPORT.md`, `packages/renderer/src/export-capabilities.ts`.
+- Release and performance evidence: `tests/e2e/deckory-v2-release.spec.ts`, `tests/e2e/performance-v2.spec.ts`, `apps/present/lib/performance-budgets.ts`.
 - Dữ liệu chất lượng và benchmark trong deck hiện chỉ là fixture minh hoạ, không phải claim sản phẩm thực tế.
 
 ## Product Principles

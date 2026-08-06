@@ -41,22 +41,24 @@ Traditional presentation tools treat every slide as an isolated canvas. Deckory 
 | **Hub** | Browse available decks and open the right working surface. |
 | **Studio** | Edit the shared typed document with live validation. |
 | **Preview** | Review the audience-facing result before delivery. |
-| **Presenter** | Present with keyboard controls, sequence reveals, overview and speaker notes. |
+| **Presenter** | Present multi-slide V1/V2 decks with keyboard controls, overview, fullscreen and private speaker notes. |
+| **Export** | Produce capability-aware HTML, SVG, PNG, JPG, PDF and PPTX artifacts without remote runtime assets. |
 
 ## How it works
 
 ```text
-Typed DeckDocument
-        │
-        ▼
- Schema validation ──► actionable diagnostics
-        │
-        ▼
- Semantic slide renderer
-        │
-        ├──► Studio
-        ├──► Preview
-        └──► Presenter
+Typed DeckDocument V1 / Scene V2
+               │
+               ▼
+ Schema + evidence validation ──► actionable diagnostics
+               │
+               ▼
+ Shared semantic scene renderer
+               │
+               ├──► Studio
+               ├──► Preview
+               ├──► Presenter
+               └──► Export capability pipeline
 ```
 
 A deck is authored once and consumed by multiple product surfaces. Layouts describe composition; semantic components describe meaning; the renderer owns visual consistency and presentation behavior.
@@ -87,9 +89,11 @@ Open [http://localhost:3000](http://localhost:3000).
 | `pnpm test` | Run workspace test suites. |
 | `pnpm audit:decks -- --strict` | Audit every registered deck and fail on warnings or errors. |
 | `pnpm assets:check` | Verify local asset files, media types and manifest references. |
+| `pnpm performance:check` | Verify production route bundle budgets and first-load denylist after `pnpm build`. |
 | `pnpm export:deck -- --deck=<id> --format=pdf` | Export a registered deck through the production browser renderer. |
 | `pnpm test:e2e` | Build an isolated production artifact and run Chromium presentation flows. |
 | `pnpm build` | Create the production Next.js build. |
+| `pnpm quality:gate` | Run the complete local release gate, including build, bundle budgets and E2E. |
 
 The same quality gates run on every push and pull request through GitHub Actions.
 
@@ -136,7 +140,7 @@ Deckory conventions:
 - label illustrative data clearly and cite real evidence;
 - validate, test and inspect representative slides before presenting.
 
-See [`AGENTS.md`](AGENTS.md) for the complete repository rules, [`docs/AUDIT.md`](docs/AUDIT.md) for quality diagnostics, [`docs/ASSETS.md`](docs/ASSETS.md) for local asset manifests, [`docs/EXPORT.md`](docs/EXPORT.md) for PNG/PDF export, [`docs/SNAPSHOTS.md`](docs/SNAPSHOTS.md) for local Studio checkpoints and [`decks/deckory-story/deck.ts`](decks/deckory-story/deck.ts) for the reference deck.
+See [`AGENTS.md`](AGENTS.md) for the complete repository rules, [`docs/AUDIT.md`](docs/AUDIT.md) for quality diagnostics, [`docs/ASSETS.md`](docs/ASSETS.md) for local asset manifests, [`docs/EXPORT.md`](docs/EXPORT.md) for the export contract, [`docs/V2-RELEASE-CHECKLIST.md`](docs/V2-RELEASE-CHECKLIST.md) for the release gate, [`docs/SNAPSHOTS.md`](docs/SNAPSHOTS.md) for local Studio checkpoints and [`decks/deckory-story-v2/deck.ts`](decks/deckory-story-v2/deck.ts) for the V2 reference deck.
 
 ## Architecture
 
@@ -168,22 +172,25 @@ The source and adaptation policy is recorded in [`.agents/taste-skill.lock.json`
 
 Deckory is an actively developed early-stage project. The current repository includes:
 
-- typed deck documents and validation;
-- Hub, browser Studio, Preview and Presenter;
-- semantic charts, tables, code, metrics, comparisons and process visuals;
-- speaker notes, sequence reveals and presentation navigation;
-- local draft persistence and named version snapshots with protected restore;
-- deterministic deck audit with human-readable and JSON reports;
-- isolated Chromium E2E coverage for production CSS, focus, privacy, reduced motion and narrow viewports;
-- typed local image manifests shared by Hub, Studio, Presenter and Export;
-- browser-native PNG/PDF export through the shared slide renderer;
-- automated lint, typecheck, test, deck audit, asset check, build and CodeQL workflows.
+- typed V1 documents plus the coordinate-based `DeckDocumentV2` scene model;
+- Hub, Scene V2 Studio, multi-slide Preview and Presenter surfaces using the shared renderer;
+- four migrated V2 reference decks, including the 23-slide MyInterview defense deck with local assets;
+- native editorial charts plus lazy-loaded ECharts SVG for reviewed advanced chart variants;
+- semantic tables, code, metrics, comparisons, processes, diagrams, evidence lineage and accessible summaries;
+- keyboard navigation, overview, fullscreen and private presenter notes with audience-mode privacy;
+- local draft persistence, command history and named version snapshots with protected restore;
+- deterministic 20-dimension V2 audit with structural and runtime-evidence confidence;
+- isolated Chromium E2E coverage for production CSS, focus, privacy, reduced motion, performance and narrow viewports;
+- capability-aware standalone HTML/SVG, browser PNG/JPG/PDF and native-editable PPTX primitive export;
+- route bundle budgets that keep heavy ECharts and editor runtimes out of Presenter first-load;
+- automated lint, typecheck, test, deck audit, asset check, build, bundle and CodeQL workflows.
 
 The following remain outside the current product boundary:
 
 - real-time collaboration;
 - cloud persistence and user accounts;
-- editable PPTX export;
+- automatic ELK worker layout for `elk-layered` and `elk-force` diagrams;
+- fully editable PPTX conversion for charts, diagrams, Web Blocks and arbitrary custom components. PPTX currently keeps supported primitives editable and discloses fallback or unsupported elements.
 
 The README intentionally distinguishes implemented behavior from future product direction.
 
