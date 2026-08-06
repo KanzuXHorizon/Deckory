@@ -335,6 +335,9 @@ export function validateVisualCoverageInventory(
   const entryKeys = new Set<string>();
   const fixtureIds = new Set<string>();
   const fixtureKeys = new Set<string>();
+  const allowedFixtureKeys = new Set<string>(
+    visualCatalog.map((entry) => `${entry.family}:${entry.id}`)
+  );
 
   for (const entry of catalog) {
     const key = `${entry.kind}:${entry.publicId}`;
@@ -346,6 +349,7 @@ export function validateVisualCoverageInventory(
       });
     }
     entryKeys.add(key);
+    allowedFixtureKeys.add(key);
     if (
       entry.fixtureId.trim().length === 0 ||
       entry.useWhen.length === 0 ||
@@ -389,6 +393,13 @@ export function validateVisualCoverageInventory(
     }
     fixtureIds.add(fixture.fixtureId);
     fixtureKeys.add(key);
+    if (!allowedFixtureKeys.has(key)) {
+      diagnostics.push({
+        code: "orphan-fixture",
+        recordId: fixture.fixtureId,
+        message: `Fixture ${fixture.fixtureId} không thuộc coverage hoặc base visual catalog: ${key}.`
+      });
+    }
     if (
       fixture.fixtureId.trim().length === 0 ||
       fixture.visibleEvidenceLabel.trim().length === 0 ||

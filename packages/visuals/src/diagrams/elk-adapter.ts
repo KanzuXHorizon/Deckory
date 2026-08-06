@@ -77,9 +77,28 @@ export function createElkLayoutRequest(
       `Layout ${spec.layout} thuộc Deckory deterministic core, không thuộc ELK adapter.`
     );
   }
-  const measuredById = new Map(
-    measuredNodes.map((node) => [node.nodeId, node])
-  );
+  if (
+    !Number.isFinite(bounds.x) ||
+    !Number.isFinite(bounds.y) ||
+    !Number.isFinite(bounds.width) ||
+    !Number.isFinite(bounds.height) ||
+    bounds.width <= 0 ||
+    bounds.height <= 0
+  ) {
+    throw new Error("ELK layout bounds phải hữu hạn và có width/height dương.");
+  }
+  const measuredById = new Map<string, MeasuredDiagramNode>();
+  for (const node of measuredNodes) {
+    if (measuredById.has(node.nodeId)) {
+      throw new Error(`Duplicate measurement cho diagram node ${node.nodeId}.`);
+    }
+    measuredById.set(node.nodeId, node);
+  }
+  const specNodeIds = new Set(spec.nodes.map((node) => node.id));
+  const extraMeasurement = measuredNodes.find((node) => !specNodeIds.has(node.nodeId));
+  if (extraMeasurement) {
+    throw new Error(`Measurement không thuộc DiagramSpec: ${extraMeasurement.nodeId}.`);
+  }
   return {
     strategy: spec.layout,
     direction: spec.direction,

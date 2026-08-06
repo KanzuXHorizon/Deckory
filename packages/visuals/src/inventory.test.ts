@@ -95,6 +95,29 @@ describe("visual coverage inventory", () => {
     expect(serialized).not.toContain("layoutOptions");
   });
 
+  it("reports a fixture that is not owned by coverage or the base catalog", () => {
+    const result = validateVisualCoverageInventory(
+      visualCoverageCatalog,
+      [
+        ...visualFixtureInventory,
+        {
+          fixtureId: "orphan-fixture",
+          publicId: "unknown-visual",
+          kind: "diagram",
+          locale: "en-US",
+          dataStatus: "illustrative",
+          visibleEvidenceLabel: "Illustrative fixture data",
+          unitCoverage: ["schema"],
+          browserReview: "required-after-integration"
+        }
+      ]
+    );
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "orphan-fixture", recordId: "orphan-fixture" })
+    );
+  });
+
   it("is byte-for-byte deterministic across repeated inventory validation", () => {
     expect(
       JSON.stringify(

@@ -57,6 +57,38 @@ describe("ELK adapter boundary", () => {
     expect(serialized).not.toContain("org.eclipse.elk");
   });
 
+  it("rejects invalid bounds and ambiguous node measurements", () => {
+    const spec = layeredSpec();
+    const measured = measureDiagramNodes(spec);
+
+    expect(() =>
+      createElkLayoutRequest(spec, measured, {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 520
+      })
+    ).toThrow(/bounds/i);
+
+    expect(() =>
+      createElkLayoutRequest(spec, [...measured, { ...measured[0]! }], {
+        x: 0,
+        y: 0,
+        width: 1080,
+        height: 520
+      })
+    ).toThrow(/duplicate measurement/i);
+
+    expect(() =>
+      createElkLayoutRequest(spec, measured.slice(1), {
+        x: 0,
+        y: 0,
+        width: 1080,
+        height: 520
+      })
+    ).toThrow(/missing measurement|thiếu measurement/i);
+  });
+
   it("rejects non-ELK strategies at the adapter boundary", () => {
     const spec = DiagramSpecSchema.parse({ ...layeredSpec(), layout: "tree" });
 
