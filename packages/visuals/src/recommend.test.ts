@@ -66,6 +66,18 @@ describe("recommendVisuals", () => {
     );
   });
 
+  it("does not recommend a chart from years and stage ordinals only", () => {
+    const intent = classifyVisualIntent({
+      text: "Năm 2026 hoàn tất giai đoạn 1. Năm 2027 phát hành giai đoạn 2.",
+      locale: "vi-VN"
+    });
+
+    expect(intent.inputAvailability.numericData).toBe(0);
+    expect(
+      recommendVisuals(intent, visualCatalog).some((item) => item.family === "chart")
+    ).toBe(false);
+  });
+
   it("reports structured geography as missing until actual geography keys are supplied", () => {
     const unstructured = classifyVisualIntent({
       text: "Kết quả khác nhau theo khu vực.",

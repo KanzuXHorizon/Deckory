@@ -88,6 +88,63 @@ describe("editorial chart geometry", () => {
     );
   });
 
+  it("keeps a line gap disconnected instead of bridging missing evidence", () => {
+    const spec = ChartSpecSchema.parse({
+      ...barSpec(),
+      variant: "line",
+      data: [
+        { id: "round-1", category: "Round 1", value: 62 },
+        { id: "round-2", category: "Round 2", value: null },
+        { id: "round-3", category: "Round 3", value: 84 }
+      ],
+      encoding: { categoryField: "category", valueField: "value", zeroBaseline: false },
+      highlights: [],
+      animation: { mode: "trace", durationMs: 600 }
+    });
+    const result = buildEditorialChartGeometry(spec, {
+      x: 0,
+      y: 0,
+      width: 640,
+      height: 320
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.diagnostics[0]?.message);
+    expect(result.marks.filter((mark) => mark.kind === "line")).toHaveLength(0);
+    expect(result.marks.filter((mark) => mark.kind === "circle")).toHaveLength(2);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "missing-value-gap", datumId: "round-2" })
+    );
+  });
+
+  it("honors labels mode none for grouped and stacked bars", () => {
+    for (const variant of ["grouped-bar", "stacked-bar"] as const) {
+      const spec = ChartSpecSchema.parse({
+        ...barSpec(),
+        variant,
+        data: [
+          { id: "a-1", category: "A", series: "Current", value: 10 },
+          { id: "a-2", category: "A", series: "Target", value: 12 },
+          { id: "b-1", category: "B", series: "Current", value: 8 },
+          { id: "b-2", category: "B", series: "Target", value: 11 }
+        ],
+        labels: { mode: "none", showValues: false, collisionPolicy: "diagnose" },
+        highlights: [],
+        animation: { mode: "none", durationMs: 0 }
+      });
+      const result = buildEditorialChartGeometry(spec, {
+        x: 0,
+        y: 0,
+        width: 640,
+        height: 320
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error(result.diagnostics[0]?.message);
+      expect(result.labels).toEqual([]);
+    }
+  });
+
   it("keeps bullet targets inside the resolved numeric domain", () => {
     const spec = ChartSpecSchema.parse({
       ...barSpec([40, 55]),

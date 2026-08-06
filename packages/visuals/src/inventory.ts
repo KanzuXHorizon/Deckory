@@ -6,7 +6,7 @@ import {
 } from "./charts/chart-spec";
 import type { DiagramLayoutStrategy } from "./diagrams/diagram-spec";
 
-export type VisualCoverageKind = "chart" | "diagram";
+export type VisualCoverageKind = "chart" | "diagram" | "editorial" | "composition";
 export type VisualCoverageRenderer =
   | "deckory-native"
   | "echarts-adapter"
@@ -85,6 +85,97 @@ export const requiredDiagramVisualIds = [
 ] as const;
 
 export type RequiredDiagramVisualId = (typeof requiredDiagramVisualIds)[number];
+
+export const requiredSemanticVisualIds = [
+  "professional-cover", "cinematic-cover", "section-divider", "thesis-statement",
+  "problem-framing", "solution-framing", "quote-evidence", "definition",
+  "misconception-correction", "before-after", "closing-synthesis", "agenda-map",
+  "metric-strip", "metric-spotlight", "kpi-scorecard", "target-actual",
+  "okr-tree", "strategy-pillars", "opportunity-sizing", "value-proposition",
+  "prioritization-matrix", "risk-register", "risk-heatmap", "decision-matrix",
+  "capability-map", "browser-frame", "device-mockup", "product-tour",
+  "screenshot-annotation", "code-walkthrough", "code-diff", "terminal-proof",
+  "research-question", "methodology", "sample-scope", "findings",
+  "limitations", "claim-evidence-map", "team-editorial", "member-spotlight",
+  "raci", "persona", "stakeholder-map", "image-duo", "triptych", "collage"
+] as const;
+
+export type RequiredSemanticVisualId = (typeof requiredSemanticVisualIds)[number];
+
+const semanticEditorialIds = new Set<RequiredSemanticVisualId>([
+  "professional-cover", "cinematic-cover", "section-divider", "thesis-statement",
+  "problem-framing", "solution-framing", "quote-evidence", "definition",
+  "misconception-correction", "closing-synthesis", "research-question",
+  "findings", "limitations", "member-spotlight"
+]);
+
+const semanticNumericIds = new Set<RequiredSemanticVisualId>([
+  "metric-strip", "metric-spotlight", "kpi-scorecard", "target-actual",
+  "opportunity-sizing", "prioritization-matrix", "risk-heatmap", "decision-matrix"
+]);
+
+const semanticTechnicalIds = new Set<RequiredSemanticVisualId>([
+  "browser-frame", "device-mockup", "product-tour", "screenshot-annotation",
+  "code-walkthrough", "code-diff", "terminal-proof"
+]);
+
+const semanticImageIds = new Set<RequiredSemanticVisualId>([
+  "image-duo", "triptych", "collage"
+]);
+
+function semanticInputs(id: RequiredSemanticVisualId): string[] {
+  if (semanticNumericIds.has(id)) return ["numeric-data", "labels", "unit"];
+  if (semanticTechnicalIds.has(id)) return ["local-artifact", "annotations", "claim"];
+  if (semanticImageIds.has(id)) return ["local-image-assets", "captions"];
+  if (["before-after", "misconception-correction"].includes(id)) return ["two-sides"];
+  if (["okr-tree", "strategy-pillars", "capability-map"].includes(id)) return ["entities", "hierarchy"];
+  if (["team-editorial", "member-spotlight", "raci", "persona", "stakeholder-map"].includes(id)) {
+    return ["people-or-stakeholders", "roles"];
+  }
+  if (["methodology", "agenda-map", "product-tour"].includes(id)) return ["ordered-steps"];
+  if (id === "claim-evidence-map") return ["claims", "evidence", "relationships"];
+  return ["structured-content"];
+}
+
+function semanticEvidence(id: RequiredSemanticVisualId): string[] {
+  if (semanticNumericIds.has(id)) return ["numeric-evidence", "unit", "accessible-summary"];
+  if (semanticTechnicalIds.has(id)) return ["local-asset", "claim-source", "accessible-summary"];
+  if (["quote-evidence", "findings", "claim-evidence-map", "methodology", "sample-scope", "limitations"].includes(id)) {
+    return ["claim-source", "accessible-summary"];
+  }
+  return ["accessible-summary"];
+}
+
+function semanticDensity(id: RequiredSemanticVisualId): { minItems: number; maxItems: number } {
+  if (id === "triptych") return { minItems: 3, maxItems: 3 };
+  if (id === "image-duo" || id === "before-after") return { minItems: 2, maxItems: 2 };
+  if (id === "collage") return { minItems: 3, maxItems: 9 };
+  if (["risk-register", "raci", "kpi-scorecard"].includes(id)) return { minItems: 2, maxItems: 16 };
+  return { minItems: 1, maxItems: 8 };
+}
+
+function createSemanticCoverage(id: RequiredSemanticVisualId): VisualCoverageEntry {
+  const catalogEntry = visualCatalog.find((entry) => entry.id === id);
+  const kind = semanticEditorialIds.has(id) ? "editorial" : "composition";
+  return {
+    kind,
+    publicId: id,
+    fixtureId: catalogEntry?.fixtureId ?? `semantic-${id}-fixture`,
+    relationship: `semantic composition for ${id.replaceAll("-", " ")}`,
+    requiredInputs: semanticInputs(id),
+    optionalInputs: ["speaker-notes", "secondary-context"],
+    evidenceRequirements: semanticEvidence(id),
+    useWhen: catalogEntry?.useWhen ? [...catalogEntry.useWhen] : ["Dùng khi component này là cấu trúc giao tiếp chính của slide."],
+    avoidWhen: catalogEntry?.avoidWhen ? [...catalogEntry.avoidWhen] : ["Tránh khi chart hoặc diagram chuyên biệt biểu đạt quan hệ chính xác hơn."],
+    density: semanticDensity(id),
+    accessibility: {
+      summaryStrategy: "Đọc conclusion trước, sau đó nội dung hỗ trợ theo hierarchy thị giác.",
+      traversalStrategy: "heading-then-structured-content"
+    },
+    rendererCapability: "deckory-native",
+    exportCapabilities: ["svg", "png", "pdf", "pptx"]
+  };
+}
 
 const chartFixtureIds: Partial<Record<ChartVariant, string>> = {
   "horizontal-bar": "horizontal-bar-quality",
@@ -271,10 +362,12 @@ function createDiagramCoverage(id: RequiredDiagramVisualId): VisualCoverageEntry
 const chartCoverage = ([...editorialChartVariants, ...advancedChartVariants] as ChartVariant[])
   .map(createChartCoverage);
 const diagramCoverage = requiredDiagramVisualIds.map(createDiagramCoverage);
+const semanticCoverage = requiredSemanticVisualIds.map(createSemanticCoverage);
 
 export const visualCoverageCatalog: readonly VisualCoverageEntry[] = [
   ...chartCoverage,
-  ...diagramCoverage
+  ...diagramCoverage,
+  ...semanticCoverage
 ];
 
 function fixtureFromCoverage(entry: VisualCoverageEntry): VisualFixtureRecord {
@@ -289,7 +382,9 @@ function fixtureFromCoverage(entry: VisualCoverageEntry): VisualFixtureRecord {
       : "Illustrative fixture data",
     unitCoverage: entry.kind === "chart"
       ? ["schema", entry.rendererCapability === "deckory-native" ? "editorial-geometry" : "adapter-boundary"]
-      : ["schema", entry.rendererCapability === "deckory-native" ? "deterministic-layout" : "adapter-boundary"],
+      : entry.kind === "diagram"
+        ? ["schema", entry.rendererCapability === "deckory-native" ? "deterministic-layout" : "adapter-boundary"]
+        : ["catalog-metadata", "semantic-contract"],
     browserReview: "required-after-integration"
   };
 }

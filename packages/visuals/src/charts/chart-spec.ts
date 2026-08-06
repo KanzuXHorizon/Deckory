@@ -370,6 +370,8 @@ export const ChartSpecSchema = z
       spec.data.forEach((datum, index) => {
         if (datum.low === undefined || datum.high === undefined) {
           addDataIssue(context, index, "box-plot requires low and high values.");
+        } else if (datum.low > datum.high) {
+          addDataIssue(context, index, "box-plot range requires low to be less than or equal to high.");
         }
       });
     }
@@ -399,6 +401,8 @@ export const ChartSpecSchema = z
       spec.data.forEach((datum, index) => {
         if (!datum.source || !datum.targetNode || datum.value === undefined) {
           addDataIssue(context, index, "sankey requires source, targetNode and value fields.");
+        } else if (datum.value === null || datum.value < 0) {
+          addDataIssue(context, index, "sankey flow values must be non-negative.");
         }
       });
     }

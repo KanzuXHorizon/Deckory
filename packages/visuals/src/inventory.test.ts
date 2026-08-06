@@ -7,6 +7,7 @@ import {
 } from "./charts/chart-spec";
 import {
   requiredDiagramVisualIds,
+  requiredSemanticVisualIds,
   validateVisualCoverageInventory,
   visualCoverageCatalog,
   visualFixtureInventory
@@ -45,6 +46,22 @@ describe("visual coverage inventory", () => {
       );
       expect(entry.requiredInputs.length).toBeGreaterThan(0);
       expect(entry.accessibility.summaryStrategy).not.toHaveLength(0);
+    }
+  });
+
+  it("covers every required semantic component with native metadata", () => {
+    const semanticEntries = visualCoverageCatalog.filter(
+      (entry) => entry.kind === "editorial" || entry.kind === "composition"
+    );
+
+    expect(semanticEntries.map((entry) => entry.publicId).sort()).toEqual(
+      [...requiredSemanticVisualIds].sort()
+    );
+    for (const entry of semanticEntries) {
+      expect(entry.rendererCapability).toBe("deckory-native");
+      expect(entry.requiredInputs.length).toBeGreaterThan(0);
+      expect(entry.evidenceRequirements.length).toBeGreaterThan(0);
+      expect(entry.exportCapabilities).toContain("pptx");
     }
   });
 

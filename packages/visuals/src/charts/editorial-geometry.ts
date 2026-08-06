@@ -81,6 +81,7 @@ export type EditorialGeometryResult =
 type NumericDatum = {
   datum: ChartDatum;
   value: number;
+  sourceIndex: number;
 };
 
 function isEditorialVariant(variant: ChartVariant): boolean {
@@ -100,10 +101,10 @@ function resolveNumericData(
   diagnostics: ChartGeometryDiagnostic[]
 ): NumericDatum[] {
   const resolved: NumericDatum[] = [];
-  for (const datum of spec.data) {
+  for (const [sourceIndex, datum] of spec.data.entries()) {
     if (datum.value === null || datum.value === undefined) {
       if (spec.missingValuePolicy === "zero") {
-        resolved.push({ datum, value: 0 });
+        resolved.push({ datum, value: 0, sourceIndex });
       } else {
         if (spec.missingValuePolicy === "gap") {
           diagnostics.push({
@@ -116,7 +117,7 @@ function resolveNumericData(
       }
       continue;
     }
-    resolved.push({ datum, value: datum.value });
+    resolved.push({ datum, value: datum.value, sourceIndex });
   }
   return resolved;
 }
@@ -402,17 +403,19 @@ function groupedBars(
       });
     }
   });
-  categories.forEach((category, index) => {
-    labels.push({
-      datumId: `category:${category}`,
-      role: "category",
-      text: category,
-      x: left + index * categoryBand + categoryBand / 2,
-      y: bottom + 20,
-      anchor: "middle",
-      primaryHighlight: false
+  if (spec.labels.mode === "direct") {
+    categories.forEach((category, index) => {
+      labels.push({
+        datumId: `category:${category}`,
+        role: "category",
+        text: category,
+        x: left + index * categoryBand + categoryBand / 2,
+        y: bottom + 20,
+        anchor: "middle",
+        primaryHighlight: false
+      });
     });
-  });
+  }
 
   return {
     ok: true,
@@ -476,15 +479,17 @@ function stackedBars(
         endValue
       });
     }
-    labels.push({
-      datumId: `category:${category}`,
-      role: "category",
-      text: category,
-      x: x + barWidth / 2,
-      y: bottom + 20,
-      anchor: "middle",
-      primaryHighlight: false
-    });
+    if (spec.labels.mode === "direct") {
+      labels.push({
+        datumId: `category:${category}`,
+        role: "category",
+        text: category,
+        x: x + barWidth / 2,
+        y: bottom + 20,
+        anchor: "middle",
+        primaryHighlight: false
+      });
+    }
   });
 
   return {
@@ -579,44 +584,71 @@ function lineGeometry(
   const bottom = bounds.y + bounds.height - 50;
   const domain = extent(data.map((item) => item.value), spec.encoding.zeroBaseline === true);
   const yScale = linearScale(domain, bottom, top);
-  const xFor = (index: number) =>
-    data.length === 1 ? (left + right) / 2 : left + (index / (data.length - 1)) * (right - left);
+  const preserveGapSlots = spec.missingValuePolicy === "gap";
+  const slotCount = preserveGapSlots ? spec.data.length : data.length;
+  const xFor = (item: NumericDatum, index: number) => {
+    if (slotCount === 1) return (left + right) / 2;
+    const slotIndex = preserveGapSlots ? item.sourceIndex : index;
+    return left + (slotIndex / Math.max(1, slotCount - 1)) * (right - left);
+  };
   const baselineY = spec.encoding.zeroBaseline === true ? yScale(0) : bottom;
   const highlights = primaryHighlightIds(spec);
   const marks: ChartGeometryMark[] = [];
   const labels: ChartGeometryLabel[] = [];
-  const points = data.map((item, index) => ({ x: xFor(index), y: yScale(item.value) }));
+  const points = data.map((item, index) => ({
+    item,
+    x: xFor(item, index),
+    y: yScale(item.value)
+  }));
+  const segments: Array<typeof points> = [];
+  for (const point of points) {
+    const currentSegment = segments.at(-1);
+    const previousPoint = currentSegment?.at(-1);
+    const continuesSegment =
+      !preserveGapSlots ||
+      !previousPoint ||
+      point.item.sourceIndex === previousPoint.item.sourceIndex + 1;
+    if (!currentSegment || !continuesSegment) segments.push([point]);
+    else currentSegment.push(point);
+  }
 
   if (spec.variant === "area") {
-    marks.push({
-      kind: "area",
-      datumId: "area-series",
-      x: left,
-      y: top,
-      points: [
-        { x: points[0]?.x ?? left, y: baselineY },
-        ...points,
-        { x: points.at(-1)?.x ?? right, y: baselineY }
-      ],
-      primaryHighlight: false
+    segments.forEach((segment, segmentIndex) => {
+      const first = segment[0];
+      const last = segment.at(-1);
+      if (!first || !last) return;
+      marks.push({
+        kind: "area",
+        datumId: `area-series:${segmentIndex}`,
+        x: first.x,
+        y: top,
+        points: [
+          { x: first.x, y: baselineY },
+          ...segment.map((point) => ({ x: point.x, y: point.y })),
+          { x: last.x, y: baselineY }
+        ],
+        primaryHighlight: false
+      });
     });
   }
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const current = points[index];
-    if (!previous || !current) continue;
-    marks.push({
-      kind: "line",
-      datumId: `segment:${data[index - 1]?.datum.id ?? index - 1}:${data[index]?.datum.id ?? index}`,
-      x: previous.x,
-      y: previous.y,
-      x2: current.x,
-      y2: current.y,
-      primaryHighlight: false
-    });
+  for (const segment of segments) {
+    for (let index = 1; index < segment.length; index += 1) {
+      const previous = segment[index - 1];
+      const current = segment[index];
+      if (!previous || !current) continue;
+      marks.push({
+        kind: "line",
+        datumId: `segment:${previous.item.datum.id}:${current.item.datum.id}`,
+        x: previous.x,
+        y: previous.y,
+        x2: current.x,
+        y2: current.y,
+        primaryHighlight: false
+      });
+    }
   }
-  data.forEach((item, index) => {
-    const point = points[index]!;
+  points.forEach((point) => {
+    const item = point.item;
     const highlighted = highlights.has(item.datum.id);
     marks.push({
       kind: "circle",

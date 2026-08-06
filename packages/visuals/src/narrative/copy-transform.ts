@@ -105,16 +105,74 @@ function ensureTerminalPeriod(value: string): string {
 }
 
 function splitClaims(value: string): string[] {
-  return value
-    .split(/[.!?\n]+/u)
-    .map(normalizeWhitespace)
-    .filter(Boolean);
+  const claims: string[] = [];
+  let start = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    const previous = value[index - 1];
+    const next = value[index + 1];
+    const numericSeparator =
+      character === "." && /\d/u.test(previous ?? "") && /\d/u.test(next ?? "");
+    const boundary =
+      character === "!" || character === "?" || character === "\n" ||
+      (character === "." && !numericSeparator);
+    if (!boundary) continue;
+    claims.push(value.slice(start, index));
+    start = index + 1;
+  }
+  claims.push(value.slice(start));
+  return claims.map(normalizeWhitespace).filter(Boolean);
 }
 
-function extractNumbers(value: string): string[] {
-  return [...value.matchAll(/[-+]?\d+(?:[.,]\d+)?(?:\s?%)?/gu)].map((match) =>
-    match[0].replace(/\s+/gu, "")
-  );
+type NumericToken = { raw: string; semanticKey: string };
+
+function canonicalNumericValue(raw: string): number | undefined {
+  const core = raw.replace(/\s?%$/u, "").replace(/\s+/gu, "");
+  const hasComma = core.includes(",");
+  const hasDot = core.includes(".");
+  let decimalSeparator: "," | "." | undefined;
+  if (hasComma && hasDot) {
+    decimalSeparator = core.lastIndexOf(",") > core.lastIndexOf(".") ? "," : ".";
+  } else {
+    const separator = hasComma ? "," : hasDot ? "." : undefined;
+    if (separator) {
+      const parts = core.split(separator);
+      const grouped = (parts.at(-1)?.length ?? 0) === 3 && parts.slice(1).every((part) => part.length === 3);
+      if (!grouped) decimalSeparator = separator;
+    }
+  }
+  let normalized = core;
+  if (decimalSeparator) {
+    const groupingSeparator = decimalSeparator === "," ? "." : ",";
+    normalized = normalized.split(groupingSeparator).join("");
+    const decimalIndex = normalized.lastIndexOf(decimalSeparator);
+    normalized = normalized.slice(0, decimalIndex).split(decimalSeparator).join("") + "." + normalized.slice(decimalIndex + 1);
+  } else {
+    normalized = normalized.replace(/[.,]/gu, "");
+  }
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function extractNumbers(value: string): NumericToken[] {
+  return [...value.matchAll(/[-+]?\d(?:[\d.,]*\d)?(?:\s?%)?/gu)].flatMap((match) => {
+    const raw = match[0].replace(/\s+/gu, "");
+    const numericValue = canonicalNumericValue(raw);
+    return numericValue === undefined
+      ? []
+      : [{ raw, semanticKey: `${raw.endsWith("%") ? "percent" : "number"}:${numericValue}` }];
+  });
+}
+
+function numericDifference(left: readonly NumericToken[], right: readonly NumericToken[]): NumericToken[] {
+  const counts = new Map<string, number>();
+  for (const item of right) counts.set(item.semanticKey, (counts.get(item.semanticKey) ?? 0) + 1);
+  return left.filter((item) => {
+    const count = counts.get(item.semanticKey) ?? 0;
+    if (count === 0) return true;
+    counts.set(item.semanticKey, count - 1);
+    return false;
+  });
 }
 
 function extractDirections(value: string): string[] {
@@ -166,8 +224,8 @@ export function analyzeClaimPreservation(
 ): ClaimPreservationReport {
   const originalNumbers = extractNumbers(originalText);
   const resultingNumbers = extractNumbers(resultingText);
-  const introducedNumbers = difference(resultingNumbers, originalNumbers);
-  const removedNumbers = difference(originalNumbers, resultingNumbers);
+  const introducedNumbers = numericDifference(resultingNumbers, originalNumbers);
+  const removedNumbers = numericDifference(originalNumbers, resultingNumbers);
   const originalDirections = extractDirections(originalText);
   const resultingDirections = extractDirections(resultingText);
   const introducedDirections = difference(resultingDirections, originalDirections);
@@ -214,8 +272,8 @@ export function analyzeClaimPreservation(
   const removedTemporalScope = difference(originalTemporalScope, resultingTemporalScope);
 
   const numericChanges: NumericClaimChange[] = [
-    ...introducedNumbers.map((introducedValue) => ({ introducedValue })),
-    ...removedNumbers.map((removedValue) => ({ removedValue }))
+    ...introducedNumbers.map((token) => ({ introducedValue: token.raw })),
+    ...removedNumbers.map((token) => ({ removedValue: token.raw }))
   ];
   const certaintyChanges: SemanticClaimChange[] = [
     ...introducedCertainty.map((value) => ({

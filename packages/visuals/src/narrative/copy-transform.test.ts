@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  analyzeClaimPreservation,
   draftSpeakerNotes,
   removeTechnicalFiller,
   rewriteConclusionHeading,
@@ -72,6 +73,30 @@ describe("constrained copy transforms", () => {
         expect.objectContaining({ kind: "polarity" })
       );
     }
+  });
+
+  it("preserves numeric meaning across locale formatting changes", () => {
+    const equivalent = analyzeClaimPreservation(
+      "Khảo sát có 1.200 người và tỷ lệ hoàn thành đạt 62,5%.",
+      "Khảo sát có 1200 người và tỷ lệ hoàn thành đạt 62.5%."
+    );
+    const changed = analyzeClaimPreservation(
+      "Khảo sát có 1.200 người.",
+      "Khảo sát có 1.300 người."
+    );
+
+    expect(equivalent.preserved).toBe(true);
+    expect(equivalent.numericChanges).toEqual([]);
+    expect(equivalent.originalClaims).toEqual([
+      "Khảo sát có 1.200 người và tỷ lệ hoàn thành đạt 62,5%"
+    ]);
+    expect(changed.preserved).toBe(false);
+    expect(changed.numericChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ removedValue: "1.200" }),
+        expect.objectContaining({ introducedValue: "1.300" })
+      ])
+    );
   });
 
   it("removes technical filler while preserving explicit values and limitations", () => {

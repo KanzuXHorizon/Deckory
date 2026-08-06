@@ -46,7 +46,7 @@ export type ExtractedSide = {
   text: string;
 };
 
-export type NumericClaimRole = "value" | "date" | "identifier";
+export type NumericClaimRole = "value" | "date" | "identifier" | "ordinal";
 
 export type NumericClaim = {
   raw: string;
@@ -243,10 +243,25 @@ function splitStatements(text: string): string[] {
 
   if (numbered.length >= 2) return numbered;
 
-  return text
-    .split(/[.!?\n]+/u)
-    .map(cleanSegment)
-    .filter(Boolean);
+  const statements: string[] = [];
+  let start = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const previous = text[index - 1];
+    const next = text[index + 1];
+    const numericSeparator =
+      character === "." && /\d/u.test(previous ?? "") && /\d/u.test(next ?? "");
+    const boundary =
+      character === "!" ||
+      character === "?" ||
+      character === "\n" ||
+      (character === "." && !numericSeparator);
+    if (!boundary) continue;
+    statements.push(text.slice(start, index));
+    start = index + 1;
+  }
+  statements.push(text.slice(start));
+  return statements.map(cleanSegment).filter(Boolean);
 }
 
 function extractSteps(text: string, hints?: VisualIntentHints): string[] {
@@ -305,17 +320,17 @@ function extractSides(text: string, hints?: VisualIntentHints): ExtractedSide[] 
 
 function classifyNumericRole(
   statement: string,
+  value: number,
   raw: string,
   matchIndex: number
 ): NumericClaimRole {
   if (raw.trim().endsWith("%")) return "value";
-  const before = statement.slice(Math.max(0, matchIndex - 16), matchIndex);
+  const before = statement.slice(Math.max(0, matchIndex - 32), matchIndex);
   const normalizedBefore = before.toLocaleLowerCase("vi-VN");
-  const integerValue = Number(raw.replace(",", "."));
   if (
-    Number.isInteger(integerValue) &&
-    integerValue >= 1900 &&
-    integerValue <= 2100 &&
+    Number.isInteger(value) &&
+    value >= 1900 &&
+    value <= 2100 &&
     /(?:năm|year)\s*$/iu.test(normalizedBefore)
   ) {
     return "date";
@@ -323,33 +338,74 @@ function classifyNumericRole(
   if (/(?:phiên bản|version|\bv|\bid)\s*$/iu.test(normalizedBefore)) {
     return "identifier";
   }
+  if (/(?:bước|step|giai đoạn|phase|vòng|round|thứ)\s*$/iu.test(normalizedBefore)) {
+    return "ordinal";
+  }
   return "value";
 }
 
 function extractNumericUnit(statement: string, matchEnd: number, raw: string): string | undefined {
   if (raw.trim().endsWith("%")) return "%";
   const trailing = statement.slice(matchEnd, matchEnd + 16);
-  const match = trailing.match(/^\s*(điểm|giờ|phút|giây|ms|usd|vnd|triệu|tỷ)\b/iu);
+  const match = trailing.match(/^\s*(điểm|giờ|phút|giây|ms|usd|vnd|triệu|tỷ|người)\b/iu);
   return match?.[1];
 }
 
-function extractNumericClaims(text: string): NumericClaim[] {
+function chooseDecimalSeparator(core: string, locale: string): "," | "." | undefined {
+  const commaParts = core.split(",");
+  const dotParts = core.split(".");
+  const hasComma = commaParts.length > 1;
+  const hasDot = dotParts.length > 1;
+  if (hasComma && hasDot) {
+    return core.lastIndexOf(",") > core.lastIndexOf(".") ? "," : ".";
+  }
+  const separator = hasComma ? "," : hasDot ? "." : undefined;
+  if (!separator) return undefined;
+  const parts = core.split(separator);
+  const allTrailingGroups = parts.slice(1).every((part) => part.length === 3);
+  if (parts.length > 2) return allTrailingGroups ? undefined : separator;
+  const localeUsesCommaDecimal = locale.toLocaleLowerCase("en-US").startsWith("vi");
+  const fractionalLength = parts[1]?.length ?? 0;
+  if (separator === "," && localeUsesCommaDecimal) return ",";
+  if (separator === "." && !localeUsesCommaDecimal) return ".";
+  return fractionalLength === 3 ? undefined : separator;
+}
+
+function parseLocalizedNumber(raw: string, locale: string): number | undefined {
+  const core = raw.replace(/\s?%$/u, "").replace(/\s+/gu, "");
+  const decimalSeparator = chooseDecimalSeparator(core, locale);
+  let normalized = core;
+  if (decimalSeparator) {
+    const groupingSeparator = decimalSeparator === "," ? "." : ",";
+    normalized = normalized.split(groupingSeparator).join("");
+    const decimalIndex = normalized.lastIndexOf(decimalSeparator);
+    normalized =
+      normalized.slice(0, decimalIndex).split(decimalSeparator).join("") +
+      "." +
+      normalized.slice(decimalIndex + 1);
+  } else {
+    normalized = normalized.replace(/[.,]/gu, "");
+  }
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function extractNumericClaims(text: string, locale: string): NumericClaim[] {
   const statements = splitStatements(text);
   const claims: NumericClaim[] = [];
-  const pattern = /[-+]?\d+(?:[.,]\d+)?(?:\s?%)?/gu;
+  const pattern = /[-+]?\d(?:[\d.,]*\d)?(?:\s?%)?/gu;
 
   for (const statement of statements) {
     for (const match of statement.matchAll(pattern)) {
       const raw = match[0];
-      const normalizedNumber = raw.replace(/\s?%$/u, "").replace(",", ".");
-      const value = Number(normalizedNumber);
-      if (!Number.isFinite(value)) continue;
+      const value = parseLocalizedNumber(raw, locale);
+      if (value === undefined) continue;
       const matchIndex = match.index ?? 0;
       const unit = extractNumericUnit(statement, matchIndex + raw.length, raw);
       claims.push({
         raw,
         value,
-        role: classifyNumericRole(statement, raw, matchIndex),
+        role: classifyNumericRole(statement, value, raw, matchIndex),
         ...(unit ? { unit } : {}),
         context: statement
       });
@@ -410,13 +466,15 @@ export function classifyVisualIntent(input: VisualIntentInput): VisualIntentAnal
   const text = normalizeWhitespace(input.text);
   const extractedSteps = extractSteps(text, input.hints);
   const sides = extractSides(text, input.hints);
-  const numericClaims = extractNumericClaims(text);
+  const locale = input.locale ?? "vi-VN";
+  const numericClaims = extractNumericClaims(text, locale);
+  const numericValueCount = numericClaims.filter((claim) => claim.role === "value").length;
   const entities = [...(input.hints?.entities ?? [])].map(normalizeWhitespace).filter(Boolean);
   const classification = classifyPrimary(text, extractedSteps, input.hints);
 
   return {
     primary: classification.primary,
-    secondary: deriveSecondary(classification.primary, numericClaims.length),
+    secondary: deriveSecondary(classification.primary, numericValueCount),
     extractedClaims: extractClaims(text),
     extractedSteps,
     sides,

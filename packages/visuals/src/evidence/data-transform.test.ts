@@ -174,6 +174,52 @@ describe("data transforms", () => {
     });
   });
 
+  it("rejects mixed-type pivot inputs and duplicate aggregate outputs", () => {
+    const mixedKeyDataset: Dataset = {
+      id: "mixed-keys",
+      label: "Mixed keys",
+      sourceIds: ["manual"],
+      status: "illustrative",
+      columns: [
+        { key: "candidate", label: "Candidate", type: "string" },
+        { key: "round", label: "Round", type: "string" },
+        { key: "score", label: "Score", type: "number" }
+      ],
+      rows: [
+        { candidate: "An", round: 1, score: 62 },
+        { candidate: "An", round: "1", score: 84 }
+      ]
+    };
+    const typedCollision = applyDataTransform(mixedKeyDataset, {
+      id: "typed-key-collision",
+      version: 1,
+      type: "pivot",
+      index: ["candidate"],
+      column: "round",
+      value: "score",
+      operation: "first"
+    });
+    const duplicateAggregate = applyDataTransform(dataset(), {
+      id: "duplicate-aggregate",
+      version: 1,
+      type: "group-aggregate",
+      groupBy: ["round"],
+      measures: [
+        { field: "score", operation: "mean", output: "metric", label: "Average" },
+        { field: "score", operation: "max", output: "metric", label: "Maximum" }
+      ]
+    });
+
+    expect(typedCollision).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "invalid-dataset" })]
+    });
+    expect(duplicateAggregate).toMatchObject({
+      ok: false,
+      diagnostics: [expect.objectContaining({ code: "duplicate-output-field", field: "metric" })]
+    });
+  });
+
   it("rejects duplicate transform IDs and invalid filter operand shapes", () => {
     const duplicateIds = applyDataTransforms(dataset(), [
       {

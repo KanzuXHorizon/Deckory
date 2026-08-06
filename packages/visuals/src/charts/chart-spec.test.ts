@@ -116,6 +116,32 @@ describe("ChartSpecSchema", () => {
     ).toThrow(/duplicate reference line/i);
   });
 
+  it("rejects impossible ranges and negative weighted flows", () => {
+    const chart = baseChart();
+
+    expect(() =>
+      ChartSpecSchema.parse({
+        ...chart,
+        variant: "box-plot",
+        data: [{ id: "range", category: "A", low: 10, high: 5 }],
+        encoding: { categoryField: "category", valueField: "value" },
+        highlights: [],
+        animation: { mode: "fade", durationMs: 300 }
+      })
+    ).toThrow(/low.*high|range/i);
+
+    expect(() =>
+      ChartSpecSchema.parse({
+        ...chart,
+        variant: "sankey",
+        data: [{ id: "flow", source: "A", targetNode: "B", value: -4 }],
+        encoding: { sourceField: "source", targetNodeField: "targetNode", valueField: "value" },
+        highlights: [],
+        animation: { mode: "fade", durationMs: 300 }
+      })
+    ).toThrow(/non-negative|negative/i);
+  });
+
   it("keeps illustrative chart evidence visibly labelled", () => {
     const chart = baseChart();
 

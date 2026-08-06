@@ -61,6 +61,44 @@ describe("classifyVisualIntent", () => {
     expect(result.inputAvailability.dates).toBe(1);
   });
 
+  it("parses locale-aware grouped and decimal values without changing magnitude", () => {
+    const vi = classifyVisualIntent({
+      text: "Khảo sát có 1.200 người và tỷ lệ hoàn thành đạt 62,5%.",
+      locale: "vi-VN"
+    });
+    const en = classifyVisualIntent({
+      text: "The survey includes 1,200 people and completion reached 62.5%.",
+      locale: "en-US"
+    });
+
+    expect(vi.numericClaims).toEqual([
+      expect.objectContaining({ value: 1200, role: "value" }),
+      expect.objectContaining({ value: 62.5, role: "value", unit: "%" })
+    ]);
+    expect(en.numericClaims).toEqual([
+      expect.objectContaining({ value: 1200, role: "value" }),
+      expect.objectContaining({ value: 62.5, role: "value", unit: "%" })
+    ]);
+    expect(vi.inputAvailability.numericData).toBe(2);
+    expect(en.inputAvailability.numericData).toBe(2);
+  });
+
+  it("separates ordered stage numbers from quantitative chart evidence", () => {
+    const result = classifyVisualIntent({
+      text: "Năm 2026 hoàn tất giai đoạn 1. Năm 2027 phát hành giai đoạn 2.",
+      locale: "vi-VN"
+    });
+
+    expect(result.numericClaims).toEqual([
+      expect.objectContaining({ value: 2026, role: "date" }),
+      expect.objectContaining({ value: 1, role: "ordinal" }),
+      expect.objectContaining({ value: 2027, role: "date" }),
+      expect.objectContaining({ value: 2, role: "ordinal" })
+    ]);
+    expect(result.inputAvailability.numericData).toBe(0);
+    expect(result.inputAvailability.dates).toBe(2);
+  });
+
   it("keeps structured relationship, geography and evidence availability explicit", () => {
     const result = classifyVisualIntent({
       text: "Phân tích rủi ro theo khu vực.",
