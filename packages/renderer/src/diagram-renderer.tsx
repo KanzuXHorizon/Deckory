@@ -80,13 +80,13 @@ export function DiagramRenderer({
       data-diagram-status="ready"
       data-diagram-strategy={result.strategy}
       aria-label={spec.accessibleSummary}
-      style={{ margin: 0, width: "100%", height: "100%", display: "grid", gridTemplateRows: `${headerHeight}px 1fr ${footerHeight}px`, color: "inherit" }}
+      style={{ margin: 0, width: "100%", height: "100%", minHeight: 0, overflow: "hidden", position: "relative", display: "grid", gridTemplateRows: `${headerHeight}px minmax(0, 1fr) ${footerHeight}px`, color: "inherit" }}
     >
       <figcaption style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, paddingInline: 4 }}>
         <strong>{spec.title}</strong>
         <span>{spec.intent}</span>
       </figcaption>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="presentation" aria-hidden="true">
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="presentation" aria-hidden="true" style={{ width: "100%", height: "100%", minHeight: 0, display: "block" }}>
         <defs>
           <marker id={`arrow-${spec.title.replace(/[^a-z0-9]/giu, "-")}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />

@@ -23,6 +23,14 @@ describe("MyInterview Defense V2", () => {
     expect(report.issues, JSON.stringify(report.issues, null, 2)).toEqual([]);
   });
 
+  it("fits dense architecture layer copy within the migrated card budget", () => {
+    const architecture = myInterviewDefenseV2.slides.find((slide) => slide.id === "architecture");
+    const layerCopy = architecture?.elements.filter((element) =>
+      element.kind === "text" && element.id.startsWith("architecture-layers-") && element.id.endsWith("-text"));
+    expect(layerCopy).toHaveLength(5);
+    expect(layerCopy?.every((element) => (element.style?.fontSize ?? 99) <= 23)).toBe(true);
+  });
+
   it("keeps every material migrated claim explicitly illustrative until separately verified", () => {
     const evidence = myInterviewDefenseV2.visualIntelligence?.evidence;
     expect(evidence?.claims).toHaveLength(23);

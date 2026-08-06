@@ -27,6 +27,24 @@ describe("createDeckV2FromTemplate", () => {
     expect(DeckDocumentV2Schema.safeParse(result.deck).success).toBe(true);
   });
 
+  it("keeps migrated heading descriptions in a separate editorial column", () => {
+    const input = createCompleteTemplateInput("professional-presentation", "modern-professional");
+    const result = createDeckV2FromTemplate(input);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    for (const slide of result.deck.slides) {
+      const heading = slide.elements.find((element) => element.name === "Heading");
+      const description = slide.elements.find((element) => element.name === "Heading description");
+      if (!heading || !description) continue;
+      const overlaps = heading.frame.x < description.frame.x + description.frame.width
+        && heading.frame.x + heading.frame.width > description.frame.x
+        && heading.frame.y < description.frame.y + description.frame.height
+        && heading.frame.y + heading.frame.height > description.frame.y;
+      expect(overlaps, `${slide.id}: heading and description frames`).toBe(false);
+    }
+  });
+
   it("is deterministic for the same template input", () => {
     const input = createCompleteTemplateInput("professional-presentation", "modern-professional");
     expect(createDeckV2FromTemplate(input)).toEqual(createDeckV2FromTemplate(input));

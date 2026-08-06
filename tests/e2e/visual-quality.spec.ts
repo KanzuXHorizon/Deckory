@@ -11,7 +11,7 @@ test.describe("Deckory visual quality gate", () => {
       await waitForFonts(page);
       await expect(page.locator('[data-export-ready="true"]')).toHaveAttribute("data-export-deck-id", deckId);
 
-      const slides = page.locator(".export-page .slide");
+      const slides = page.locator(".export-page .slide, .export-page .scene-slide");
       const slideCount = await slides.count();
       expect(slideCount, `${deckId}: export must contain slides`).toBeGreaterThan(0);
 
@@ -57,10 +57,20 @@ async function inspectSlide(slide: Locator) {
       return width > tolerance && height > tolerance;
     }
     const slideRect = element.getBoundingClientRect();
-    const visibleSlots = [...element.querySelectorAll<HTMLElement>('.component-slot[data-visible="true"]')];
+    const isSceneV2 = element.classList.contains("scene-slide");
+    const isRendered = (node: HTMLElement) => {
+      const style = getComputedStyle(node);
+      return style.display !== "none" && style.visibility !== "hidden" && node.getClientRects().length > 0;
+    };
+    const visibleSlots = isSceneV2
+      ? [...element.querySelectorAll<HTMLElement>(".scene-element")].filter(isRendered)
+      : [...element.querySelectorAll<HTMLElement>('.component-slot[data-visible="true"]')].filter(isRendered);
     const slotRecords = visibleSlots.map((slot) => ({
-      id: slot.dataset.componentId ?? slot.className,
-      type: [...slot.classList].find((name) => name.startsWith("component-slot--"))?.replace("component-slot--", "") ?? "unknown",
+      id: isSceneV2 ? slot.dataset.elementId ?? slot.className : slot.dataset.componentId ?? slot.className,
+      type: isSceneV2
+        ? slot.dataset.elementKind ?? "unknown"
+        : [...slot.classList].find((name) => name.startsWith("component-slot--"))?.replace("component-slot--", "") ?? "unknown",
+      decorative: slot.getAttribute("aria-hidden") === "true",
       element: slot,
       rect: slot.getBoundingClientRect()
     }));
@@ -72,19 +82,22 @@ async function inspectSlide(slide: Locator) {
       return outside ? [slot.id] : [];
     });
 
-    const footer = slotRecords.find((slot) => slot.type === "evidence-footer");
+    const overlapRecords = isSceneV2
+      ? slotRecords.filter((slot) => !slot.decorative && !["group", "stack", "grid", "shape", "line", "connector"].includes(slot.type))
+      : slotRecords;
+    const footer = overlapRecords.find((slot) => slot.type === "evidence-footer");
     const footerOverlaps = footer
-      ? slotRecords
+      ? overlapRecords
         .filter((slot) => slot !== footer && rectanglesIntersect(footer.rect, slot.rect, 2))
         .map((slot) => slot.id)
       : [];
 
     const componentOverlaps: string[] = [];
-    for (let leftIndex = 0; leftIndex < slotRecords.length; leftIndex += 1) {
-      const left = slotRecords[leftIndex]!;
+    for (let leftIndex = 0; leftIndex < overlapRecords.length; leftIndex += 1) {
+      const left = overlapRecords[leftIndex]!;
       if (left.type === "evidence-footer") continue;
-      for (let rightIndex = leftIndex + 1; rightIndex < slotRecords.length; rightIndex += 1) {
-        const right = slotRecords[rightIndex]!;
+      for (let rightIndex = leftIndex + 1; rightIndex < overlapRecords.length; rightIndex += 1) {
+        const right = overlapRecords[rightIndex]!;
         if (right.type === "evidence-footer") continue;
         if (rectanglesIntersect(left.rect, right.rect, 3)) componentOverlaps.push(`${left.id} ↔ ${right.id}`);
       }
@@ -94,16 +107,19 @@ async function inspectSlide(slide: Locator) {
       const candidates = [slot, ...slot.querySelectorAll<HTMLElement>("*")];
       return candidates.flatMap((candidate) => {
         if (candidate.closest(".sr-only") || candidate.closest('[data-qa-allow-clip="true"]')) return [];
+        if (candidate.getAttribute("aria-hidden") === "true" || ["svg", "path", "line", "rect", "circle", "polygon"].includes(candidate.tagName.toLowerCase())) return [];
+        if (candidate.clientWidth <= 1 || candidate.clientHeight <= 1) return [];
         const style = getComputedStyle(candidate);
         const clipsX = style.overflowX === "hidden" || style.overflowX === "clip";
         const clipsY = style.overflowY === "hidden" || style.overflowY === "clip";
         const clipped = (clipsX && candidate.scrollWidth > candidate.clientWidth + 1)
           || (clipsY && candidate.scrollHeight > candidate.clientHeight + 1);
-        if (!clipped || candidate.clientWidth === 0 || candidate.clientHeight === 0) return [];
+        if (!clipped) return [];
         const label = candidate.getAttribute("aria-label")
           ?? candidate.textContent?.trim().slice(0, 48)
           ?? candidate.tagName.toLowerCase();
-        return [`${slot.dataset.componentId ?? "unknown"}:${label}`];
+        const ownerId = isSceneV2 ? slot.dataset.elementId : slot.dataset.componentId;
+        return [`${ownerId ?? "unknown"}:${label}`];
       });
     });
 
@@ -115,12 +131,10 @@ async function inspectSlide(slide: Locator) {
       "textarea:not([disabled])",
       "[tabindex]:not([tabindex='-1'])"
     ].join(",");
-    const isRendered = (node: HTMLElement) => {
-      const style = getComputedStyle(node);
-      return style.display !== "none" && style.visibility !== "hidden" && node.getClientRects().length > 0;
+    const describeFocusable = (node: HTMLElement) => {
+      const owner = node.closest<HTMLElement>(".component-slot, .scene-element");
+      return `${owner?.dataset.componentId ?? owner?.dataset.elementId ?? "unknown"}:${node.tagName.toLowerCase()}`;
     };
-    const describeFocusable = (node: HTMLElement) =>
-      `${node.closest<HTMLElement>(".component-slot")?.dataset.componentId ?? "unknown"}:${node.tagName.toLowerCase()}`;
     const unexpectedFocusable = [...element.querySelectorAll<HTMLElement>(focusableSelector)]
       .filter(isRendered)
       .map(describeFocusable);

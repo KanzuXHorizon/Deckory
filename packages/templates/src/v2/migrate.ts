@@ -73,6 +73,7 @@ function textElement(
     fontWeight?: number;
     color?: string;
     fontFamily?: string;
+    lineHeight?: number;
     textAlign?: "left" | "center" | "right" | "justify";
     zIndex?: number;
     readingOrder?: number;
@@ -89,7 +90,7 @@ function textElement(
       color: options.color ?? "#25282d",
       fontSize: options.fontSize ?? fittedFontSize(text, frame),
       fontWeight: options.fontWeight ?? 520,
-      lineHeight: 1.25,
+      lineHeight: options.lineHeight ?? 1.25,
       ...(options.fontFamily ? { fontFamily: options.fontFamily } : {}),
       ...(options.textAlign ? { textAlign: options.textAlign } : {})
     },
@@ -154,13 +155,27 @@ function inset(frame: Frame, horizontal: number, vertical: number): Frame {
 }
 
 function fittedFontSize(text: string, frame: Frame): number {
-  const area = Math.max(1, frame.width * frame.height);
-  const density = text.length / area;
-  if (text.length < 70 && frame.height > 120) return 28;
-  if (density < 0.0012) return 23;
-  if (density < 0.0022) return 19;
-  if (density < 0.0035) return 16;
+  const candidates = [28, 23, 19, 16, 13] as const;
+  for (const fontSize of candidates) {
+    const charactersPerLine = Math.max(8, Math.floor(frame.width / (fontSize * 0.55)));
+    const estimatedLines = text.split(/\r?\n/u).reduce((total, line) =>
+      total + Math.max(1, Math.ceil(line.length / charactersPerLine)), 0);
+    const estimatedHeight = estimatedLines * fontSize * 1.25;
+    if (estimatedHeight <= Math.max(1, frame.height - 4)) return fontSize;
+  }
   return 13;
+}
+
+function fittedHeadingFontSize(text: string, frame: Frame, maximum: number): number {
+  const candidates = [42, 38, 34, 32, 30, 28, 26].filter((size) => size <= maximum);
+  for (const fontSize of candidates) {
+    const charactersPerLine = Math.max(12, Math.floor(frame.width / (fontSize * 0.6)));
+    const estimatedLines = text.split(/\r?\n/u).reduce((total, line) =>
+      total + Math.max(1, Math.ceil(line.length / charactersPerLine)), 0);
+    const estimatedHeight = estimatedLines * fontSize * 1.08 + 12;
+    if (estimatedHeight <= frame.height) return fontSize;
+  }
+  return 26;
 }
 
 function contentFrames(count: number, slideIndex: number): Frame[] {
@@ -520,12 +535,18 @@ function migrateSlide(
     if (heading.props.eyebrow) {
       elements.push(textElement(makeId(`${heading.id}-eyebrow`), "Eyebrow", heading.props.eyebrow, { x: 72, y: 48, width: 760, height: 28 }, { fontSize: 14, fontWeight: 760, color: ACCENTS[slideIndex % ACCENTS.length] ?? ACCENTS[0], readingOrder: 1 }));
     }
-    elements.push(textElement(makeId(heading.id), "Heading", headingText(heading), { x: 72, y: 78, width: 1080, height: 82 }, { fontSize: headingText(heading).length > 75 ? 34 : 42, fontWeight: 760, color: "#17191c", readingOrder: 2 }));
+    const title = headingText(heading);
+    const headingFrame = { x: 72, y: 78, width: heading.props.description ? 730 : 1080, height: 82 };
+    const headingFontSize = fittedHeadingFontSize(title, headingFrame, heading.props.description ? 38 : 42);
+    elements.push(textElement(makeId(heading.id), "Heading", title, headingFrame, { fontSize: headingFontSize, fontWeight: 760, lineHeight: 1.08, color: "#17191c", readingOrder: 2 }));
     if (heading.props.description) {
       elements.push(textElement(makeId(`${heading.id}-description`), "Heading description", heading.props.description, { x: 850, y: 54, width: 358, height: 88 }, { fontSize: 16, color: "#555b63", readingOrder: 3 }));
     }
   } else {
-    elements.push(textElement(makeId("slide-title"), "Slide title", conclusionFor(slide), { x: 72, y: 58, width: 1136, height: 88 }, { fontSize: 38, fontWeight: 760, color: "#17191c", readingOrder: 1 }));
+    const title = conclusionFor(slide);
+    const titleFrame = { x: 72, y: 58, width: 1136, height: 88 };
+    const titleFontSize = fittedHeadingFontSize(title, titleFrame, 38);
+    elements.push(textElement(makeId("slide-title"), "Slide title", title, titleFrame, { fontSize: titleFontSize, fontWeight: 760, lineHeight: 1.08, color: "#17191c", readingOrder: 1 }));
   }
 
   const context: MigrationContext = { deck, slide, slideIndex, assets, diagnostics, datasets, visualBindings };

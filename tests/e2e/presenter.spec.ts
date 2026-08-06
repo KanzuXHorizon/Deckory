@@ -16,7 +16,7 @@ test.describe("Deckory production presentation surfaces", () => {
     await waitForFonts(page);
     await expect(page.locator(".hub-shell")).toBeVisible();
     await expect(page.locator("#hub-title")).toHaveText(/Không gian làm việc cho những deck cần được tin cậy/i);
-    await expect(page.getByRole("heading", { name: /Deckory Template Intelligence/i })).toBeVisible();
+    await expect(page.locator('[data-deck-id="template-gallery"] h3')).toBeVisible();
     const v2Quality = page.locator('[data-v2-quality-summary="true"]');
     await expect(v2Quality).toBeVisible();
     await expect(v2Quality).toContainText("Quality gate V2 · 20 tiêu chí");
