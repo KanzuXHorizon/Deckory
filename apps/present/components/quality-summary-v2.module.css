@@ -1,0 +1,147 @@
+.root {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--line, #d9dad6) 88%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface, #ffffff) 96%, var(--canvas, #f2f2ed));
+}
+
+.root[data-quality-density="compact"] {
+  gap: 10px;
+  padding: 13px;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+}
+
+.identity {
+  min-width: 0;
+}
+
+.identity span,
+.score span,
+.pending strong,
+.issues strong {
+  display: block;
+  color: var(--muted, #666b72);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.identity h2 {
+  margin: 4px 0 0;
+  color: var(--ink, #15171a);
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.score {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  min-width: 76px;
+}
+
+.score b {
+  color: var(--ink, #15171a);
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.score b small {
+  color: var(--muted, #666b72);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.state {
+  display: grid;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-soft, #eeecff) 82%, transparent);
+  color: var(--accent, #5147e8);
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.25;
+}
+
+.state small {
+  color: currentColor;
+  font-size: 10px;
+  font-weight: 620;
+  opacity: 0.78;
+}
+
+.root[data-quality-state="blocked"] .state {
+  background: color-mix(in srgb, #c43d3d 12%, transparent);
+  color: #9d2828;
+}
+
+.root[data-quality-state="evidence-pending"] .state {
+  background: color-mix(in srgb, #c77700 13%, transparent);
+  color: #8c5700;
+}
+
+.pending,
+.issues {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pending ul,
+.issues ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pending li {
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--canvas, #f2f2ed);
+  color: var(--ink, #15171a);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.issues ul {
+  display: grid;
+}
+
+.issues li,
+.clean {
+  margin: 0;
+  color: var(--muted, #666b72);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.issues li::before {
+  content: "•";
+  margin-inline-end: 7px;
+  color: #c77700;
+}
+
+.clean {
+  color: #136f63;
+}

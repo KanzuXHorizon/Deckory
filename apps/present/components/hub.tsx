@@ -15,11 +15,12 @@ import {
   SlidersHorizontal,
   Sparkles
 } from "lucide-react";
-import { deckCatalog, slideTitle, visualCoverage } from "../lib/deck-catalog";
+import { deckCatalog, sceneFoundationAudit, slideTitle, visualCoverage } from "../lib/deck-catalog";
 import { deckThemeClassName } from "../lib/deck-theme";
 import { layoutLabel } from "../lib/studio-option-catalog";
 import { DeckoryBrand } from "./brand-mark";
 import { DeckThumbnail } from "./deck-thumbnail";
+import { QualitySummaryV2 } from "./quality-summary-v2";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
 
@@ -104,6 +105,18 @@ export function Hub() {
             <Link href={`/preview?deck=${activeItem.deck.id}`}>Mở preview <ArrowRight size={15} /></Link>
           </div>
         </div>
+      </section>
+
+      <section className="hub-section" id="v2-quality" aria-labelledby="v2-quality-title">
+        <div className="section-heading-row">
+          <div>
+            <span className="section-label">RELEASE GATE V2</span>
+            <h2 id="v2-quality-title">Chất lượng được công bố theo bằng chứng, không theo cảm giác.</h2>
+            <p>Scorecard V2 tách kiểm tra cấu trúc khỏi browser, accessibility, export, performance và manual visual review trên đúng revision.</p>
+          </div>
+          <Link className="secondary-action" href="/studio?deck=scene-foundation">Mở Studio V2 <ArrowRight size={16} /></Link>
+        </div>
+        <QualitySummaryV2 report={sceneFoundationAudit} />
       </section>
 
       <section className="hub-section hub-library" id="library" aria-labelledby="library-title">

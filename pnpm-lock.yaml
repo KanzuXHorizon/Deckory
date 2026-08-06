@@ -104,6 +104,9 @@ importers:
       '@deckory/schema':
         specifier: workspace:*
         version: link:../schema
+      '@deckory/visuals':
+        specifier: workspace:*
+        version: link:../visuals
 
   packages/core:
     dependencies:

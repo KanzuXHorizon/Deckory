@@ -1,7 +1,12 @@
 import { deckoryStory } from "@deckory/deckory-story";
 import { myInterviewDefense } from "@deckory/myinterview-defense";
 import { templateGalleryDeck } from "@deckory/template-gallery";
-import { scoreDeckQuality, type DeckQualityScorecard } from "@deckory/audit";
+import {
+  auditDeckV2,
+  scoreDeckQuality,
+  scoreDeckV2,
+  type DeckQualityScorecard
+} from "@deckory/audit";
 import { defineDeck, SUPPORTED_COMPONENT_TYPES, type DeckDocument, type DeckDocumentV2, type Slide } from "@deckory/schema";
 import type { AnyDeckDocument } from "./deck-version";
 
@@ -314,6 +319,7 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
     name: "Scene Foundation",
     purpose: "technical-proof",
     conclusion: "Một scene graph dùng chung cho mọi bề mặt.",
+    notes: "Chuyển từ V1 sang luận điểm nền tảng: mọi bề mặt phải đọc cùng một document. Nhấn mạnh đây là fixture tích hợp cục bộ, không phải benchmark hiệu năng. Kết bằng câu hỏi: contract này có giữ được chart, diagram và evidence không?",
     background: { layers: [{ id: "paper", type: "solid", color: "#f7f7f4", opacity: 1 }] },
     evidence: { source: "Deckory V2 Scene Foundation fixture", status: "illustrative" },
     elements: [
@@ -372,6 +378,7 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
     name: "Visual Intelligence Proof",
     purpose: "evidence-and-architecture",
     conclusion: "Typed chart, diagram và evidence cùng đi qua shared renderer.",
+    notes: "Đọc kết luận trước, sau đó chỉ vào chart và diagram như hai proof khác nhau của cùng contract. Nêu rõ điểm số là fixture local có source và dataset lineage, không phải claim thị trường. Chuyển sang slide sau bằng vấn đề còn lại: biến text thô thành visual mà không làm mất nguồn gốc.",
     background: {
       layers: [
         { id: "visual-paper", type: "solid", color: "#f7f7f4", opacity: 1 },
@@ -537,6 +544,7 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
     name: "Text to Visual Proof",
     purpose: "transform-raw-content",
     conclusion: "Text có thứ tự được chuyển thành native editable process mà không mất source.",
+    notes: "Mở bằng đoạn text bốn bước và thực hiện Visualize trong Studio. Chứng minh visual mới là native diagram, source text được giữ dưới dạng layer có liên kết và một lần Undo khôi phục trạng thái trước. Nhắc lại dữ liệu chỉ là fixture minh hoạ; kết bằng tiêu chí chấp thuận: transformation phải editable, reversible và traceable.",
     background: {
       layers: [
         { id: "assistant-paper", type: "solid", color: "#f5f2ea", opacity: 1 },
@@ -577,6 +585,12 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
       }
     ]
   }]
+};
+
+const sceneFoundationStructuralAudit = auditDeckV2(sceneFoundationDeck);
+export const sceneFoundationAudit = {
+  ...sceneFoundationStructuralAudit,
+  scorecard: scoreDeckV2(sceneFoundationDeck)
 };
 
 export const defaultDeck = deckCatalog[0]!.deck;

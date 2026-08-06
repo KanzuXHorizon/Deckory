@@ -553,3 +553,7 @@ function readDeckIdentity(input: unknown): { deckId: string; title: string } {
     title: typeof record.title === "string" ? record.title : "Unknown deck"
   };
 }
+
+export * from "./runtime-evidence";
+export * from "./v2";
+export * from "./v2-scorecard";

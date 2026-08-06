@@ -18,6 +18,10 @@ test.describe("Deckory V2 Studio integration", () => {
     await expect(page.locator('[data-scene-v2-surface="studio"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Layers" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Layout" })).toBeHidden();
+    const qualityGate = page.locator('[data-v2-quality-summary="true"]');
+    await expect(qualityGate).toBeVisible();
+    await expect(qualityGate).toHaveAttribute("data-quality-state", "evidence-pending");
+    await expect(qualityGate).toContainText("Chờ bằng chứng runtime/manual");
 
     const canvas = page.locator('[data-studio-v2-canvas-host="true"]');
     const title = page.locator('[data-studio-v2-canvas-stage="true"] [data-element-id="title"]');

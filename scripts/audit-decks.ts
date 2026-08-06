@@ -1,5 +1,12 @@
-import { auditDecks, formatAuditReport } from "../packages/audit/src/index.ts";
-import { deckCatalog } from "../apps/present/lib/deck-catalog.ts";
+import {
+  auditDecks,
+  formatAuditReport,
+  formatAuditReportV2
+} from "../packages/audit/src/index.ts";
+import {
+  deckCatalog,
+  sceneFoundationAudit
+} from "../apps/present/lib/deck-catalog.ts";
 
 const argumentsSet = new Set(process.argv.slice(2));
 const asJson = argumentsSet.has("--json");
@@ -21,7 +28,9 @@ Options:
   process.exit(0);
 }
 
-const reports = auditDecks(deckCatalog.map((item) => item.deck));
+const v1Reports = auditDecks(deckCatalog.map((item) => item.deck));
+const v2Reports = [sceneFoundationAudit];
+const reports = [...v1Reports, ...v2Reports];
 
 if (asJson) {
   console.log(JSON.stringify({
@@ -30,13 +39,13 @@ if (asJson) {
     summary: summarize(reports)
   }, null, 2));
 } else {
-  console.log(formatAuditReport(reports));
+  console.log(`${formatAuditReport(v1Reports)}\n\n${formatAuditReportV2(v2Reports)}`);
 }
 
 const summary = summarize(reports);
 process.exitCode = summary.errorCount > 0 || (strict && summary.warningCount > 0) ? 1 : 0;
 
-function summarize(reports: ReturnType<typeof auditDecks>) {
+function summarize(reports: readonly { summary: { slideCount: number; errorCount: number; warningCount: number } }[]) {
   return reports.reduce((summary, report) => ({
     deckCount: summary.deckCount + 1,
     slideCount: summary.slideCount + report.summary.slideCount,

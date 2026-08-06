@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
   type PointerEvent
 } from "react";
+import { auditDeckV2, scoreDeckV2 } from "@deckory/audit";
 import { SceneRenderer } from "@deckory/renderer";
 import type { DeckDocumentV2, Frame, SceneElement, SceneSlide } from "@deckory/schema/v2";
 import {
@@ -43,6 +44,7 @@ import {
   undoStudioCommand,
   type StudioV2State
 } from "./studio-v2-state";
+import { QualitySummaryV2 } from "../quality-summary-v2";
 import { VisualIntelligencePanel } from "./visual-intelligence-panel";
 import styles from "./studio-v2.module.css";
 
@@ -162,6 +164,7 @@ export function StudioV2({
   const [selection, setSelection] = useState<StudioSelection>(EMPTY_SELECTION);
   const [searchQuery, setSearchQuery] = useState("");
   const [previewFrames, setPreviewFrames] = useState<Record<string, Frame> | undefined>();
+  const previewFramesRef = useRef<Record<string, Frame> | undefined>(undefined);
   const [scale, setScale] = useState(0.7);
   const [diagnostic, setDiagnostic] = useState<{ code: string; message: string; recommendation?: string } | undefined>();
   const canvasHostRef = useRef<HTMLDivElement>(null);
@@ -171,6 +174,10 @@ export function StudioV2({
   const renderedSlide = useMemo(() => previewSlide(activeSlide, previewFrames), [activeSlide, previewFrames]);
   const primaryElement = activeSlide.elements.find((element) => element.id === selection.primaryElementId);
   const absolute = useMemo(() => absoluteFrames(renderedSlide), [renderedSlide]);
+  const qualityReport = useMemo(() => {
+    const structural = auditDeckV2(state.deck);
+    return { ...structural, scorecard: scoreDeckV2(state.deck) };
+  }, [state.deck]);
 
   const commit = (command: SceneCommand) => {
     try {
@@ -218,6 +225,7 @@ export function StudioV2({
   const switchSlide = (slideId: string) => {
     setState((current) => setStudioActiveSlide(current, slideId));
     setSelection(EMPTY_SELECTION);
+    previewFramesRef.current = undefined;
     setPreviewFrames(undefined);
     setDiagnostic(undefined);
   };
@@ -255,6 +263,7 @@ export function StudioV2({
       transaction: beginGestureTransaction(activeSlide.id, frames),
       baseFrames: frames
     };
+    previewFramesRef.current = frames;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
   };
@@ -263,11 +272,13 @@ export function StudioV2({
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const delta = toLogicalDelta({ x: event.clientX - drag.start.x, y: event.clientY - drag.start.y }, scale);
-    setPreviewFrames(Object.fromEntries(Object.entries(drag.baseFrames).map(([id, frame]) => [id, {
+    const nextFrames = Object.fromEntries(Object.entries(drag.baseFrames).map(([id, frame]) => [id, {
       ...frame,
       x: frame.x + delta.x,
       y: frame.y + delta.y
-    }])));
+    }]));
+    previewFramesRef.current = nextFrames;
+    setPreviewFrames(nextFrames);
   };
 
   const finishPointerGesture = (event: PointerEvent<HTMLDivElement>, cancelled: boolean) => {
@@ -276,8 +287,9 @@ export function StudioV2({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     const result = cancelled
       ? cancelGestureTransaction(drag.transaction)
-      : commitGestureTransaction(drag.transaction, previewFrames ?? drag.baseFrames);
+      : commitGestureTransaction(drag.transaction, previewFramesRef.current ?? drag.baseFrames);
     dragRef.current = undefined;
+    previewFramesRef.current = undefined;
     setPreviewFrames(undefined);
     if (result.commands[0]) commit(result.commands[0] as SceneCommand);
   };
@@ -293,6 +305,7 @@ export function StudioV2({
     }
     if (event.key === "Escape") {
       dragRef.current = undefined;
+      previewFramesRef.current = undefined;
       setPreviewFrames(undefined);
       setSelection(EMPTY_SELECTION);
       return;
@@ -574,6 +587,9 @@ export function StudioV2({
               <p>Inspector sẽ hiển thị nội dung, layout và constraints phù hợp.</p>
             </div>
           )}
+          <div className={styles.qualityGate}>
+            <QualitySummaryV2 report={qualityReport} compact />
+          </div>
         </aside>
       </div>
 

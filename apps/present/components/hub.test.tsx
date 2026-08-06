@@ -16,6 +16,10 @@ describe("Deckory Hub workspace hierarchy", () => {
     expect(html).toContain('id="library"');
     expect(html).toContain("Quality score");
     expect(html).toContain("15 tiêu chí");
+    expect(html).toContain('data-v2-quality-summary="true"');
+    expect(html).toContain("Quality gate V2 · 20 tiêu chí");
+    expect(html).toContain("Chờ bằng chứng runtime/manual");
+    expect(html).toContain("Mở Studio V2");
   });
 
   it("keeps every deck action explicitly named", () => {

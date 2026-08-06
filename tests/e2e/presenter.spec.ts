@@ -17,6 +17,11 @@ test.describe("Deckory production presentation surfaces", () => {
     await expect(page.locator(".hub-shell")).toBeVisible();
     await expect(page.locator("#hub-title")).toHaveText(/Không gian làm việc cho những deck cần được tin cậy/i);
     await expect(page.getByRole("heading", { name: /Deckory Template Intelligence/i })).toBeVisible();
+    const v2Quality = page.locator('[data-v2-quality-summary="true"]');
+    await expect(v2Quality).toBeVisible();
+    await expect(v2Quality).toContainText("Quality gate V2 · 20 tiêu chí");
+    await expect(v2Quality).toHaveAttribute("data-quality-state", "evidence-pending");
+    await expect(v2Quality).toContainText("Chờ bằng chứng runtime/manual");
     await expectNoHorizontalOverflow(page);
     expect(await page.locator(".hub-workspace-intro").evaluate((element) => getComputedStyle(element).display)).toBe("grid");
     await page.screenshot({ path: join(screenshotRoot, "hub-template-library.png"), animations: "disabled" });
