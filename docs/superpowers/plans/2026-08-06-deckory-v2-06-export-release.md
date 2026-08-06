@@ -362,8 +362,12 @@ Expected: FAIL because the V2 scorecard does not exist.
 
 Structural checks include:
 
-- conclusion and purpose metadata;
-- composition repetition;
+- thesis, section role, conclusion and slide-purpose metadata;
+- story-order and transition diagnostics;
+- composition repetition and density rhythm;
+- constrained-copy claim preservation;
+- unsupported, stale or illustrative claim status;
+- dataset/source references and declared transformation lineage;
 - visible overflow;
 - safe-area collision;
 - text fit;
@@ -441,13 +445,17 @@ Required acceptance:
 - no clipped Vietnamese text;
 - screenshots use deliberate crops and annotations;
 - charts and illustrative values are labelled;
+- all material factual claims resolve to evidence records or are explicitly marked unsupported/illustrative;
+- datasets and chart transformations remain inspectable;
+- slide conclusions form a coherent problem → evidence → solution → proof → decision arc;
+- no long sequence repeats the same composition fingerprint without an intentional reason;
 - visualizer positions no longer rely on fixed percentages;
 - presentation flow works offline;
 - MyInterview V2 is visible in Hub.
 
 - [ ] **Step 5: Add per-deck migration tests**
 
-Tests assert slide count/range, stable critical IDs, evidence coverage, notes, composition variance, no unresolved migration diagnostics and schema validity.
+Tests assert slide count/range, stable critical IDs, thesis and section roles, conclusion coverage, claim/evidence coverage, dataset lineage, notes, composition variance, no unresolved migration diagnostics and schema validity.
 
 - [ ] **Step 6: Run strict migration verification**
 

@@ -35,6 +35,7 @@
 | `docs/superpowers/plans/2026-08-06-deckory-v2-04-visual-intelligence.md` | Intent recommendation, charts, diagrams and component catalog | Blocked by Plans 01–03 |
 | `docs/superpowers/plans/2026-08-06-deckory-v2-05-design-motion.md` | Visual worlds, backgrounds, typography, styling and motion | Blocked by Plans 01–04 |
 | `docs/superpowers/plans/2026-08-06-deckory-v2-06-export-release.md` | Export, migration, audit, performance and final release evidence | Blocked by Plans 01–05 |
+| `docs/superpowers/plans/2026-08-06-deckory-v2-parallel-execution.md` | Four-worktree ownership, contract freeze and integration protocol | Starts after Plan 01 acceptance |
 
 ### Program control checklist
 
@@ -67,6 +68,8 @@ Plan 05 — Design & Motion
    ▼
 Plan 06 — Export & Release
 ```
+
+This sequence describes **acceptance order**, not a requirement that every line of code be authored serially. After Plan 01 is accepted, the core portions of Plans 02–05 may run in four isolated worktrees under `2026-08-06-deckory-v2-parallel-execution.md`. Shared schema, lockfile, barrels, Studio root wiring and final acceptance remain coordinator-owned and ordered.
 
 This sequence is intentional:
 
@@ -108,6 +111,7 @@ Delivered by Plan 02.
 Observable result:
 
 - Users select, marquee-select, drag, resize, rotate, align, distribute, group, reorder, lock and hide native V2 elements.
+- Groups support reversible freeform, constraint, stack and grid modes with fixed, hug-content and fill sizing.
 - Text edits directly on canvas.
 - Layers and Inspector remain synchronized with canvas selection.
 - Pointer and keyboard operations share the same scene-command path.
@@ -152,6 +156,9 @@ Observable result:
 
 - Text is classified by communication relationship before a visual is selected.
 - Recommendations explain reasons, requirements, evidence and alternatives.
+- Deck-level narrative audits thesis, section roles, conclusions, transitions, appendix placement and closing action.
+- Copy transforms preserve claims, numbers, uncertainty and evidence status.
+- Evidence sources, claims, datasets and transformations remain traceable and inspectable.
 - Common editorial charts use native Deckory renderers.
 - Advanced charts use a typed ECharts SVG adapter.
 - Diagrams measure text, auto-layout and route edges without fixed percentage coordinates.
@@ -222,6 +229,8 @@ Feature state:
 | Registered React component SDK | Plan 03 | Plans 04–06 fixtures/export |
 | Sandboxed Web Blocks | Plan 03 | Plan 06 security/export checks |
 | Text-to-visual intelligence | Plan 04 | Plan 06 MyInterview proof |
+| Storytelling and conclusion-copy intelligence | Plan 04 | Plan 06 narrative score and MyInterview proof |
+| Evidence, datasets and transformation lineage | Plan 04 | Plan 06 strict audit/export report |
 | Broad semantic component catalog | Plan 04 | Plans 05–06 galleries/audit |
 | Editorial and advanced charts | Plan 04 | Plan 06 export/audit |
 | Auto-layout diagrams | Plan 04 | Plan 06 long-label QA |
@@ -312,6 +321,8 @@ The following tests or audits must be retained throughout the program:
 - Export uses the shared renderer.
 - Web Blocks have no default network/parent access.
 - Charts include question, unit, evidence and accessible summary.
+- Material claims resolve to evidence records and datasets preserve declared transformation lineage.
+- Main-story slides declare purpose and audience-facing conclusions; composition repetition is audited.
 - Diagrams report inability to fit rather than clipping.
 - Public components have fixtures and Inspector contracts.
 - Visual claims distinguish structural checks from runtime/manual evidence.
@@ -381,6 +392,7 @@ The V2 program is complete only when:
 - V1 decks still work or a separately approved deprecation has landed;
 - new V2 decks support native scene authoring, direct manipulation, Scene JSX, registered components and isolated Web Blocks;
 - the public visual catalog is complete, editable, accessible and represented by fixtures;
+- deck-level story, copy and evidence systems prevent unsupported claims, weak conclusions and repetitive composition sequences;
 - visual worlds and motion preserve content in final/reduced/static states;
 - HTML, SVG, PNG and PDF exports match Preview within reviewed tolerances;
 - PPTX capability claims match actual adapter/package evidence;
