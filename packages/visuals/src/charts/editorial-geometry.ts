@@ -190,8 +190,13 @@ function horizontalBars(
   const right = bounds.x + bounds.width - 48;
   const top = bounds.y + 20;
   const bottom = bounds.y + bounds.height - 24;
+  const domainValues = data.flatMap((item) =>
+    spec.variant === "bullet" && item.datum.target !== undefined && item.datum.target !== null
+      ? [item.value, item.datum.target]
+      : [item.value]
+  );
   const domain = extent(
-    data.map((item) => item.value),
+    domainValues,
     spec.encoding.zeroBaseline === true
   );
   const scale = linearScale(domain, left, right);
@@ -576,7 +581,7 @@ function lineGeometry(
   const yScale = linearScale(domain, bottom, top);
   const xFor = (index: number) =>
     data.length === 1 ? (left + right) / 2 : left + (index / (data.length - 1)) * (right - left);
-  const baselineY = yScale(0);
+  const baselineY = spec.encoding.zeroBaseline === true ? yScale(0) : bottom;
   const highlights = primaryHighlightIds(spec);
   const marks: ChartGeometryMark[] = [];
   const labels: ChartGeometryLabel[] = [];
@@ -634,6 +639,119 @@ function lineGeometry(
       highlighted
     );
   });
+  return {
+    ok: true,
+    marks,
+    labels,
+    baseline: { orientation: "horizontal", x: left, y: baselineY, length: right - left },
+    diagnostics,
+    domain
+  };
+}
+
+function slopeGeometry(
+  spec: ChartSpec,
+  bounds: ChartGeometryBounds,
+  data: readonly NumericDatum[],
+  diagnostics: ChartGeometryDiagnostic[]
+): EditorialGeometrySuccess {
+  const left = bounds.x + 52;
+  const right = bounds.x + bounds.width - 28;
+  const top = bounds.y + 20;
+  const bottom = bounds.y + bounds.height - 50;
+  const domain = extent(
+    data.map((item) => item.value),
+    spec.encoding.zeroBaseline === true
+  );
+  const yScale = linearScale(domain, bottom, top);
+  const baselineY = spec.encoding.zeroBaseline === true ? yScale(0) : bottom;
+  const categories = [...new Set(data.map((item) => item.datum.category ?? ""))];
+  const xForCategory = (category: string): number => {
+    const index = categories.indexOf(category);
+    return categories.length === 1
+      ? (left + right) / 2
+      : left + (index / Math.max(1, categories.length - 1)) * (right - left);
+  };
+  const seriesNames = [...new Set(data.map((item) => item.datum.series ?? ""))].sort(
+    (a, b) => a.localeCompare(b, "en")
+  );
+  const highlights = primaryHighlightIds(spec);
+  const marks: ChartGeometryMark[] = [];
+  const labels: ChartGeometryLabel[] = [];
+
+  for (const series of seriesNames) {
+    const seriesData = data
+      .filter((item) => item.datum.series === series)
+      .sort(
+        (leftItem, rightItem) =>
+          categories.indexOf(leftItem.datum.category ?? "") -
+          categories.indexOf(rightItem.datum.category ?? "")
+      );
+    for (let index = 1; index < seriesData.length; index += 1) {
+      const previous = seriesData[index - 1];
+      const current = seriesData[index];
+      if (!previous || !current) continue;
+      marks.push({
+        kind: "line",
+        datumId: `slope:${series}:${previous.datum.id}:${current.datum.id}`,
+        x: xForCategory(previous.datum.category ?? ""),
+        y: yScale(previous.value),
+        x2: xForCategory(current.datum.category ?? ""),
+        y2: yScale(current.value),
+        primaryHighlight: false
+      });
+    }
+    for (const item of seriesData) {
+      const highlighted = highlights.has(item.datum.id);
+      const x = xForCategory(item.datum.category ?? "");
+      const y = yScale(item.value);
+      marks.push({
+        kind: "circle",
+        datumId: item.datum.id,
+        x,
+        y,
+        radius: highlighted ? 6 : 4,
+        primaryHighlight: highlighted,
+        direction: direction(item.value),
+        startValue: item.value,
+        endValue: item.value
+      });
+      if (spec.labels.mode === "direct" && spec.labels.showValues) {
+        labels.push({
+          datumId: item.datum.id,
+          role: "value",
+          text: `${series}: ${formatChartValue(item.value, spec.numberFormat)}`,
+          x,
+          y: y - 10,
+          anchor: "middle",
+          primaryHighlight: highlighted
+        });
+      }
+    }
+  }
+
+  if (spec.labels.mode === "direct") {
+    categories.forEach((category) => {
+      labels.push({
+        datumId: `category:${category}`,
+        role: "category",
+        text: category,
+        x: xForCategory(category),
+        y: bottom + 18,
+        anchor: "middle",
+        primaryHighlight: false
+      });
+    });
+  }
+
+  if (seriesNames.some((series) => data.filter((item) => item.datum.series === series).length < 2)) {
+    diagnostics.push({
+      code: "label-density-warning",
+      message: "Slope series cần ít nhất hai mốc để thể hiện hướng thay đổi.",
+      recommendation: "Bổ sung mốc còn thiếu hoặc dùng dot plot nếu mỗi series chỉ có một giá trị."
+    });
+  }
+
   return {
     ok: true,
     marks,
@@ -729,8 +847,9 @@ export function buildEditorialChartGeometry(
       return stackedBars(spec, bounds, data, diagnostics);
     case "line":
     case "area":
-    case "slope":
       return lineGeometry(spec, bounds, data, diagnostics);
+    case "slope":
+      return slopeGeometry(spec, bounds, data, diagnostics);
     case "dot-plot":
     case "lollipop":
       return dotGeometry(spec, bounds, data, diagnostics);

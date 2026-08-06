@@ -88,6 +88,88 @@ describe("editorial chart geometry", () => {
     );
   });
 
+  it("keeps bullet targets inside the resolved numeric domain", () => {
+    const spec = ChartSpecSchema.parse({
+      ...barSpec([40, 55]),
+      variant: "bullet",
+      data: [
+        { id: "visual", category: "Visual hierarchy", value: 40, target: 95 },
+        { id: "layout", category: "Layout", value: 55, target: 80 }
+      ],
+      highlights: []
+    });
+    const bounds = { x: 0, y: 0, width: 640, height: 320 };
+    const result = buildEditorialChartGeometry(spec, bounds);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.diagnostics[0]?.message);
+    expect(result.domain.max).toBeGreaterThanOrEqual(95);
+    for (const mark of result.marks) {
+      expect(mark.x).toBeGreaterThanOrEqual(bounds.x);
+      expect(mark.x).toBeLessThanOrEqual(bounds.x + bounds.width);
+      if (mark.x2 !== undefined) {
+        expect(mark.x2).toBeGreaterThanOrEqual(bounds.x);
+        expect(mark.x2).toBeLessThanOrEqual(bounds.x + bounds.width);
+      }
+    }
+  });
+
+  it("keeps an area baseline inside the plot when zero is not in the domain", () => {
+    const spec = ChartSpecSchema.parse({
+      ...barSpec([82, 88]),
+      variant: "area",
+      encoding: { categoryField: "category", valueField: "value", zeroBaseline: false },
+      animation: { mode: "fade", durationMs: 300 },
+      highlights: []
+    });
+    const bounds = { x: 0, y: 0, width: 640, height: 320 };
+    const result = buildEditorialChartGeometry(spec, bounds);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.diagnostics[0]?.message);
+    expect(result.baseline.y).toBeGreaterThanOrEqual(bounds.y);
+    expect(result.baseline.y).toBeLessThanOrEqual(bounds.y + bounds.height);
+    const area = result.marks.find((mark) => mark.kind === "area");
+    expect(area?.points?.every((point) =>
+      point.y >= bounds.y && point.y <= bounds.y + bounds.height
+    )).toBe(true);
+  });
+
+  it("builds independent slope segments for each series", () => {
+    const spec = ChartSpecSchema.parse({
+      ...barSpec(),
+      variant: "slope",
+      data: [
+        { id: "a-before", category: "Before", series: "A", value: 20 },
+        { id: "a-after", category: "After", series: "A", value: 45 },
+        { id: "b-before", category: "Before", series: "B", value: 60 },
+        { id: "b-after", category: "After", series: "B", value: 50 }
+      ],
+      encoding: {
+        categoryField: "category",
+        valueField: "value",
+        seriesField: "series",
+        zeroBaseline: false
+      },
+      animation: { mode: "fade", durationMs: 300 },
+      highlights: []
+    });
+    const result = buildEditorialChartGeometry(spec, {
+      x: 0,
+      y: 0,
+      width: 640,
+      height: 320
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.diagnostics[0]?.message);
+    const segments = result.marks.filter((mark) => mark.kind === "line");
+    expect(segments.map((mark) => mark.datumId)).toEqual([
+      "slope:A:a-before:a-after",
+      "slope:B:b-before:b-after"
+    ]);
+  });
+
   it("computes cumulative waterfall starts and ends", () => {
     const spec = ChartSpecSchema.parse({
       ...barSpec(),

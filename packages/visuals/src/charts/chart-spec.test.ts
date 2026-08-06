@@ -71,6 +71,51 @@ describe("ChartSpecSchema", () => {
     ).toThrow(/x.*y|scatter/i);
   });
 
+  it("requires a truthful zero baseline for bar-length encodings", () => {
+    const chart = baseChart();
+
+    expect(() =>
+      ChartSpecSchema.parse({
+        ...chart,
+        encoding: { ...chart.encoding, zeroBaseline: false },
+        animation: { mode: "fade", durationMs: 300 }
+      })
+    ).toThrow(/zero baseline/i);
+  });
+
+  it("validates annotation and reference-line identities", () => {
+    const chart = baseChart();
+
+    expect(() =>
+      ChartSpecSchema.parse({
+        ...chart,
+        annotations: [
+          { id: "note", text: "Missing", datumId: "missing-datum" }
+        ]
+      })
+    ).toThrow(/annotation.*missing datum/i);
+
+    expect(() =>
+      ChartSpecSchema.parse({
+        ...chart,
+        annotations: [
+          { id: "note", text: "First", datumId: "visual" },
+          { id: "note", text: "Second", datumId: "layout" }
+        ]
+      })
+    ).toThrow(/duplicate annotation/i);
+
+    expect(() =>
+      ChartSpecSchema.parse({
+        ...chart,
+        referenceLines: [
+          { id: "target", label: "Target", value: 90, axis: "x" },
+          { id: "target", label: "Target 2", value: 95, axis: "x" }
+        ]
+      })
+    ).toThrow(/duplicate reference line/i);
+  });
+
   it("keeps illustrative chart evidence visibly labelled", () => {
     const chart = baseChart();
 

@@ -192,6 +192,16 @@ export const ChartAnimationPolicySchema = z
   .strict();
 export type ChartAnimationPolicy = z.infer<typeof ChartAnimationPolicySchema>;
 
+const ZERO_BASELINE_VARIANTS = new Set<ChartVariant>([
+  "horizontal-bar",
+  "vertical-bar",
+  "grouped-bar",
+  "stacked-bar",
+  "lollipop",
+  "bullet",
+  "waterfall"
+]);
+
 const CATEGORY_VALUE_VARIANTS = new Set<ChartVariant>([
   "horizontal-bar",
   "vertical-bar",
@@ -273,6 +283,45 @@ export const ChartSpecSchema = z
         });
       }
     });
+
+    const annotationIds = new Set<string>();
+    spec.annotations.forEach((annotation, index) => {
+      if (annotationIds.has(annotation.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["annotations", index, "id"],
+          message: `Duplicate annotation ID: ${annotation.id}.`
+        });
+      }
+      annotationIds.add(annotation.id);
+      if (annotation.datumId && !datumIds.has(annotation.datumId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["annotations", index, "datumId"],
+          message: `Annotation references missing datum: ${annotation.datumId}.`
+        });
+      }
+    });
+
+    const referenceLineIds = new Set<string>();
+    spec.referenceLines.forEach((referenceLine, index) => {
+      if (referenceLineIds.has(referenceLine.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["referenceLines", index, "id"],
+          message: `Duplicate reference line ID: ${referenceLine.id}.`
+        });
+      }
+      referenceLineIds.add(referenceLine.id);
+    });
+
+    if (ZERO_BASELINE_VARIANTS.has(spec.variant) && spec.encoding.zeroBaseline !== true) {
+      context.addIssue({
+        code: "custom",
+        path: ["encoding", "zeroBaseline"],
+        message: `${spec.variant} requires a truthful zero baseline because mark length encodes value.`
+      });
+    }
 
     if (CATEGORY_VALUE_VARIANTS.has(spec.variant)) {
       spec.data.forEach((datum, index) => {
