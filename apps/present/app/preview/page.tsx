@@ -6,12 +6,12 @@ import { isDeckDocumentV2 } from "../../lib/deck-version";
 export default async function PreviewPage({
   searchParams
 }: {
-  searchParams: Promise<{ deck?: string; view?: string }>;
+  searchParams: Promise<{ deck?: string; view?: string; slide?: string }>;
 }) {
   const params = await searchParams;
   const view = params.view === "presenter" ? "presenter" : "audience";
   const deck = resolveAnyDeck(params.deck);
   return isDeckDocumentV2(deck)
-    ? <SceneDeckSurface deck={deck} surface="preview" />
+    ? <SceneDeckSurface deck={deck} surface="preview" {...(params.slide ? { initialSlideId: params.slide } : {})} />
     : <DraftPreview sourceDeck={deck} view={view} />;
 }

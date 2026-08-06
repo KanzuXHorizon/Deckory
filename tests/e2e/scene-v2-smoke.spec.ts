@@ -21,11 +21,14 @@ test.describe("Deckory V2 scene foundation", () => {
 
     await page.goto(`${e2eBaseURL}/studio?deck=scene-foundation`);
     await expect(page.locator('[data-scene-v2-surface="studio"]')).toBeVisible();
-    await expect(page.getByText(/Direct manipulation được triển khai trong Plan 02/i)).toBeVisible();
+    await expect(page.locator('[data-v2-quality-summary="true"]')).toBeVisible();
+    await expect(page.locator('[data-export-capability-panel="true"]')).toBeVisible();
 
     await page.goto(`${e2eBaseURL}/export?deck=scene-foundation`);
     await expect(page.locator('[data-export-deck-id="scene-foundation"]')).toBeVisible();
-    await expect(page.locator('.export-page .scene-slide')).toBeVisible();
+    const exportedSlides = page.locator('.export-page .scene-slide');
+    await expect(exportedSlides).toHaveCount(3);
+    await expect(exportedSlides.first()).toBeVisible();
 
     await page.goto(`${e2eBaseURL}/present?deck=visual-lab`);
     await expect(page.locator('.presenter-shell .slide[data-slide-id="cover"]')).toBeVisible();

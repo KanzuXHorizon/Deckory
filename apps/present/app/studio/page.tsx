@@ -15,7 +15,7 @@ export default async function StudioPage({
   if (isDeckDocumentV2(sourceDeck)) {
     const editingEnabled = process.env.DECKORY_SCENE_V2 !== "0";
     if (editingEnabled) return <StudioV2 sourceDeck={sourceDeck} {...(params.slide ? { initialSlideId: params.slide } : {})} />;
-    return <SceneDeckSurface deck={sourceDeck} surface="studio" editingEnabled={false} />;
+    return <SceneDeckSurface deck={sourceDeck} surface="studio" editingEnabled={false} {...(params.slide ? { initialSlideId: params.slide } : {})} />;
   }
 
   return params.slide ? <Studio sourceDeck={sourceDeck} initialSlideId={params.slide} /> : <Studio sourceDeck={sourceDeck} />;

@@ -6,13 +6,20 @@ import { isDeckDocumentV2 } from "../../lib/deck-version";
 export default async function PresentPage({
   searchParams
 }: {
-  searchParams: Promise<{ deck?: string; view?: string | string[] }>;
+  searchParams: Promise<{ deck?: string; view?: string | string[]; slide?: string }>;
 }) {
   const params = await searchParams;
   const deck = resolveAnyDeck(params.deck);
   const view = params.view === "audience" ? "audience" : "presenter";
 
-  if (isDeckDocumentV2(deck)) return <SceneDeckSurface deck={deck} surface="presenter" />;
+  if (isDeckDocumentV2(deck)) return (
+    <SceneDeckSurface
+      deck={deck}
+      surface="presenter"
+      view={view}
+      {...(params.slide ? { initialSlideId: params.slide } : {})}
+    />
+  );
 
   return (
     <Presenter
