@@ -6,6 +6,11 @@ import type {
   SceneElement,
   SceneSlide
 } from "@deckory/schema/v2";
+import { isEChartsVariant } from "@deckory/visuals";
+import {
+  renderEChartsSvg,
+  type EChartsLocalGeoAsset
+} from "@deckory/visuals/echarts-renderer";
 import { ChartRenderer } from "../chart-renderer";
 import { DiagramRenderer } from "../diagram-renderer";
 import {
@@ -39,6 +44,26 @@ function attribute(value: unknown): string {
 function number(value: number): string {
   const rounded = Number(value.toFixed(4));
   return Object.is(rounded, -0) ? "0" : String(rounded);
+}
+
+function localGeoAsset(
+  assetId: string | undefined,
+  assets: Map<string, EmbeddedExportAsset>
+): EChartsLocalGeoAsset | undefined {
+  if (!assetId) return undefined;
+  const asset = assets.get(assetId);
+  if (!asset || !asset.src.startsWith("data:")) return undefined;
+  const match = /^data:application\/(?:geo\+)?json(?:;charset=[^;,]+)?(;base64)?,(.*)$/i.exec(asset.src);
+  if (!match) return undefined;
+  try {
+    const encoded = match[2] ?? "";
+    const source = match[1]
+      ? new TextDecoder().decode(Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0)))
+      : decodeURIComponent(encoded);
+    return { id: asset.id, data: JSON.parse(source) as unknown };
+  } catch {
+    return undefined;
+  }
 }
 
 function safePaint(value: string | undefined, fallback: string): string {
@@ -299,15 +324,26 @@ function renderElementBody(
     case "connector":
       return `<path d="M0 0 L${number(element.frame.width)} ${number(element.frame.height)}" fill="none" stroke="${attribute(safePaint(element.style?.stroke ?? element.style?.color, "#15171a"))}" stroke-width="${number(element.style?.strokeWidth ?? 2)}"/>`;
     case "chart": {
-      const markup = renderToStaticMarkup(createElement(ChartRenderer, {
-        spec: element.content.chart,
-        width: element.frame.width,
-        height: element.frame.height,
-        mode: "export"
-      }));
-      const svg = extractSvg(markup, `Chart ${element.id}`);
-      const evidence = element.content.chart.evidence.label ?? element.content.chart.evidence.sourceIds.join(", ");
-      return `<g data-chart-status="ready" data-chart-variant="${attribute(element.content.chart.variant)}"><title>${text(element.content.chart.title)}</title><desc>${text(element.content.chart.accessibleSummary)}</desc>${svg}<text x="4" y="18" font-size="14" font-weight="700" fill="currentColor">${text(element.content.chart.title)}</text>${evidence ? `<text x="4" y="${number(element.frame.height - 6)}" font-size="10" fill="currentColor" opacity="0.72">${text(evidence)}</text>` : ""}</g>`;
+      const spec = element.content.chart;
+      const geoAsset = localGeoAsset(spec.localGeoAssetId, assets);
+      const svg = isEChartsVariant(spec.variant)
+        ? renderEChartsSvg({
+            spec,
+            width: element.frame.width,
+            height: element.frame.height,
+            mode: "export",
+            reducedMotion: true,
+            ...(geoAsset ? { localGeoAsset: geoAsset } : {})
+          })
+        : extractSvg(renderToStaticMarkup(createElement(ChartRenderer, {
+            spec,
+            width: element.frame.width,
+            height: element.frame.height,
+            mode: "export",
+            assets: [...assets.values()]
+          })), `Chart ${element.id}`);
+      const evidence = spec.evidence.label ?? spec.evidence.sourceIds.join(", ");
+      return `<g data-chart-status="ready" data-chart-variant="${attribute(spec.variant)}"><title>${text(spec.title)}</title><desc>${text(spec.accessibleSummary)}</desc>${svg}<text x="4" y="18" font-size="14" font-weight="700" fill="currentColor">${text(spec.title)}</text>${evidence ? `<text x="4" y="${number(element.frame.height - 6)}" font-size="10" fill="currentColor" opacity="0.72">${text(evidence)}</text>` : ""}</g>`;
     }
     case "diagram": {
       const markup = renderToStaticMarkup(createElement(DiagramRenderer, {

@@ -605,10 +605,10 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
         id: "assistant-title",
         name: "Assistant title",
         kind: "text",
-        frame: { x: 76, y: 66, width: 1120, height: 72 },
+        frame: { x: 76, y: 58, width: 1120, height: 88 },
         zIndex: 2,
         content: { text: "Một đoạn text nhàm chán vẫn phải giữ nguyên claim khi được trực quan hoá." },
-        style: { color: "#1d1b22", fontSize: 36, fontWeight: 760, lineHeight: 1.1 },
+        style: { color: "#1d1b22", fontSize: 34, fontWeight: 760, lineHeight: 1.08 },
         accessibility: { label: "Một đoạn text nhàm chán vẫn phải giữ nguyên claim khi được trực quan hoá.", readingOrder: 1 }
       },
       {
@@ -872,6 +872,77 @@ export const exportV2ProofDeck: DeckDocumentV2 = {
   }]
 };
 
+export const echartsV2ProofDeck: DeckDocumentV2 = {
+  schemaVersion: 2,
+  id: "echarts-v2-proof",
+  revision: 1,
+  title: "Deckory ECharts SVG Proof",
+  locale: "vi-VN",
+  canvas: { width: 1280, height: 720, unit: "px" },
+  theme: { id: "deckory-editorial", tokens: {} },
+  assets: [],
+  slides: [{
+    id: "scatter-proof",
+    name: "Advanced SVG chart proof",
+    purpose: "advanced-chart-runtime-proof",
+    conclusion: "Advanced charts tải theo nhu cầu nhưng vẫn giữ SVG, accessibility và final export state.",
+    notes: "Fixture kỹ thuật nội bộ để xác nhận lazy ECharts boundary trong browser. Dữ liệu hoàn toàn minh hoạ; không dùng như benchmark sản phẩm.",
+    background: { layers: [{ id: "paper", type: "solid", color: "#f7f7f4", opacity: 1 }] },
+    evidence: { source: "Deckory local advanced chart fixture", status: "illustrative" },
+    elements: [
+      {
+        id: "title",
+        name: "Title",
+        kind: "text",
+        frame: { x: 72, y: 54, width: 1136, height: 84 },
+        zIndex: 2,
+        content: { text: "Advanced chart chỉ tải khi slide thực sự cần." },
+        style: { color: "#17191c", fontSize: 42, fontWeight: 760, lineHeight: 1.08 },
+        accessibility: { label: "Advanced chart chỉ tải khi slide thực sự cần.", readingOrder: 1 }
+      },
+      {
+        id: "scatter",
+        name: "Scatter chart",
+        kind: "chart",
+        frame: { x: 118, y: 166, width: 1044, height: 438 },
+        zIndex: 1,
+        content: {
+          chart: {
+            question: "Điểm nào cân bằng tốc độ và chất lượng tốt hơn?",
+            title: "Tốc độ thực hiện và điểm chất lượng",
+            accessibleSummary: "Phương án cân bằng đạt 92 điểm chất lượng ở mức tốc độ 6, cao hơn phương án nhanh đạt 74 điểm ở mức tốc độ 8.",
+            variant: "scatter",
+            data: [
+              { id: "fast", x: 8, y: 74 },
+              { id: "balanced", x: 6, y: 92 }
+            ],
+            encoding: { xField: "x", yField: "y" },
+            unit: "điểm minh hoạ",
+            numberFormat: { style: "decimal", maximumFractionDigits: 0 },
+            labels: { mode: "direct", showValues: true, collisionPolicy: "diagnose" },
+            highlights: [{ datumId: "balanced", level: "primary", label: "Cân bằng" }],
+            annotations: [],
+            referenceLines: [],
+            evidence: { status: "illustrative", sourceIds: [], label: "Dữ liệu minh hoạ / runtime proof" },
+            missingValuePolicy: "gap",
+            animation: { mode: "fade", durationMs: 420 }
+          }
+        },
+        accessibility: { label: "Phương án cân bằng đạt điểm chất lượng cao hơn phương án nhanh.", readingOrder: 2 }
+      },
+      {
+        id: "footer",
+        name: "Evidence footer",
+        kind: "evidence-footer",
+        frame: { x: 72, y: 664, width: 1136, height: 28 },
+        zIndex: 3,
+        content: { source: "Deckory local advanced chart fixture · illustrative", page: "01" },
+        accessibility: { label: "Nguồn: Deckory local advanced chart fixture, illustrative.", readingOrder: 3 }
+      }
+    ]
+  }]
+};
+
 const sceneFoundationStructuralAudit = auditDeckV2(sceneFoundationDeck);
 export const sceneFoundationAudit = {
   ...sceneFoundationStructuralAudit,
@@ -889,6 +960,7 @@ export function findAnyDeck(deckId?: string | null): AnyDeckDocument | undefined
   if (deckId === sceneFoundationDeck.id) return sceneFoundationDeck;
   if (deckId === pptxV2ProofDeck.id) return pptxV2ProofDeck;
   if (deckId === exportV2ProofDeck.id) return exportV2ProofDeck;
+  if (deckId === echartsV2ProofDeck.id) return echartsV2ProofDeck;
   return v2DeckCatalog.find((item) => item.deck.id === deckId)?.deck
     ?? deckCatalog.find((item) => item.deck.id === deckId)?.deck;
 }

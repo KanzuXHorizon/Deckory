@@ -175,7 +175,7 @@ function elementContent(
       return src ? <img src={src} alt={element.accessibility.label ?? ""} draggable={false} /> : <span>{element.accessibility.label ?? element.name}</span>;
     }
     case "chart":
-      return <ChartRenderer spec={element.content.chart} width={element.frame.width} height={element.frame.height} mode={mode} />;
+      return <ChartRenderer spec={element.content.chart} width={element.frame.width} height={element.frame.height} mode={mode} assets={assets} />;
     case "table":
       return (
         <table>

@@ -76,6 +76,20 @@ const chart: ChartSpec = {
   animation: { mode: "zero-to-value", durationMs: 600 }
 };
 
+const advancedChart: ChartSpec = {
+  ...chart,
+  title: "Phân bố chất lượng",
+  accessibleSummary: "Hai điểm scatter minh hoạ mối quan hệ giữa tốc độ và chất lượng.",
+  variant: "scatter",
+  data: [
+    { id: "fast", x: 8, y: 74 },
+    { id: "balanced", x: 6, y: 92 }
+  ],
+  encoding: { xField: "x", yField: "y" },
+  highlights: [],
+  animation: { mode: "none", durationMs: 0 }
+};
+
 const diagram: DiagramSpec = {
   question: "Dữ liệu đi qua hệ thống như thế nào?",
   title: "Luồng dữ liệu",
@@ -124,6 +138,23 @@ function visualSlide(): SceneSlide {
         accessibility: { label: diagram.accessibleSummary }
       }
     ]
+  };
+}
+
+function advancedChartSlide(): SceneSlide {
+  return {
+    id: "advanced-chart",
+    name: "Advanced chart",
+    background: { layers: [] },
+    elements: [{
+      id: "scatter",
+      name: "Scatter proof",
+      kind: "chart",
+      frame: { x: 120, y: 100, width: 960, height: 500 },
+      zIndex: 1,
+      content: { chart: advancedChart },
+      accessibility: { label: advancedChart.accessibleSummary }
+    }]
   };
 }
 
@@ -198,6 +229,19 @@ describe("exportSlideToSvg", () => {
     expect(svg).toContain('data-diagram-strategy="tree"');
     expect(svg).toContain("Visual hierarchy");
     expect(svg).toContain("Cơ sở dữ liệu");
+  });
+
+  it("renders advanced charts synchronously in static SVG export", async () => {
+    const svg = await exportSlideToSvg(advancedChartSlide(), {
+      assets: [],
+      registry,
+      deckTitle: "Advanced chart proof"
+    });
+
+    expect(svg).toContain('data-chart-status="ready"');
+    expect(svg).toContain('data-chart-variant="scatter"');
+    expect(svg).toContain("<svg");
+    expect(svg).not.toContain("adapter-loading");
   });
 
   it("returns byte-for-byte deterministic output for the same input", async () => {

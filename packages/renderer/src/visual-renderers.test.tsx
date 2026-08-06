@@ -68,17 +68,20 @@ describe("native visual renderers", () => {
     }
   });
 
-  it("reports an explicit advanced-adapter requirement", () => {
+  it("defers advanced charts behind the reviewed lazy ECharts boundary", () => {
     const advanced: ChartSpec = {
       ...chart,
       variant: "scatter",
       data: [{ id: "point", x: 10, y: 20 }],
       encoding: { xField: "x", yField: "y" },
+      highlights: [],
       animation: { mode: "none", durationMs: 0 }
     };
     const html = renderToStaticMarkup(<ChartRenderer spec={advanced} width={560} height={420} mode="final" />);
-    expect(html).toContain('data-chart-status="adapter-required"');
-    expect(html).toContain("scatter");
+    expect(html).toContain('data-chart-status="adapter-loading"');
+    expect(html).toContain('data-chart-adapter="echarts-svg"');
+    expect(html).toContain('data-chart-variant="scatter"');
+    expect(html).toContain("Đang tải bộ dựng biểu đồ nâng cao");
   });
 
   it("lays out and renders deterministic diagram nodes and routed edges", () => {

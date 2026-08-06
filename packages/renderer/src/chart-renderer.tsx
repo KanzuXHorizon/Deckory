@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
+import type { DeckAssetV2 } from "@deckory/schema";
 import {
   buildEditorialChartGeometry,
   isEChartsVariant,
@@ -7,6 +8,36 @@ import {
   type ChartSpec
 } from "@deckory/visuals";
 import type { SceneRenderMode } from "./element-renderer";
+
+type EChartsLocalGeoAsset = { id: string; data: unknown };
+
+const LazyEChartsSvgRenderer = lazy(async () => {
+  const module = await import("@deckory/visuals/echarts-renderer");
+  return { default: module.EChartsSvgRenderer };
+});
+
+function resolveLocalGeoAsset(spec: ChartSpec, assets: readonly DeckAssetV2[]): EChartsLocalGeoAsset | undefined {
+  const assetId = spec.localGeoAssetId;
+  if (!assetId) return undefined;
+  const asset = assets.find((candidate) => candidate.id === assetId);
+  if (!asset || !asset.src.startsWith("data:")) return undefined;
+  const match = /^data:application\/(?:geo\+)?json(?:;charset=[^;,]+)?(;base64)?,(.*)$/i.exec(asset.src);
+  if (!match) return undefined;
+  try {
+    const text = match[1]
+      ? decodeBase64Utf8(match[2] ?? "")
+      : decodeURIComponent(match[2] ?? "");
+    return { id: asset.id, data: JSON.parse(text) as unknown };
+  } catch {
+    return undefined;
+  }
+}
+
+function decodeBase64Utf8(value: string): string {
+  const binary = globalThis.atob(value);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 
 function markNode(mark: ChartGeometryMark): ReactNode {
   const common = {
@@ -55,25 +86,41 @@ export function ChartRenderer({
   spec,
   width,
   height,
-  mode
+  mode,
+  assets = []
 }: {
   spec: ChartSpec;
   width: number;
   height: number;
   mode: SceneRenderMode;
+  assets?: readonly DeckAssetV2[];
 }) {
   if (isEChartsVariant(spec.variant)) {
+    const localGeoAsset = resolveLocalGeoAsset(spec, assets);
     return (
-      <section
-        className="deckory-chart deckory-chart--adapter-required"
-        data-chart-status="adapter-required"
-        data-chart-variant={spec.variant}
-        role="img"
-        aria-label={spec.accessibleSummary}
+      <Suspense
+        fallback={(
+          <section
+            data-chart-status="adapter-loading"
+            data-chart-adapter="echarts-svg"
+            data-chart-variant={spec.variant}
+            role="img"
+            aria-label={spec.accessibleSummary}
+          >
+            <strong>{spec.title}</strong>
+            <p>Đang tải bộ dựng biểu đồ nâng cao…</p>
+          </section>
+        )}
       >
-        <strong>{spec.title}</strong>
-        <p>{spec.variant} cần ECharts SVG adapter đã được review.</p>
-      </section>
+        <LazyEChartsSvgRenderer
+          spec={spec}
+          width={width}
+          height={height}
+          mode={mode}
+          reducedMotion={mode === "thumbnail" || mode === "export"}
+          {...(localGeoAsset ? { localGeoAsset } : {})}
+        />
+      </Suspense>
     );
   }
 
@@ -109,13 +156,13 @@ export function ChartRenderer({
       data-chart-variant={spec.variant}
       data-chart-motion={motionState}
       aria-label={spec.accessibleSummary}
-      style={{ margin: 0, width: "100%", height: "100%", display: "grid", gridTemplateRows: `${headerHeight}px 1fr ${footerHeight}px`, color: "inherit" }}
+      style={{ margin: 0, width: "100%", height: "100%", minHeight: 0, overflow: "hidden", position: "relative", display: "grid", gridTemplateRows: `${headerHeight}px minmax(0, 1fr) ${footerHeight}px`, color: "inherit" }}
     >
       <figcaption style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, paddingInline: 4 }}>
         <strong>{spec.title}</strong>
         <span>{spec.unit}</span>
       </figcaption>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="presentation" aria-hidden="true">
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="presentation" aria-hidden="true" style={{ width: "100%", height: "100%", minHeight: 0, display: "block" }}>
         <line
           x1={geometry.baseline.x}
           y1={geometry.baseline.y}
