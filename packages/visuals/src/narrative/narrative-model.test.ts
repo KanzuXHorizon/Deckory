@@ -17,6 +17,19 @@ describe("DeckNarrative", () => {
     ).toThrow(/thesis|outcome/i);
   });
 
+  it("strictly rejects unknown narrative contract fields", () => {
+    expect(() =>
+      DeckNarrativeSchema.parse({
+        audience: { role: "executive", vendorProfile: "forbidden" },
+        decisionOrOutcome: "Choose an option",
+        thesis: "Option A is the safest path.",
+        unresolvedQuestions: [],
+        sections: [],
+        rawModelPayload: { prompt: "forbidden" }
+      })
+    ).toThrow();
+  });
+
   it("keeps appendix slides outside the main argument", () => {
     const narrative = DeckNarrativeSchema.parse({
       audience: { role: "graduation-committee" },

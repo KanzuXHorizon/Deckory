@@ -18,7 +18,7 @@ export const AudienceProfileSchema = z.object({
   role: z.string().trim().min(1, "Audience role is required."),
   knowledgeLevel: z.enum(["novice", "informed", "expert"]).optional(),
   needs: z.array(z.string().trim().min(1)).default([])
-});
+}).strict();
 
 export type AudienceProfile = z.infer<typeof AudienceProfileSchema>;
 
@@ -27,7 +27,7 @@ export const NarrativeSectionSchema = z.object({
   role: NarrativeSectionRoleSchema,
   objective: z.string().trim().min(1),
   slideIds: z.array(z.string().trim().min(1))
-});
+}).strict();
 
 export type NarrativeSection = z.infer<typeof NarrativeSectionSchema>;
 
@@ -40,6 +40,7 @@ export const DeckNarrativeSchema = z
     sections: z.array(NarrativeSectionSchema),
     unresolvedQuestions: z.array(z.string().trim().min(1)).default([])
   })
+  .strict()
   .superRefine((value, context) => {
     const sectionIds = new Set<string>();
     const slideAssignments = new Map<string, string>();
