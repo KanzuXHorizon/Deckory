@@ -24,7 +24,6 @@ export type LayoutConversionOptions = {
 export type ReplaceSceneElementsCommand = {
   type: "replace-scene-elements";
   slideId: string;
-  elementIds: string[];
   elements: SceneElement[];
 };
 
@@ -74,10 +73,9 @@ function toLayoutChild(child: SceneElement): AutoLayoutChild {
 }
 
 function command(slideId: string, before: SceneElement[], after: SceneElement[]): { command: ReplaceSceneElementsCommand; inverse: ReplaceSceneElementsCommand } {
-  const elementIds = before.map((element) => element.id);
   return {
-    command: { type: "replace-scene-elements", slideId, elementIds, elements: clone(after) },
-    inverse: { type: "replace-scene-elements", slideId, elementIds, elements: clone(before) }
+    command: { type: "replace-scene-elements", slideId, elements: clone(after) },
+    inverse: { type: "replace-scene-elements", slideId, elements: clone(before) }
   };
 }
 

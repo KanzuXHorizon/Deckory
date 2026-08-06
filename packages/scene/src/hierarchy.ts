@@ -30,10 +30,9 @@ function requireElement(slide: SceneSlide, id: string): SceneElement {
 }
 
 function commandPair(slideId: string, before: SceneElement[], after: SceneElement[]): Pick<HierarchyTransaction, "command" | "inverse"> {
-  const allIds = Array.from(new Set([...before.map((element) => element.id), ...after.map((element) => element.id)]));
   return {
-    command: { type: "replace-scene-elements", slideId, elementIds: allIds, elements: clone(after) },
-    inverse: { type: "replace-scene-elements", slideId, elementIds: allIds, elements: clone(before) }
+    command: { type: "replace-scene-elements", slideId, elements: clone(after) },
+    inverse: { type: "replace-scene-elements", slideId, elements: clone(before) }
   };
 }
 
