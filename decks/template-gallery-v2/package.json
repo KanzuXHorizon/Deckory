@@ -1,0 +1,17 @@
+{
+  "name": "@deckory/template-gallery-v2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./deck.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@deckory/schema": "workspace:*",
+    "@deckory/template-gallery": "workspace:*",
+    "@deckory/templates": "workspace:*",
+    "@deckory/visuals": "workspace:*"
+  }
+}
