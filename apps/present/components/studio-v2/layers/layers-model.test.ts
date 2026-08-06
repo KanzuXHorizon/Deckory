@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SceneElement } from "@deckory/schema/v2";
-import { buildLayersTree, createLayerPatchCommand, filterLayersTree, moveLayerFocus, resolveLayerTreeKey } from "./layers-model";
+import { buildLayersTree, createLayerPatchCommand, filterLayersTree, moveLayerFocus, resolveLayerDropIntent, resolveLayerRename, resolveLayerTreeKey } from "./layers-model";
 
 const elements: SceneElement[] = [
   { id: "title", name: "Tiêu đề", kind: "text", frame: { x: 72, y: 64, width: 600, height: 120 }, zIndex: 1, content: { text: "Deckory" }, accessibility: { label: "Deckory" } },
@@ -15,6 +15,14 @@ describe("Layers model", () => {
       ["title", []],
       ["feature-group", ["feature-a", "feature-b"]]
     ]);
+  });
+
+  it("rejects duplicate IDs and hierarchy cycles instead of hiding invalid layers", () => {
+    expect(() => buildLayersTree([...elements, { ...elements[0]! }])).toThrow(/trùng/i);
+    expect(() => buildLayersTree([
+      { ...elements[1]!, parentId: "feature-a" },
+      { ...elements[2]!, parentId: "feature-group" }
+    ])).toThrow(/chu kỳ/i);
   });
 
   it("keeps ancestors visible when search matches a descendant", () => {
@@ -42,6 +50,27 @@ describe("Layers model", () => {
 
   it("rejects an empty layer name before creating a command", () => {
     expect(() => createLayerPatchCommand("cover", "feature-b", { name: "   " })).toThrow(/tên layer/i);
+  });
+
+  it("resolves drag reorder and reparent intents without creating cycles", () => {
+    const tree = buildLayersTree(elements);
+    expect(resolveLayerDropIntent(tree, "title", "feature-group", "inside")).toEqual({
+      elementId: "title",
+      parentId: "feature-group",
+      index: 2
+    });
+    expect(resolveLayerDropIntent(tree, "feature-b", "feature-a", "before")).toEqual({
+      elementId: "feature-b",
+      parentId: "feature-group",
+      index: 0
+    });
+    expect(() => resolveLayerDropIntent(tree, "feature-group", "feature-a", "inside")).toThrow(/chu kỳ/i);
+  });
+
+  it("cancels rename without emitting a patch and trims committed names", () => {
+    expect(resolveLayerRename("Tên cũ", "Tên mới", true)).toBeUndefined();
+    expect(resolveLayerRename("Tên cũ", "  Tên mới  ", false)).toEqual({ name: "Tên mới" });
+    expect(resolveLayerRename("Tên cũ", "   ", false)).toBeUndefined();
   });
 
   it("maps rename, lock and hide actions to one patch-element command", () => {

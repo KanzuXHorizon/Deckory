@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import styles from "./layout-panel.module.css";
 
 export type StudioLayoutMode = "freeform" | "constraint" | "stack" | "grid";
@@ -40,6 +41,13 @@ const modes: Array<{ value: StudioLayoutMode; label: string; description: string
   { value: "grid", label: "Lưới", description: "Phân bổ thành phần theo hàng và cột rõ ràng." }
 ];
 
+export function parseLayoutNumber(value: string, minimum: number): number | undefined {
+  if (value.trim() === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < minimum) return undefined;
+  return parsed;
+}
+
 function NumberControl({
   label,
   value,
@@ -51,6 +59,9 @@ function NumberControl({
   min?: number;
   onChange: (value: number) => void;
 }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+
   return (
     <label>
       <span>{label}</span>
@@ -58,10 +69,15 @@ function NumberControl({
         type="number"
         min={min}
         step={1}
-        value={value}
+        value={draft}
         onChange={(event) => {
-          const nextValue = event.currentTarget.valueAsNumber;
-          if (Number.isFinite(nextValue) && nextValue >= min) onChange(nextValue);
+          const nextDraft = event.currentTarget.value;
+          setDraft(nextDraft);
+          const nextValue = parseLayoutNumber(nextDraft, min);
+          if (nextValue !== undefined) onChange(nextValue);
+        }}
+        onBlur={() => {
+          if (parseLayoutNumber(draft, min) === undefined) setDraft(String(value));
         }}
       />
     </label>

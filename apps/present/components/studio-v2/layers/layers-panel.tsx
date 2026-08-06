@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import type { SceneElement } from "@deckory/schema/v2";
 import {
   buildLayersTree,
   filterLayersTree,
   flattenLayersTree,
+  resolveLayerRename,
   resolveLayerTreeKey,
   type LayerNode,
   type LayerPatch
@@ -37,7 +38,7 @@ type LayerTreeItemProps = {
   onRenameStart: (node: LayerNode) => void;
   onRenameValueChange: (value: string) => void;
   onRenameCommit: (node: LayerNode) => void;
-  onRenameCancel: () => void;
+  onRenameCancel: (node: LayerNode) => void;
 };
 
 function LayerTreeItem({
@@ -100,8 +101,7 @@ function LayerTreeItem({
               }
               if (event.key === "Escape") {
                 event.preventDefault();
-                onRenameCancel();
-                onFocusRequest(node.id);
+                onRenameCancel(node);
               }
             }}
           />
@@ -191,6 +191,7 @@ export function LayersPanel({
       : visibleIds[0];
   const [renamingId, setRenamingId] = useState<string | undefined>();
   const [renameValue, setRenameValue] = useState("");
+  const renameCancelled = useRef(false);
   const selected = new Set(selectedIds);
 
   const focusLayer = (elementId: string) => {
@@ -201,18 +202,25 @@ export function LayersPanel({
     });
   };
   const startRename = (node: LayerNode) => {
+    renameCancelled.current = false;
     setRequestedFocusId(node.id);
     setRenamingId(node.id);
     setRenameValue(node.element.name);
   };
-  const cancelRename = () => {
+  const closeRename = () => {
     setRenamingId(undefined);
     setRenameValue("");
   };
+  const cancelRename = (node: LayerNode) => {
+    renameCancelled.current = true;
+    closeRename();
+    focusLayer(node.id);
+  };
   const commitRename = (node: LayerNode) => {
-    const nextName = renameValue.trim();
-    if (nextName && nextName !== node.element.name) onPatch(node.id, { name: nextName });
-    cancelRename();
+    const patch = resolveLayerRename(node.element.name, renameValue, renameCancelled.current);
+    if (patch) onPatch(node.id, patch);
+    renameCancelled.current = false;
+    closeRename();
     focusLayer(node.id);
   };
 

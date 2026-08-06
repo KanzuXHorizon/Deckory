@@ -1,8 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LayoutPanel } from "./layout-panel";
+import { LayoutPanel, parseLayoutNumber } from "./layout-panel";
 
 describe("LayoutPanel", () => {
+  it("allows temporary empty numeric drafts without emitting NaN or invalid values", () => {
+    expect(parseLayoutNumber("", 0)).toBeUndefined();
+    expect(parseLayoutNumber("-1", 0)).toBeUndefined();
+    expect(parseLayoutNumber("12.5", 0)).toBe(12.5);
+    expect(parseLayoutNumber("abc", 0)).toBeUndefined();
+  });
+
   it("renders keyboard-accessible layout, sizing and constraint controls in Vietnamese", () => {
     const html = renderToStaticMarkup(<LayoutPanel
       value={{

@@ -16,6 +16,11 @@ export type LayerPatchCommand = {
 };
 
 export function buildLayersTree(elements: readonly SceneElement[]): LayerNode[] {
+  const ids = new Set<string>();
+  for (const element of elements) {
+    if (ids.has(element.id)) throw new Error(`Layer ID "${element.id}" bị trùng.`);
+    ids.add(element.id);
+  }
   const nodes = new Map(elements.map((element) => [element.id, { id: element.id, element, children: [] as LayerNode[] }]));
   const roots: LayerNode[] = [];
   for (const element of elements) {
@@ -28,6 +33,18 @@ export function buildLayersTree(elements: readonly SceneElement[]): LayerNode[] 
     if (!parent) throw new Error(`Layer "${element.id}" tham chiếu parent không tồn tại: "${element.parentId}".`);
     parent.children.push(node);
   }
+
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const validate = (node: LayerNode): void => {
+    if (visiting.has(node.id)) throw new Error(`Hierarchy layer chứa chu kỳ tại "${node.id}".`);
+    if (visited.has(node.id)) return;
+    visiting.add(node.id);
+    node.children.forEach(validate);
+    visiting.delete(node.id);
+    visited.add(node.id);
+  };
+  nodes.forEach(validate);
   return roots;
 }
 
@@ -101,6 +118,68 @@ export function resolveLayerTreeKey(
   if (input.key === " ") return { type: "select", elementId: currentId, additive: true };
   if (input.key === "F2") return { type: "rename", elementId: currentId };
   return undefined;
+}
+
+export type LayerDropPosition = "before" | "inside" | "after";
+
+export type LayerDropIntent = {
+  elementId: string;
+  parentId?: string;
+  index: number;
+};
+
+function nodeMap(nodes: readonly LayerNode[]): Map<string, LayerNode> {
+  return new Map(flattenLayersTree(nodes).map((node) => [node.id, node]));
+}
+
+function containsNode(root: LayerNode, targetId: string): boolean {
+  return root.id === targetId || root.children.some((child) => containsNode(child, targetId));
+}
+
+export function resolveLayerDropIntent(
+  nodes: readonly LayerNode[],
+  draggedId: string,
+  targetId: string,
+  position: LayerDropPosition
+): LayerDropIntent {
+  const byId = nodeMap(nodes);
+  const dragged = byId.get(draggedId);
+  const target = byId.get(targetId);
+  if (!dragged) throw new Error(`Layer kéo "${draggedId}" không tồn tại.`);
+  if (!target) throw new Error(`Layer đích "${targetId}" không tồn tại.`);
+  if (draggedId === targetId || containsNode(dragged, targetId)) {
+    throw new Error(`Không thể thả "${draggedId}" vào hậu duệ vì thao tác sẽ tạo chu kỳ hierarchy.`);
+  }
+
+  let parentId: string | undefined;
+  let siblings: readonly LayerNode[];
+  let index: number;
+  if (position === "inside") {
+    if (target.element.kind !== "group" && target.element.kind !== "stack" && target.element.kind !== "grid") {
+      throw new Error(`Layer "${targetId}" không thể chứa layer con.`);
+    }
+    parentId = targetId;
+    siblings = target.children.filter((child) => child.id !== draggedId);
+    index = siblings.length;
+  } else {
+    parentId = target.element.parentId;
+    const parent = parentId ? byId.get(parentId) : undefined;
+    siblings = (parent?.children ?? nodes).filter((node) => node.id !== draggedId);
+    const targetIndex = siblings.findIndex((node) => node.id === targetId);
+    if (targetIndex < 0) throw new Error(`Không thể xác định vị trí sibling của "${targetId}".`);
+    index = targetIndex + (position === "after" ? 1 : 0);
+  }
+
+  const intent: LayerDropIntent = { elementId: draggedId, index };
+  if (parentId !== undefined) intent.parentId = parentId;
+  return intent;
+}
+
+export function resolveLayerRename(originalName: string, draftName: string, cancelled: boolean): Partial<LayerPatch> | undefined {
+  if (cancelled) return undefined;
+  const name = draftName.trim();
+  if (!name || name === originalName) return undefined;
+  return { name };
 }
 
 export function createLayerPatchCommand(
