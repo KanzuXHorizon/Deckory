@@ -1,0 +1,16 @@
+{
+  "name": "@deckory/visual-lab-v2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./deck.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@deckory/schema": "workspace:*",
+    "@deckory/templates": "workspace:*",
+    "@deckory/visuals": "workspace:*"
+  }
+}
