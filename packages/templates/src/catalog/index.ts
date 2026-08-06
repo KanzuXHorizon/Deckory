@@ -1,30 +1,41 @@
-import { SUPPORTED_COMPONENT_TYPES, SUPPORTED_LAYOUTS, DeckThemeSchema } from "@deckory/schema";
-import type { DeckBlueprint, SlideRecipe, VisualStylePreset } from "../types";
+import {
+  SUPPORTED_COMPONENT_TYPES,
+  SUPPORTED_LAYOUTS,
+  DeckThemeSchema,
+  ElementEffectSchema,
+  SlideBackgroundSchema,
+  SlideTransitionSchema,
+  SlideVariantSchema
+} from "@deckory/schema";
+import type { DeckBlueprint, SlideMasterPreset, SlideRecipe, VisualStylePreset } from "../types";
 import { deckBlueprints } from "./blueprints";
+import { slideMasters } from "./masters";
 import { slideRecipes } from "./recipes";
 import { visualStyles } from "./styles";
 
-export { deckBlueprints, slideRecipes, visualStyles };
+export { deckBlueprints, slideMasters, slideRecipes, visualStyles };
 
 export const visualStyleById = new Map<string, VisualStylePreset>(visualStyles.map((item) => [item.id, item]));
+export const slideMasterById = new Map<string, SlideMasterPreset>(slideMasters.map((item) => [item.id, item]));
 export const slideRecipeById = new Map<string, SlideRecipe>(slideRecipes.map((item) => [item.id, item]));
 export const deckBlueprintById = new Map<string, DeckBlueprint>(deckBlueprints.map((item) => [item.id, item]));
 
 const stableId = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const layoutComponents: Record<SlideRecipe["layout"], ReadonlySet<SlideRecipe["components"][number]["type"]>> = {
-  cover: new Set(["heading", "evidence-footer"]),
-  statement: new Set(["statement", "heading", "evidence-footer"]),
-  split: new Set(["heading", "metric-grid", "code", "insight", "evidence-footer"]),
-  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "evidence-footer"]),
-  comparison: new Set(["heading", "comparison", "table", "evidence-footer"]),
-  process: new Set(["heading", "process", "evidence-footer"]),
-  architecture: new Set(["heading", "architecture", "code", "insight", "evidence-footer"]),
-  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "evidence-footer"]),
-  closing: new Set(["heading", "statement", "evidence-footer"])
+  cover: new Set(["heading", "team-showcase", "media-showcase", "evidence-footer"]),
+  statement: new Set(["statement", "heading", "diagram", "evidence-footer"]),
+  split: new Set(["heading", "metric-grid", "code", "insight", "diagram", "evidence-footer"]),
+  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "diagram", "evidence-footer"]),
+  comparison: new Set(["heading", "comparison", "table", "diagram", "evidence-footer"]),
+  process: new Set(["heading", "process", "diagram", "evidence-footer"]),
+  architecture: new Set(["heading", "architecture", "code", "insight", "diagram", "evidence-footer"]),
+  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "diagram", "evidence-footer"]),
+  closing: new Set(["heading", "statement", "diagram", "evidence-footer"])
 };
 
 export function assertCatalogIntegrity(): void {
   assertUniqueIds("visual style", visualStyles);
+  assertUniqueIds("slide master", slideMasters);
   assertUniqueIds("slide recipe", slideRecipes);
   assertUniqueIds("deck blueprint", deckBlueprints);
 
@@ -39,6 +50,42 @@ export function assertCatalogIntegrity(): void {
     }
     if (style.compositionGuidance.length < 3 || style.prohibitedPatterns.length < 3) {
       throw new Error(`Visual style ${style.id} needs complete composition and anti-pattern guidance.`);
+    }
+  }
+
+  const coveredMasterLayouts = new Set<string>();
+  for (const master of slideMasters) {
+    coveredMasterLayouts.add(master.layout);
+    if (!(SUPPORTED_LAYOUTS as readonly string[]).includes(master.layout)) {
+      throw new Error(`Slide master ${master.id} references unsupported layout ${master.layout}.`);
+    }
+    if (!SlideVariantSchema.safeParse(master.variant).success) {
+      throw new Error(`Slide master ${master.id} references unsupported variant ${master.variant}.`);
+    }
+    if (!SlideBackgroundSchema.safeParse(master.background).success) {
+      throw new Error(`Slide master ${master.id} references unsupported background ${master.background}.`);
+    }
+    if (!SlideTransitionSchema.safeParse(master.transition).success) {
+      throw new Error(`Slide master ${master.id} uses an invalid transition.`);
+    }
+    if (master.safeArea.horizontal < 48 || master.safeArea.vertical < 40 || master.safeArea.footer < 32) {
+      throw new Error(`Slide master ${master.id} violates the minimum safe-area budget.`);
+    }
+    if (master.useWhen.length === 0 || master.avoidWhen.length === 0) {
+      throw new Error(`Slide master ${master.id} needs complete use and avoid guidance.`);
+    }
+    for (const [componentType, effect] of Object.entries(master.componentEffects)) {
+      if (!(SUPPORTED_COMPONENT_TYPES as readonly string[]).includes(componentType)) {
+        throw new Error(`Slide master ${master.id} references unsupported component ${componentType}.`);
+      }
+      if (!ElementEffectSchema.safeParse(effect).success) {
+        throw new Error(`Slide master ${master.id} uses an invalid effect for ${componentType}.`);
+      }
+    }
+  }
+  for (const layout of SUPPORTED_LAYOUTS) {
+    if (!coveredMasterLayouts.has(layout)) {
+      throw new Error(`Slide master catalog does not cover layout ${layout}.`);
     }
   }
 

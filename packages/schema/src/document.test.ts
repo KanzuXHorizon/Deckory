@@ -272,6 +272,53 @@ describe("Deck document contract", () => {
     });
   });
 
+  it("accepts professional slide-master metadata and composition variants", () => {
+    const variants = ["cinematic", "asymmetric", "editorial", "evidence", "gallery"] as const;
+
+    for (const variant of variants) {
+      const result = validateDeck({
+        id: `master-${variant}`,
+        version: 1,
+        title: `Master ${variant}`,
+        locale: "vi-VN",
+        themeId: "deckory-editorial",
+        slides: [{
+          id: `slide-${variant}`,
+          masterId: `master-${variant}`,
+          layout: "split",
+          variant,
+          background: "bands",
+          components: [{ id: "heading", type: "heading", props: { title: `Bố cục ${variant}` } }]
+        }]
+      });
+
+      expect(result).toMatchObject({ ok: true });
+    }
+  });
+
+  it("rejects unstable slide-master IDs", () => {
+    const result = validateDeck({
+      id: "invalid-master-id",
+      version: 1,
+      title: "Master lỗi",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "slide",
+        masterId: "Master Hero",
+        layout: "cover",
+        components: [{ id: "heading", type: "heading", props: { title: "Master không hợp lệ" } }]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.masterId" })
+      ])
+    });
+  });
+
   it("accepts typed slide transitions, element effects, and shared morph IDs", () => {
     const result = validateDeck({
       id: "motion-story",
@@ -379,6 +426,147 @@ describe("Deck document contract", () => {
       ok: false,
       diagnostics: expect.arrayContaining([
         expect.objectContaining({ propertyPath: "slides.0.components.0.type" })
+      ])
+    });
+  });
+
+  it("accepts typed semantic diagrams with accessible summaries", () => {
+    const variants = ["timeline", "funnel", "pyramid", "cycle", "quadrant", "roadmap"] as const;
+
+    for (const variant of variants) {
+      const itemCount = variant === "cycle" || variant === "funnel" || variant === "pyramid" ? 3 : variant === "quadrant" ? 4 : 2;
+      const result = validateDeck({
+        id: `diagram-${variant}`,
+        version: 1,
+        title: `Diagram ${variant}`,
+        locale: "vi-VN",
+        themeId: "deckory-editorial",
+        slides: [{
+          id: `slide-${variant}`,
+          layout: variant === "roadmap" || variant === "timeline" ? "process" : "data",
+          components: [{
+            id: `diagram-${variant}`,
+            type: "diagram",
+            props: {
+              title: `Sơ đồ ${variant}`,
+              summary: `Tóm tắt accessible cho sơ đồ ${variant}.`,
+              variant,
+              items: Array.from({ length: itemCount }, (_, index) => ({
+                id: `item-${index + 1}`,
+                label: `Mục ${index + 1}`,
+                value: `${index + 1}`,
+                tone: index === 0 ? "cobalt" : "neutral",
+                featured: index === 0
+              }))
+            }
+          }]
+        }]
+      });
+
+      expect(result).toMatchObject({ ok: true });
+    }
+  });
+
+  it("rejects semantic diagrams without an accessible summary", () => {
+    const result = validateDeck({
+      id: "diagram-without-summary",
+      version: 1,
+      title: "Diagram thiếu tóm tắt",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "cycle",
+        layout: "data",
+        components: [{
+          id: "cycle-diagram",
+          type: "diagram",
+          props: {
+            title: "Chu trình lỗi",
+            variant: "cycle",
+            items: [
+              { id: "one", label: "Một" },
+              { id: "two", label: "Hai" },
+              { id: "three", label: "Ba" }
+            ]
+          }
+        }]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.summary" })
+      ])
+    });
+  });
+
+  it("rejects quadrant diagrams with duplicate semantic positions", () => {
+    const result = validateDeck({
+      id: "diagram-duplicate-position",
+      version: 1,
+      title: "Diagram trùng vị trí",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "quadrant",
+        layout: "comparison",
+        components: [{
+          id: "priority-quadrant",
+          type: "diagram",
+          props: {
+            title: "Ma trận ưu tiên",
+            summary: "Bốn nhóm cần nằm ở bốn vùng semantic khác nhau.",
+            variant: "quadrant",
+            items: [
+              { id: "one", label: "Một", position: "top-left" },
+              { id: "two", label: "Hai", position: "top-left" },
+              { id: "three", label: "Ba", position: "bottom-left" },
+              { id: "four", label: "Bốn", position: "bottom-right" }
+            ]
+          }
+        }]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items.1.position" })
+      ])
+    });
+  });
+
+  it("rejects cycle diagrams with fewer than three items", () => {
+    const result = validateDeck({
+      id: "diagram-short-cycle",
+      version: 1,
+      title: "Diagram chu trình thiếu bước",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "cycle",
+        layout: "data",
+        components: [{
+          id: "cycle-diagram",
+          type: "diagram",
+          props: {
+            title: "Chu trình lỗi",
+            summary: "Chu trình đang thiếu bước nên không thể hiện đầy đủ vòng lặp.",
+            variant: "cycle",
+            items: [
+              { id: "one", label: "Một" },
+              { id: "two", label: "Hai" }
+            ]
+          }
+        }]
+      }]
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items" })
       ])
     });
   });
@@ -602,6 +790,95 @@ describe("Deck document contract", () => {
           propertyPath: "slides.0.components.0.props.items.1.parentId",
           message: "Nút không thể tham chiếu chính nó làm nút cha."
         })
+      ])
+    });
+  });
+
+  it("accepts local media showcases and rejects missing or ambiguous assets", () => {
+    const valid = validateDeck({
+      id: "media-evidence",
+      version: 1,
+      title: "Bằng chứng giao diện",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      assets: [
+        { id: "dashboard-shot", type: "image", src: "/media/dashboard.svg", mediaType: "image/svg+xml" },
+        { id: "feedback-shot", type: "image", src: "/media/feedback.svg", mediaType: "image/svg+xml" }
+      ],
+      slides: [{
+        id: "product-proof",
+        layout: "data",
+        components: [{
+          id: "product-media",
+          type: "media-showcase",
+          props: {
+            title: "Luồng sản phẩm đã được triển khai",
+            summary: "Hai bề mặt đại diện cho đầu vào và kết quả coaching.",
+            variant: "duo",
+            items: [
+              { assetId: "dashboard-shot", alt: "Bảng điều khiển MyInterview", eyebrow: "BỐI CẢNH", title: "Chuẩn bị đúng dữ liệu", caption: "CV, JD và mục tiêu nghề nghiệp." },
+              { assetId: "feedback-shot", alt: "Màn hình phản hồi MyInterview", eyebrow: "KẾT QUẢ", title: "Phản hồi có bằng chứng", caption: "Điểm, lý do và bước cải thiện.", featured: true }
+            ]
+          }
+        }]
+      }]
+    });
+    const invalidShape = validateDeck({
+      id: "invalid-media-shape",
+      version: 1,
+      title: "Bằng chứng giao diện lỗi",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      assets: [{ id: "dashboard-shot", type: "image", src: "/media/dashboard.svg", mediaType: "image/svg+xml" }],
+      slides: [{
+        id: "product-proof",
+        layout: "data",
+        components: [{
+          id: "product-media",
+          type: "media-showcase",
+          props: {
+            variant: "triptych",
+            items: [
+              { assetId: "dashboard-shot", alt: "Ảnh thứ nhất", title: "Featured thứ nhất", featured: true },
+              { assetId: "dashboard-shot", alt: "Ảnh thứ hai", title: "Featured thứ hai", featured: true },
+              { assetId: "dashboard-shot", alt: "Ảnh thứ ba", title: "Ảnh hợp lệ" },
+              { assetId: "dashboard-shot", alt: "Ảnh thứ tư", title: "Quá số lượng" }
+            ]
+          }
+        }]
+      }]
+    });
+    const missingAsset = validateDeck({
+      id: "missing-media-asset",
+      version: 1,
+      title: "Thiếu ảnh giao diện",
+      locale: "vi-VN",
+      themeId: "deckory-editorial",
+      slides: [{
+        id: "product-proof",
+        layout: "data",
+        components: [{
+          id: "product-media",
+          type: "media-showcase",
+          props: {
+            variant: "single",
+            items: [{ assetId: "missing-shot", alt: "Ảnh không tồn tại", title: "Thiếu asset" }]
+          }
+        }]
+      }]
+    });
+
+    expect(valid).toMatchObject({ ok: true });
+    expect(invalidShape).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items" })
+      ])
+    });
+    expect(missingAsset).toMatchObject({
+      ok: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ propertyPath: "slides.0.components.0.props.items.0.assetId" })
       ])
     });
   });

@@ -4,6 +4,7 @@ import {
   auditDeck,
   auditDecks,
   formatAuditReport,
+  scoreDeckQuality,
   type DeckAuditReport
 } from "./index.js";
 
@@ -63,6 +64,9 @@ describe("auditDeck", () => {
       warningCount: 0
     });
     expect(report.issues).toEqual([]);
+    expect(report.scorecard.dimensions).toHaveLength(15);
+    expect(report.scorecard.overallScore).toBeGreaterThanOrEqual(0);
+    expect(report.scorecard.overallScore).toBeLessThanOrEqual(10);
   });
 
   it("returns actionable quality diagnostics for real presentation risks", () => {
@@ -117,6 +121,118 @@ describe("auditDeck", () => {
     expect(report.issues.some((issue) => issue.code === "schema-invalid" && issue.severity === "error")).toBe(true);
   });
 
+  it("scores all 15 quality dimensions with transparent confidence labels", () => {
+    const scorecard = scoreDeckQuality(validDeck());
+
+    expect(scorecard.dimensions.map((dimension) => dimension.id)).toEqual([
+      "storytelling",
+      "ui",
+      "ux",
+      "visual-design",
+      "motion-design",
+      "typography",
+      "layout",
+      "charts",
+      "copywriting",
+      "accessibility",
+      "interaction",
+      "branding",
+      "evidence",
+      "demo-readiness",
+      "production-quality"
+    ]);
+    expect(scorecard.dimensions.every((dimension) => dimension.score >= 0 && dimension.score <= 10)).toBe(true);
+    expect(scorecard.dimensions.every((dimension) => dimension.checks.length > 0)).toBe(true);
+    expect(scorecard.dimensions.some((dimension) => dimension.confidence === "runtime-required")).toBe(true);
+  });
+
+  it("does not penalize evidence coverage when a deck has no data slides", () => {
+    const deck = validDeck();
+    deck.slides = [{
+      id: "statement",
+      layout: "statement",
+      notes: "Nêu một luận điểm không cần dữ liệu định lượng.",
+      components: [
+        { id: "heading", type: "heading", props: { title: "Một luận điểm định tính không cần evidence footer" } },
+        { id: "statement-copy", type: "statement", props: { quote: "Không có chart hoặc table trên slide này." } }
+      ]
+    }];
+
+    const scorecard = scoreDeckQuality(deck);
+    const evidence = scorecard.dimensions.find((dimension) => dimension.id === "evidence")!;
+    const demoReadiness = scorecard.dimensions.find((dimension) => dimension.id === "demo-readiness")!;
+
+    expect(evidence.checks.find((check) => check.id === "evidence-coverage")).toMatchObject({ passed: true });
+    expect(demoReadiness.checks.find((check) => check.id === "demo-evidence")).toMatchObject({ passed: true });
+  });
+
+  it("uses explicit verification evidence to unlock runtime quality checks", () => {
+    const deck = validDeck();
+    deck.slides = [
+      {
+        ...deck.slides[0]!,
+        masterId: "cover-editorial"
+      },
+      {
+        ...deck.slides[1]!,
+        masterId: "data-analysis"
+      },
+      {
+        id: "closing",
+        masterId: "closing-action",
+        layout: "closing",
+        notes: "Khép lại bằng quyết định và bước tiếp theo.",
+        components: [
+          { id: "heading", type: "heading", props: { title: "Cấu trúc, bằng chứng và kiểm chứng tạo nên một deck đáng tin cậy" } },
+          { id: "statement", type: "statement", props: { quote: "Sẵn sàng trình chiếu sau khi mọi gate runtime đã có bằng chứng." } }
+        ]
+      }
+    ];
+
+    const scorecard = scoreDeckQuality(deck, {
+      browserUi: true,
+      keyboardAndZoom: true,
+      visualReview: true,
+      accessibility: true,
+      interaction: true,
+      productionGates: true
+    });
+
+    expect(scorecard.dimensions
+      .flatMap((dimension) => dimension.checks)
+      .filter((check) => ["browser-ui", "keyboard-zoom", "visual-review", "a11y-runtime", "interaction-runtime", "production-gates"].includes(check.id))
+      .every((check) => check.passed)).toBe(true);
+    expect(scorecard).toMatchObject({ overallScore: 10, readiness: "production-ready" });
+  });
+
+  it("detects repeated composition, flat density, and motion overload beyond layout names", () => {
+    const source = validDeck().slides[1]!;
+    const deck = validDeck();
+    deck.slides = Array.from({ length: 6 }, (_, index) => ({
+      ...source,
+      id: `evidence-${index + 1}`,
+      masterId: `data-analysis-${index + 1}`,
+      variant: "evidence" as const,
+      background: "grid" as const,
+      transition: { type: "wipe" as const, duration: 0.55 },
+      notes: `Ghi chú ${index + 1}`,
+      components: source.components.map((component, componentIndex) => ({
+        ...component,
+        id: `${component.id}-${index + 1}`,
+        effect: componentIndex < 3 ? { type: componentIndex === 0 ? "rise" as const : componentIndex === 1 ? "wipe" as const : "scale" as const, duration: 0.4 } : undefined
+      }))
+    }));
+
+    const report = auditDeck(deck);
+    const codes = report.issues.map((issue) => issue.code);
+    const layoutScore = report.scorecard.dimensions.find((dimension) => dimension.id === "layout")!.score;
+    const motionScore = report.scorecard.dimensions.find((dimension) => dimension.id === "motion-design")!.score;
+
+    expect(codes).toEqual(expect.arrayContaining(["repeated-composition", "dominant-layout", "flat-density", "motion-overload"]));
+    expect(layoutScore).toBeLessThan(8);
+    expect(motionScore).toBeLessThan(8);
+  });
+
   it("warns when the same layout creates a flat visual rhythm", () => {
     const deck = validDeck();
     const sourceSlide = deck.slides[1]!;
@@ -141,5 +257,6 @@ describe("audit reporting", () => {
     expect(text).toContain("Deckory quality audit");
     expect(text).toContain("2 deck");
     expect(text).toContain("PASS");
+    expect(text).toContain("Quality score");
   });
 });

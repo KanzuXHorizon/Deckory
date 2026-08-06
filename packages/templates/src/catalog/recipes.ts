@@ -219,6 +219,41 @@ function tableRecipe(id: string, name: string, category: SlideRecipeCategory, pu
   });
 }
 
+function diagramRecipe({
+  id,
+  name,
+  category,
+  purpose,
+  layout,
+  variant,
+  tags,
+  evidence = "recommended"
+}: {
+  id: string;
+  name: string;
+  category: SlideRecipeCategory;
+  purpose: string;
+  layout: "process" | "data" | "comparison" | "architecture";
+  variant: NonNullable<SlideRecipe["variant"]>;
+  tags: readonly string[];
+  evidence?: SlideRecipe["evidence"];
+}): SlideRecipe {
+  return recipe({
+    id,
+    name,
+    category,
+    purpose,
+    layout,
+    variant,
+    core: { id: "diagram", type: "diagram", slotId: "diagram", effect: { type: "wipe", duration: 0.48 } },
+    coreSlot: slot("diagram", "Sơ đồ semantic có tóm tắt accessible", "diagram", 8, 1800),
+    evidence,
+    tags,
+    useWhen: [`Khi ${purpose.toLocaleLowerCase("vi-VN")} và quan hệ cần được đọc trong vài giây.`],
+    avoidWhen: ["Khi dữ liệu cần đối chiếu giá trị chính xác bằng chart hoặc table, hoặc khi chưa có quan hệ thật để sơ đồ hoá."]
+  });
+}
+
 export const slideRecipes = [
   recipe({ id: "professional-cover", name: "Professional Cover", category: "opening", purpose: "mở câu chuyện bằng một luận điểm chuyên nghiệp và có bối cảnh", layout: "cover", variant: "spotlight", core: { id: "evidence", type: "evidence-footer", slotId: "evidence" }, coreSlot: evidenceSlot, evidence: "none", tags: ["cover", "opening", "professional"] }),
   recipe({ id: "executive-opener", name: "Executive Opener", category: "opening", purpose: "đặt quyết định hoặc kết luận dành cho lãnh đạo ngay từ đầu", layout: "cover", core: { id: "evidence", type: "evidence-footer", slotId: "evidence" }, coreSlot: evidenceSlot, evidence: "none", tags: ["executive", "leadership", "decision"] }),
@@ -243,6 +278,12 @@ export const slideRecipes = [
   chartRecipe("part-to-whole", "Part to Whole", "data", "giải thích cơ cấu của một tổng thể nhỏ và rõ", ["donut", "share", "distribution"]),
   chartRecipe("data-with-insight", "Data with Insight", "data", "đặt biểu đồ và kết luận diễn giải cạnh nhau", ["data", "insight", "evidence"]),
   tableRecipe("exact-comparison-table", "Exact Comparison Table", "data", "so sánh chính xác nhiều trường dữ liệu theo hàng", ["table", "exact", "comparison"]),
+  diagramRecipe({ id: "semantic-timeline", name: "Semantic Timeline", category: "process", purpose: "trình bày các mốc theo thời gian và ý nghĩa của từng chuyển tiếp", layout: "process", variant: "editorial", tags: ["timeline", "milestone", "sequence"] }),
+  diagramRecipe({ id: "semantic-roadmap", name: "Semantic Roadmap", category: "process", purpose: "chia lộ trình thành giai đoạn, đầu ra và thứ tự triển khai", layout: "process", variant: "asymmetric", tags: ["roadmap", "phase", "delivery"] }),
+  diagramRecipe({ id: "semantic-funnel", name: "Semantic Funnel", category: "data", purpose: "giải thích cách một tập hợp thu hẹp qua từng điều kiện hoặc giai đoạn", layout: "data", variant: "evidence", tags: ["funnel", "conversion", "filter"], evidence: "required" }),
+  diagramRecipe({ id: "semantic-pyramid", name: "Semantic Pyramid", category: "narrative", purpose: "thể hiện các tầng nền tảng, ưu tiên hoặc mức độ trưởng thành", layout: "data", variant: "editorial", tags: ["pyramid", "hierarchy", "maturity"] }),
+  diagramRecipe({ id: "semantic-cycle", name: "Semantic Cycle", category: "process", purpose: "giải thích một vòng lặp liên tục với đầu ra quay lại làm đầu vào", layout: "process", variant: "cinematic", tags: ["cycle", "loop", "continuous"] }),
+  diagramRecipe({ id: "semantic-quadrant", name: "Semantic Quadrant", category: "comparison", purpose: "định vị bốn nhóm theo hai trục có ý nghĩa", layout: "comparison", variant: "evidence", tags: ["quadrant", "matrix", "positioning"], evidence: "required" }),
 
   comparisonRecipe("before-after", "Before and After", "comparison", "đối chiếu trạng thái trước và sau một thay đổi", ["before", "after", "change"]),
   comparisonRecipe("two-option-decision", "Two Option Decision", "comparison", "đánh giá hai lựa chọn để hỗ trợ một quyết định", ["options", "decision", "trade-off"]),

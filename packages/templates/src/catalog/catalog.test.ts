@@ -46,6 +46,25 @@ function sampleProps(type: SlideComponent["type"]): SlideComponent["props"] {
         presets: [{ id: "default", label: "Mặc định", description: "Fixture", weights: { quality: 60, evidence: 40 } }],
         disclaimer: "Không phải rubric production."
       };
+    case "criterion-grid":
+      return { items: [
+        { label: "Đúng trọng tâm", question: "Có trả lời đúng vấn đề không?", output: "Mức lệch trọng tâm", tone: "cobalt" },
+        { label: "Rõ ràng", question: "Có dễ hiểu không?", output: "Gợi ý diễn đạt", tone: "teal" },
+        { label: "Bằng chứng", question: "Có ví dụ cụ thể không?", output: "Khoảng thiếu bằng chứng", tone: "amber", featured: true }
+      ] };
+    case "media-showcase":
+      return { variant: "single", items: [{ assetId: "product-shot", alt: "Ảnh giao diện sản phẩm", title: "Bằng chứng giao diện" }] };
+    case "diagram":
+      return {
+        title: "Lộ trình production",
+        summary: "Roadmap fixture gồm ba giai đoạn có thứ tự.",
+        variant: "roadmap",
+        items: [
+          { id: "one", label: "Cấu trúc", value: "01", tone: "cobalt" },
+          { id: "two", label: "Kiểm chứng", value: "02", tone: "teal", featured: true },
+          { id: "three", label: "Production", value: "03", tone: "amber" }
+        ]
+      };
     case "evidence-footer":
       return { source: "Dữ liệu fixture minh hoạ" };
   }
@@ -78,6 +97,7 @@ describe("template catalog integrity", () => {
         title: recipe.name,
         locale: "vi-VN",
         themeId: "catalog-test",
+        assets: [{ id: "product-shot", type: "image", src: "/fixtures/product-shot.svg", mediaType: "image/svg+xml" }],
         slides: [{
           id: "sample",
           layout: recipe.layout,

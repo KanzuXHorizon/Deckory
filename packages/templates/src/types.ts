@@ -1,4 +1,12 @@
-import type { DeckDocument, DeckTheme, ElementEffect, Slide, SlideTransition } from "@deckory/schema";
+import type {
+  DeckDocument,
+  DeckTheme,
+  ElementEffect,
+  Slide,
+  SlideBackground,
+  SlideComponent,
+  SlideTransition
+} from "@deckory/schema";
 
 export type TemplateScenario =
   | "general"
@@ -37,6 +45,7 @@ export type TemplateSlotKind =
   | "table"
   | "code"
   | "insight"
+  | "diagram"
   | "evidence";
 
 export type TemplateSlot = {
@@ -59,6 +68,9 @@ export type RecipeComponentType =
   | "table"
   | "code"
   | "insight"
+  | "team-showcase"
+  | "media-showcase"
+  | "diagram"
   | "evidence-footer";
 
 export type RecipeComponentSpec = {
@@ -86,6 +98,47 @@ export type VisualStylePreset = {
   };
   compositionGuidance: readonly string[];
   prohibitedPatterns: readonly string[];
+};
+
+export type SlideCompositionFamily =
+  | "hero"
+  | "cinematic"
+  | "editorial"
+  | "asymmetric"
+  | "evidence"
+  | "flow"
+  | "system"
+  | "gallery"
+  | "decision"
+  | "closing";
+
+export type SlideMasterDensity = "sparse" | "balanced" | "dense";
+
+export type SlideMasterPreset = {
+  id: string;
+  name: string;
+  description: string;
+  role: string;
+  layout: Slide["layout"];
+  variant: NonNullable<Slide["variant"]>;
+  background: SlideBackground;
+  transition: SlideTransition;
+  compositionFamily: SlideCompositionFamily;
+  density: SlideMasterDensity;
+  componentEffects: Readonly<Partial<Record<SlideComponent["type"], ElementEffect>>>;
+  safeArea: {
+    horizontal: number;
+    vertical: number;
+    footer: number;
+  };
+  useWhen: readonly string[];
+  avoidWhen: readonly string[];
+};
+
+export type SlideMasterRecommendation = {
+  master: SlideMasterPreset;
+  reasons: readonly string[];
+  score: number;
 };
 
 export type SlideRecipeCategory =

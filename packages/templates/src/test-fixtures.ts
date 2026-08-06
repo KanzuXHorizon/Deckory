@@ -101,6 +101,17 @@ export function fixtureValue(kind: TemplateSlotKind): unknown {
       };
     case "insight":
       return { label: "KẾT LUẬN", title: "Contract giảm sai khác giữa các bề mặt", description: "Studio, Preview và Presenter cùng đọc một nguồn dữ liệu đã validate.", metric: "1 AST", tone: "teal" };
+    case "diagram":
+      return {
+        title: "Từ cấu trúc đến production",
+        summary: "Roadmap fixture gồm ba giai đoạn: cấu trúc, kiểm chứng và production.",
+        variant: "roadmap",
+        items: [
+          { id: "structure", label: "Cấu trúc", description: "Typed document", value: "01", tone: "cobalt" },
+          { id: "evidence", label: "Kiểm chứng", description: "Audit và browser QA", value: "02", tone: "teal", featured: true },
+          { id: "production", label: "Production", description: "Build và export", value: "03", tone: "amber" }
+        ]
+      };
     case "evidence":
       return { source: "Dữ liệu fixture minh hoạ / Deckory template validation" };
   }

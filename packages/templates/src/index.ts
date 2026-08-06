@@ -2,6 +2,8 @@ export {
   assertCatalogIntegrity,
   deckBlueprintById,
   deckBlueprints,
+  slideMasterById,
+  slideMasters,
   slideRecipeById,
   slideRecipes,
   visualStyleById,
@@ -13,6 +15,11 @@ export {
   getSlideRecipe,
   getVisualStyle
 } from "./instantiate";
+export {
+  compatibleSlideMasters,
+  getSlideMaster,
+  recommendSlideMaster
+} from "./masters";
 export { recommendTemplate } from "./recommend";
 export { searchSlideRecipes } from "./search";
 export { createTeamShowcaseSlides } from "./team-showcase";
@@ -28,6 +35,10 @@ export type {
   RecipeComponentType,
   ResolvedTemplateInput,
   ResolvedTemplateSlide,
+  SlideCompositionFamily,
+  SlideMasterDensity,
+  SlideMasterPreset,
+  SlideMasterRecommendation,
   SlideRecipe,
   SlideRecipeCategory,
   TemplateAudience,

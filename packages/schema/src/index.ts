@@ -14,6 +14,9 @@ export const SUPPORTED_COMPONENT_TYPES = [
   "team-showcase",
   "visualizer",
   "weight-simulator",
+  "criterion-grid",
+  "media-showcase",
+  "diagram",
   "evidence-footer"
 ] as const;
 
@@ -153,6 +156,42 @@ const InsightPropsSchema = z.object({
   metric: optionalText,
   tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional()
 }).strict();
+const CriterionGridPropsSchema = z.object({
+  items: z.array(z.object({
+    label: nonEmptyText.max(48),
+    question: nonEmptyText.max(120),
+    output: nonEmptyText.max(80),
+    tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional(),
+    featured: z.boolean().optional()
+  }).strict()).min(3).max(6)
+}).strict().superRefine((grid, context) => {
+  if (grid.items.filter((item) => item.featured).length > 1) {
+    context.addIssue({ code: "custom", path: ["items"], message: "Expected at most one featured criterion" });
+  }
+});
+
+const MediaShowcasePropsSchema = z.object({
+  title: optionalText,
+  summary: z.string().trim().min(1).max(240).optional(),
+  variant: z.enum(["single", "duo", "triptych"]).optional(),
+  items: z.array(z.object({
+    assetId: stableId,
+    alt: nonEmptyText.max(180),
+    eyebrow: z.string().trim().min(1).max(48).optional(),
+    title: nonEmptyText.max(80),
+    caption: z.string().trim().min(1).max(180).optional(),
+    featured: z.boolean().optional()
+  }).strict()).min(1).max(3)
+}).strict().superRefine((showcase, context) => {
+  const featuredCount = showcase.items.filter((item) => item.featured).length;
+  if (featuredCount > 1) {
+    context.addIssue({ code: "custom", path: ["items"], message: "Expected at most one featured media item" });
+  }
+  const expectedCount = showcase.variant === "single" ? 1 : showcase.variant === "duo" ? 2 : showcase.variant === "triptych" ? 3 : undefined;
+  if (expectedCount !== undefined && showcase.items.length !== expectedCount) {
+    context.addIssue({ code: "custom", path: ["items"], message: `Expected exactly ${expectedCount} media items for the ${showcase.variant} variant` });
+  }
+});
 
 const WeightSimulatorPropsSchema = z.object({
   title: nonEmptyText,
@@ -290,6 +329,54 @@ const VisualizerPropsSchema = z.object({
   });
 });
 
+const QUADRANT_POSITIONS = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+
+const DiagramItemSchema = z.object({
+  id: stableId,
+  label: nonEmptyText.max(80),
+  description: z.string().trim().min(1).max(220).optional(),
+  value: z.string().trim().min(1).max(48).optional(),
+  tone: z.enum(["cobalt", "teal", "amber", "neutral"]).optional(),
+  featured: z.boolean().optional(),
+  position: z.enum(["top-left", "top-right", "bottom-left", "bottom-right"]).optional()
+}).strict();
+
+const DiagramPropsSchema = z.object({
+  title: nonEmptyText.max(140),
+  summary: nonEmptyText.max(360),
+  variant: z.enum(["timeline", "funnel", "pyramid", "cycle", "quadrant", "roadmap"]),
+  center: z.string().trim().min(1).max(80).optional(),
+  xLabel: z.string().trim().min(1).max(60).optional(),
+  yLabel: z.string().trim().min(1).max(60).optional(),
+  items: z.array(DiagramItemSchema).min(2).max(8)
+}).strict().superRefine((diagram, context) => {
+  const ids = new Set<string>();
+  diagram.items.forEach((item, index) => {
+    if (ids.has(item.id)) {
+      context.addIssue({ code: "custom", path: ["items", index, "id"], message: "Expected a unique diagram item ID" });
+    }
+    ids.add(item.id);
+  });
+  if (["cycle", "funnel", "pyramid"].includes(diagram.variant) && diagram.items.length < 3) {
+    context.addIssue({ code: "custom", path: ["items"], message: `Expected at least three items for ${diagram.variant}` });
+  }
+  if (diagram.variant === "quadrant") {
+    if (diagram.items.length !== 4) {
+      context.addIssue({ code: "custom", path: ["items"], message: "Expected exactly four items for quadrant" });
+    }
+
+    const positions = new Set<string>();
+    diagram.items.forEach((item, index) => {
+      const position = item.position ?? QUADRANT_POSITIONS[index];
+      if (!position) return;
+      if (positions.has(position)) {
+        context.addIssue({ code: "custom", path: ["items", index, "position"], message: "Expected a unique quadrant position" });
+      }
+      positions.add(position);
+    });
+  }
+});
+
 const EvidenceFooterPropsSchema = z.object({
   source: nonEmptyText,
   page: optionalText,
@@ -304,7 +391,18 @@ export const DeckThemeSchema = z.object({
   density: z.enum(["comfortable", "compact"]).default("comfortable")
 }).strict();
 
-export const SlideVariantSchema = z.enum(["default", "spotlight", "quiet", "technical"]);
+export const SlideVariantSchema = z.enum([
+  "default",
+  "spotlight",
+  "quiet",
+  "technical",
+  "cinematic",
+  "asymmetric",
+  "editorial",
+  "evidence",
+  "gallery"
+]);
+export const SlideBackgroundSchema = z.enum(["plain", "editorial", "grid", "spotlight", "bands"]);
 
 export const MotionEasingSchema = z.enum(["standard", "emphasized", "linear"]);
 export const SlideTransitionSchema = z.object({
@@ -344,14 +442,18 @@ export const SlideComponentSchema = z.discriminatedUnion("type", [
   componentSchema("team-showcase", TeamShowcasePropsSchema),
   componentSchema("visualizer", VisualizerPropsSchema),
   componentSchema("weight-simulator", WeightSimulatorPropsSchema),
+  componentSchema("criterion-grid", CriterionGridPropsSchema),
+  componentSchema("media-showcase", MediaShowcasePropsSchema),
+  componentSchema("diagram", DiagramPropsSchema),
   componentSchema("evidence-footer", EvidenceFooterPropsSchema)
 ]);
 
 export const SlideSchema = z.object({
   id: stableId,
+  masterId: stableId.optional(),
   layout: z.enum(SUPPORTED_LAYOUTS),
   variant: SlideVariantSchema.optional(),
-  background: z.enum(["plain", "editorial", "grid", "spotlight", "bands"]).optional(),
+  background: SlideBackgroundSchema.optional(),
   transition: SlideTransitionSchema.optional(),
   notes: z.string().trim().min(1).max(6_000).optional(),
   components: z.array(SlideComponentSchema).min(1)
@@ -377,6 +479,7 @@ export type SlideTransition = z.infer<typeof SlideTransitionSchema>;
 export type ElementEffect = z.infer<typeof ElementEffectSchema>;
 export type Slide = z.infer<typeof SlideSchema>;
 export type SlideVariant = z.infer<typeof SlideVariantSchema>;
+export type SlideBackground = z.infer<typeof SlideBackgroundSchema>;
 export type SlideComponent = z.infer<typeof SlideComponentSchema>;
 
 export type DeckDiagnostic = {
@@ -415,15 +518,15 @@ export function resolveTeamImageSource(
 }
 
 const LAYOUT_COMPONENTS: Partial<Record<Slide["layout"], ReadonlySet<SlideComponent["type"]>>> = {
-  cover: new Set(["heading", "evidence-footer"]),
-  statement: new Set(["statement", "heading", "visualizer", "evidence-footer"]),
-  comparison: new Set(["heading", "comparison", "table", "evidence-footer"]),
-  process: new Set(["heading", "process", "team-showcase", "visualizer", "evidence-footer"]),
-  architecture: new Set(["heading", "architecture", "code", "insight", "team-showcase", "visualizer", "evidence-footer"]),
-  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"]),
-  split: new Set(["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"]),
-  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"]),
-  closing: new Set(["heading", "statement", "team-showcase", "visualizer", "evidence-footer"])
+  cover: new Set(["heading", "team-showcase", "media-showcase", "evidence-footer"]),
+  statement: new Set(["statement", "heading", "visualizer", "media-showcase", "diagram", "evidence-footer"]),
+  comparison: new Set(["heading", "comparison", "table", "media-showcase", "diagram", "evidence-footer"]),
+  process: new Set(["heading", "process", "team-showcase", "visualizer", "media-showcase", "diagram", "evidence-footer"]),
+  architecture: new Set(["heading", "architecture", "code", "insight", "team-showcase", "visualizer", "media-showcase", "diagram", "evidence-footer"]),
+  data: new Set(["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "weight-simulator", "criterion-grid", "media-showcase", "diagram", "evidence-footer"]),
+  split: new Set(["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "weight-simulator", "criterion-grid", "media-showcase", "diagram", "evidence-footer"]),
+  dashboard: new Set(["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "weight-simulator", "criterion-grid", "media-showcase", "diagram", "evidence-footer"]),
+  closing: new Set(["heading", "statement", "team-showcase", "visualizer", "media-showcase", "diagram", "evidence-footer"])
 };
 
 export function validateDeck(input: unknown): DeckValidationResult {
@@ -484,6 +587,23 @@ export function validateDeck(input: unknown): DeckValidationResult {
               "Thêm asset vào deck.assets hoặc đổi sang một assetId hợp lệ.",
               "asset ID declared in deck.assets",
               assetId
+            ));
+          }
+        });
+      }
+
+      if (component.type === "media-showcase") {
+        component.props.items.forEach((item, itemIndex) => {
+          if (!assetIds.has(item.assetId)) {
+            diagnostics.push(diagnostic(
+              parsed.data.id,
+              slide.id,
+              component.id,
+              `slides.${slideIndex}.components.${componentIndex}.props.items.${itemIndex}.assetId`,
+              "Asset hình ảnh không tồn tại trong deck manifest.",
+              "Thêm asset vào deck.assets hoặc đổi sang một assetId hợp lệ.",
+              "asset ID declared in deck.assets",
+              item.assetId
             ));
           }
         });
@@ -563,6 +683,10 @@ const VALIDATION_MESSAGE_COPY: Record<string, { message: string; remediation: st
   "Expected at most one featured team member": {
     message: "Chỉ được chọn tối đa một thành viên tiêu điểm.",
     remediation: "Bỏ trạng thái tiêu điểm ở các thành viên còn lại."
+  },
+  "Expected at most one featured media item": {
+    message: "Chỉ được chọn tối đa một hình ảnh tiêu điểm.",
+    remediation: "Bỏ trạng thái tiêu điểm ở các hình ảnh còn lại."
   },
   "Expected exactly one member for the profile variant": {
     message: "Bố cục hồ sơ riêng chỉ hỗ trợ đúng một thành viên.",

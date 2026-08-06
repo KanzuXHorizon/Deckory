@@ -34,6 +34,17 @@ function sampleFor(slot: TemplateSlot): unknown {
       return { title: "Typed contract", language: "ts", code: "const ready = true;", showLineNumbers: true };
     case "insight":
       return { label: "KẾT LUẬN", title: "Quality gate đã rõ", description: "Mọi output đều được validate.", tone: "teal" };
+    case "diagram":
+      return {
+        title: "Lộ trình production",
+        summary: "Roadmap fixture gồm ba giai đoạn có thứ tự.",
+        variant: "roadmap",
+        items: [
+          { id: "one", label: "Cấu trúc", value: "01", tone: "cobalt" },
+          { id: "two", label: "Kiểm chứng", value: "02", tone: "teal", featured: true },
+          { id: "three", label: "Production", value: "03", tone: "amber" }
+        ]
+      };
     case "evidence":
       return { source: "Dữ liệu fixture minh hoạ / Deckory template validation" };
   }
