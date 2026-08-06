@@ -1,6 +1,6 @@
 {
   "name": "@deckory/myinterview-defense",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "exports": { ".": "./deck.ts" },
@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@deckory/schema": "workspace:*",
-    "@deckory/templates": "workspace:*"
+    "@deckory/schema": "workspace:*"
   }
 }

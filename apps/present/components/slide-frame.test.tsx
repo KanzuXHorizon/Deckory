@@ -291,7 +291,7 @@ describe("SlideFrame", () => {
     const html = renderToStaticMarkup(
       <SlideFrame
         slide={mediaSlide}
-        deckId="myinterview-defense"
+        deckId="media-fixture"
         sequenceStep={0}
         reducedMotion
         assets={[

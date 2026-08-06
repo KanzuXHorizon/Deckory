@@ -44,9 +44,6 @@ importers:
       '@deckory/myinterview-defense':
         specifier: workspace:*
         version: link:../../decks/myinterview-defense
-      '@deckory/myinterview-defense-v2':
-        specifier: workspace:*
-        version: link:../../decks/myinterview-defense-v2
       '@deckory/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
@@ -113,24 +110,6 @@ importers:
       '@deckory/schema':
         specifier: workspace:*
         version: link:../../packages/schema
-      '@deckory/templates':
-        specifier: workspace:*
-        version: link:../../packages/templates
-
-  decks/myinterview-defense-v2:
-    dependencies:
-      '@deckory/myinterview-defense':
-        specifier: workspace:*
-        version: link:../myinterview-defense
-      '@deckory/schema':
-        specifier: workspace:*
-        version: link:../../packages/schema
-      '@deckory/templates':
-        specifier: workspace:*
-        version: link:../../packages/templates
-      '@deckory/visuals':
-        specifier: workspace:*
-        version: link:../../packages/visuals
 
   decks/template-gallery:
     dependencies:

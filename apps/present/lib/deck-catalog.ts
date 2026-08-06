@@ -1,7 +1,6 @@
 import { deckoryStory } from "@deckory/deckory-story";
 import { deckoryStoryV2 } from "@deckory/deckory-story-v2";
 import { myInterviewDefense } from "@deckory/myinterview-defense";
-import { myInterviewDefenseV2 } from "@deckory/myinterview-defense-v2";
 import { templateGalleryDeck } from "@deckory/template-gallery";
 import { templateGalleryV2 } from "@deckory/template-gallery-v2";
 import { visualLabV2 } from "@deckory/visual-lab-v2";
@@ -226,14 +225,6 @@ export type DeckCatalogItem = {
 
 export const deckCatalog: DeckCatalogItem[] = [
   {
-    deck: myInterviewDefense,
-    description: "Deck bảo vệ dự án tốt nghiệp AI Technical Interviewer của nhóm NEXUS.",
-    status: "ready",
-    updatedLabel: "Summer 2026",
-    tags: ["Academic defense", "MyInterview", "AI"],
-    quality: scoreDeckQuality(myInterviewDefense)
-  },
-  {
     deck: deckoryStory,
     description: "Deck sản phẩm tham chiếu, trình bày thesis và kiến trúc của Deckory.",
     status: "ready",
@@ -270,12 +261,12 @@ export type V2DeckCatalogItem = {
 
 export const v2DeckCatalog: V2DeckCatalogItem[] = [
   {
-    deck: myInterviewDefenseV2,
-    description: "Bản Scene V2 của deck bảo vệ MyInterview, giữ đủ 23 story beat, roster và asset local.",
+    deck: myInterviewDefense,
+    description: "Deck bảo vệ MyInterview được author trực tiếp trên Scene V2 với 23 story beat, năm thành viên và asset local.",
     status: "review",
-    updatedLabel: "V2 migration",
+    updatedLabel: "Canonical V2",
     tags: ["MyInterview", "Academic defense", "Scene V2"],
-    audit: auditDeckV2(myInterviewDefenseV2)
+    audit: auditDeckV2(myInterviewDefense)
   },
   {
     deck: deckoryStoryV2,
@@ -950,6 +941,7 @@ export const sceneFoundationAudit = {
 };
 
 export const defaultDeck = deckCatalog[0]!.deck;
+export const defaultAnyDeck: AnyDeckDocument = myInterviewDefense;
 
 export function resolveDeck(deckId?: string | null): DeckDocument {
   return deckCatalog.find((item) => item.deck.id === deckId)?.deck ?? defaultDeck;
@@ -966,7 +958,7 @@ export function findAnyDeck(deckId?: string | null): AnyDeckDocument | undefined
 }
 
 export function resolveAnyDeck(deckId?: string | null): AnyDeckDocument {
-  return findAnyDeck(deckId) ?? defaultDeck;
+  return findAnyDeck(deckId) ?? defaultAnyDeck;
 }
 
 export function resolveCatalogItem(deckId?: string | null): DeckCatalogItem {

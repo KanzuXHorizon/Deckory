@@ -16,9 +16,8 @@ import {
   SlidersHorizontal,
   Sparkles
 } from "lucide-react";
-import { deckCatalog, sceneFoundationAudit, slideTitle, v2DeckCatalog, visualCoverage } from "../lib/deck-catalog";
+import { deckCatalog, sceneFoundationAudit, v2DeckCatalog, visualCoverage } from "../lib/deck-catalog";
 import { deckThemeClassName } from "../lib/deck-theme";
-import { layoutLabel } from "../lib/studio-option-catalog";
 import { DeckoryBrand } from "./brand-mark";
 import { DeckThumbnail } from "./deck-thumbnail";
 import { QualitySummaryV2 } from "./quality-summary-v2";
@@ -27,7 +26,6 @@ const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
 
 export function Hub() {
   const [query, setQuery] = useState("");
-  const [activeDeckId, setActiveDeckId] = useState(deckCatalog[0]!.deck.id);
   const [draftDeckIds, setDraftDeckIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -43,9 +41,15 @@ export function Hub() {
     return deckCatalog.filter((item) => [item.deck.title, item.description, ...item.tags].join(" ").toLocaleLowerCase("vi").includes(needle));
   }, [query]);
 
-  const activeItem = deckCatalog.find((item) => item.deck.id === activeDeckId) ?? deckCatalog[0]!;
-  const totalSlides = deckCatalog.reduce((sum, item) => sum + item.deck.slides.length, 0);
-  const averageQuality = Math.round((deckCatalog.reduce((sum, item) => sum + item.quality.overallScore, 0) / deckCatalog.length) * 10) / 10;
+  const featuredItem = v2DeckCatalog[0]!;
+  const totalDecks = deckCatalog.length + v2DeckCatalog.length;
+  const totalSlides = deckCatalog.reduce((sum, item) => sum + item.deck.slides.length, 0)
+    + v2DeckCatalog.reduce((sum, item) => sum + item.deck.slides.length, 0);
+  const qualityScores = [
+    ...deckCatalog.map((item) => item.quality.overallScore),
+    ...v2DeckCatalog.map((item) => item.audit.scorecard.overallScore)
+  ];
+  const averageQuality = Math.round((qualityScores.reduce((sum, score) => sum + score, 0) / qualityScores.length) * 10) / 10;
 
   return (
     <main className="hub-shell">
@@ -69,41 +73,41 @@ export function Hub() {
           <h1 id="hub-title">Không gian làm việc cho những deck cần được tin cậy.</h1>
           <p>Chọn bộ trình chiếu, kiểm tra trạng thái và đi thẳng vào chỉnh sửa hoặc trình chiếu. Đây là thư viện làm việc tập trung, không phải trang giới thiệu tiếp thị.</p>
 
-          <div className="hub-active-deck" aria-label={`Deck đang chọn: ${activeItem.deck.title}`}>
+          <div className="hub-active-deck" aria-label={`Deck bảo vệ nổi bật: ${featuredItem.deck.title}`}>
             <div>
-              <span>{activeItem.updatedLabel}</span>
-              <strong>{activeItem.deck.title}</strong>
-              <small>{activeItem.description}</small>
-              <div className="hub-quality-summary" aria-label={`Quality score ${activeItem.quality.overallScore} trên 10`}>
-                <span>QUALITY SCORE</span>
-                <strong>{activeItem.quality.overallScore}<small>/10</small></strong>
-                <em>{activeItem.quality.readiness}</em>
+              <span>{featuredItem.updatedLabel}</span>
+              <strong>{featuredItem.deck.title}</strong>
+              <small>{featuredItem.description}</small>
+              <div className="hub-quality-summary" aria-label={`V2 quality score ${featuredItem.audit.scorecard.overallScore} trên 10`}>
+                <span>V2 QUALITY SCORE</span>
+                <strong>{featuredItem.audit.scorecard.overallScore}<small>/10</small></strong>
+                <em>{featuredItem.audit.scorecard.readiness}</em>
               </div>
             </div>
             <div className="hub-active-actions">
-              <Link className="primary-action primary-action--large" href={`/studio?deck=${activeItem.deck.id}`}><Pencil size={17} /> Mở deck</Link>
-              <Link className="secondary-action" href={`/preview?deck=${activeItem.deck.id}`}><Eye size={17} /> Xem trước</Link>
-              <Link className="secondary-action" href={`/present?deck=${activeItem.deck.id}`}><Play size={17} /> Trình chiếu</Link>
+              <Link className="primary-action primary-action--large" href={`/studio?deck=${featuredItem.deck.id}`}><Pencil size={17} /> Mở deck</Link>
+              <Link className="secondary-action" href={`/preview?deck=${featuredItem.deck.id}`}><Eye size={17} /> Xem trước</Link>
+              <Link className="secondary-action" href={`/present?deck=${featuredItem.deck.id}`}><Play size={17} /> Trình chiếu</Link>
             </div>
           </div>
 
           <div className="hub-health-strip" aria-label="Tình trạng không gian làm việc">
-            <article><LayoutGrid size={17} /><strong>{deckCatalog.length}</strong><span>deck có cấu trúc</span></article>
+            <article><LayoutGrid size={17} /><strong>{totalDecks}</strong><span>deck có cấu trúc</span></article>
             <article><SlidersHorizontal size={17} /><strong>{totalSlides}</strong><span>slide có thể quản lý</span></article>
             <article><BarChart3 size={17} /><strong>{averageQuality}</strong><span>điểm chất lượng TB</span></article>
             <article aria-label="15 tiêu chí được chấm"><CheckCircle2 size={17} /><strong>15</strong><span>tiêu chí được chấm</span></article>
           </div>
         </div>
 
-        <div className="hub-featured-stage" aria-label={`Bản xem trước ${activeItem.deck.title}`}>
+        <div className="hub-featured-stage" aria-label={`Bản xem trước ${featuredItem.deck.title}`}>
           <div className="hero-stage-meta">
-            <span>DECK ĐANG CHỌN</span>
-            <span>{activeItem.deck.slides.length} slide</span>
+            <span>DECK BẢO VỆ NỔI BẬT</span>
+            <span>{featuredItem.deck.slides.length} slide</span>
           </div>
-          <DeckThumbnail slide={activeItem.deck.slides[0]!} assets={activeItem.deck.assets} themeClassName={deckThemeClassName(activeItem.deck)} />
+          <DeckThumbnail slide={featuredItem.deck.slides[0]!} assets={featuredItem.deck.assets} />
           <div className="hero-stage-footer">
-            <div><strong>{slideTitle(activeItem.deck.slides[0]!)}</strong><span>{activeItem.tags.join(" · ")}</span></div>
-            <Link href={`/preview?deck=${activeItem.deck.id}`}>Mở preview <ArrowRight size={15} /></Link>
+            <div><strong>{featuredItem.deck.slides[0]!.name}</strong><span>{featuredItem.tags.join(" · ")}</span></div>
+            <Link href={`/preview?deck=${featuredItem.deck.id}`}>Mở preview <ArrowRight size={15} /></Link>
           </div>
         </div>
       </section>
@@ -123,9 +127,9 @@ export function Hub() {
       <section className="hub-section hub-v2-library" id="v2-library" aria-labelledby="v2-library-title">
         <div className="section-heading-row">
           <div>
-            <span className="section-label">SCENE V2 MIGRATIONS</span>
-            <h2 id="v2-library-title">Bốn deck tham chiếu đã chuyển sang document model có thể audit.</h2>
-            <p>V1 vẫn được giữ làm rollback source. Bản V2 công bố trạng thái review, evidence migration và export capability thay vì tự nhận production-ready.</p>
+            <span className="section-label">SCENE V2 LIBRARY</span>
+            <h2 id="v2-library-title">Bốn deck tham chiếu dùng document model có thể audit.</h2>
+            <p>MyInterview được author trực tiếp trên Scene V2; các deck tham chiếu còn lại giữ trạng thái review và công bố rõ evidence, performance cùng export capability.</p>
           </div>
           <div className="hub-v2-summary" aria-label="Tóm tắt thư viện Scene V2">
             <strong>{v2DeckCatalog.length}</strong>
@@ -178,16 +182,15 @@ export function Hub() {
           <div className="deck-library-grid">
             {filteredDecks.map((item) => {
               const hasDraft = draftDeckIds.includes(item.deck.id);
-              const active = item.deck.id === activeDeckId;
               return (
-                <article className={`deck-card ${active ? "is-selected" : ""}`} data-deck-id={item.deck.id} key={item.deck.id}>
-                  <button className="deck-card-preview" onClick={() => setActiveDeckId(item.deck.id)} aria-label={`Chọn ${item.deck.title}`}>
+                <article className="deck-card" data-deck-id={item.deck.id} key={item.deck.id}>
+                  <Link className="deck-card-preview" href={`/preview?deck=${item.deck.id}`} aria-label={`Xem trước ${item.deck.title}`}>
                     <DeckThumbnail slide={item.deck.slides[0]!} assets={item.deck.assets} themeClassName={deckThemeClassName(item.deck)} />
                     <span className={`hub-status-chip ${hasDraft ? "hub-status-chip--draft" : "hub-status-chip--ready"}`}>
                       {hasDraft ? <Clock3 size={13} /> : <CheckCircle2 size={13} />}
                       {hasDraft ? "Có bản nháp" : "Sẵn sàng"}
                     </span>
-                  </button>
+                  </Link>
                   <div className="deck-card-content">
                     <div><span>{item.deck.slides.length} SLIDE</span><span>{item.updatedLabel}</span></div>
                     <h3>{item.deck.title}</h3>
@@ -215,16 +218,16 @@ export function Hub() {
 
       <section className="hub-section slide-manager" id="slides" aria-labelledby="slides-title">
         <div className="section-heading-row">
-          <div><span className="section-label">CẤU TRÚC TRÌNH CHIẾU</span><h2 id="slides-title">Các trang của bộ trình chiếu đang chọn</h2></div>
-          <div className="selected-deck-copy"><span>{activeItem.deck.title}</span><strong>{activeItem.deck.slides.length} slide</strong></div>
+          <div><span className="section-label">CẤU TRÚC TRÌNH CHIẾU</span><h2 id="slides-title">Toàn bộ mạch bảo vệ MyInterview</h2></div>
+          <div className="selected-deck-copy"><span>{featuredItem.deck.title}</span><strong>{featuredItem.deck.slides.length} slide</strong></div>
         </div>
         <div className="slide-strip">
-          {activeItem.deck.slides.map((slide, index) => (
-            <Link className="slide-strip-item" key={slide.id} href={`/studio?deck=${activeItem.deck.id}&slide=${slide.id}`}>
+          {featuredItem.deck.slides.map((slide, index) => (
+            <Link className="slide-strip-item" key={slide.id} href={`/studio?deck=${featuredItem.deck.id}&slide=${slide.id}`}>
               <span>{String(index + 1).padStart(2, "0")}</span>
-              <DeckThumbnail slide={slide} assets={activeItem.deck.assets} themeClassName={deckThemeClassName(activeItem.deck)} />
-              <strong>{slideTitle(slide)}</strong>
-              <small>{layoutLabel(slide.layout)} · {slide.components.length} thành phần</small>
+              <DeckThumbnail slide={slide} assets={featuredItem.deck.assets} />
+              <strong>{slide.name}</strong>
+              <small>Scene V2 · {slide.elements.length} phần tử</small>
             </Link>
           ))}
         </div>
