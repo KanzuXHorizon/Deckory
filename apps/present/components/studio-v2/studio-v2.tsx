@@ -10,7 +10,11 @@ import {
   type PointerEvent
 } from "react";
 import { auditDeckV2, scoreDeckV2 } from "@deckory/audit";
-import { SceneRenderer } from "@deckory/renderer";
+import {
+  SceneRenderer,
+  resolveDeckExportReport,
+  type ExportCapabilityRegistry
+} from "@deckory/renderer";
 import type { DeckDocumentV2, Frame, SceneElement, SceneSlide } from "@deckory/schema/v2";
 import {
   absoluteFrames,
@@ -45,10 +49,14 @@ import {
   type StudioV2State
 } from "./studio-v2-state";
 import { QualitySummaryV2 } from "../quality-summary-v2";
+import { ExportCapabilityPanel } from "./export-capability-panel";
 import { VisualIntelligencePanel } from "./visual-intelligence-panel";
 import styles from "./studio-v2.module.css";
 
 const EMPTY_SELECTION: StudioSelection = { elementIds: [] };
+const EMPTY_EXPORT_CAPABILITY_REGISTRY: ExportCapabilityRegistry = {
+  resolveComponent: () => undefined
+};
 
 type DragState = {
   pointerId: number;
@@ -155,10 +163,12 @@ function TextContentEditor({
 
 export function StudioV2({
   sourceDeck,
-  initialSlideId
+  initialSlideId,
+  exportCapabilityRegistry = EMPTY_EXPORT_CAPABILITY_REGISTRY
 }: {
   sourceDeck: DeckDocumentV2;
   initialSlideId?: string;
+  exportCapabilityRegistry?: ExportCapabilityRegistry;
 }) {
   const [state, setState] = useState<StudioV2State>(() => createStudioV2State(sourceDeck, initialSlideId));
   const [selection, setSelection] = useState<StudioSelection>(EMPTY_SELECTION);
@@ -178,6 +188,10 @@ export function StudioV2({
     const structural = auditDeckV2(state.deck);
     return { ...structural, scorecard: scoreDeckV2(state.deck) };
   }, [state.deck]);
+  const exportReport = useMemo(
+    () => resolveDeckExportReport(state.deck, exportCapabilityRegistry),
+    [state.deck, exportCapabilityRegistry]
+  );
 
   const commit = (command: SceneCommand) => {
     try {
@@ -551,7 +565,7 @@ export function StudioV2({
           {diagnostic ? <div className={styles.error} role="alert">{diagnostic.message}</div> : null}
           {primaryElement ? (
             <>
-              <section className={styles.inspectorSection}>
+              <section className={styles.inspectorSection} data-element-inspector="true">
                 <span className={styles.panelLabel}>{primaryElement.kind}</span>
                 <h2>{primaryElement.name}</h2>
                 <p>{primaryElement.id} · {Math.round(primaryElement.frame.width)} × {Math.round(primaryElement.frame.height)}</p>
@@ -587,6 +601,10 @@ export function StudioV2({
               <p>Inspector sẽ hiển thị nội dung, layout và constraints phù hợp.</p>
             </div>
           )}
+          <ExportCapabilityPanel
+            report={exportReport}
+            {...(selection.primaryElementId ? { selectedElementId: selection.primaryElementId } : {})}
+          />
           <div className={styles.qualityGate}>
             <QualitySummaryV2 report={qualityReport} compact />
           </div>

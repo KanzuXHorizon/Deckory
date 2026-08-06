@@ -1,0 +1,144 @@
+.root {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--studio-line);
+  background: color-mix(in srgb, var(--studio-panel-strong) 54%, transparent);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header h2 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.header p,
+.disclosure,
+.empty,
+.detail p,
+.detail small {
+  margin: 0;
+  color: var(--studio-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.summary {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.summary > div {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-block: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--studio-line) 72%, transparent);
+}
+
+.summary dt {
+  color: var(--studio-text);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.summary dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+}
+
+.summary dd span,
+.state {
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #11141a;
+  color: #d7dae1;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.summary dd span[data-state="fallback"],
+.state[data-state="fallback"] {
+  background: color-mix(in srgb, #c77700 20%, #11141a);
+  color: #ffd79b;
+}
+
+.summary dd span[data-state="unsupported"],
+.state[data-state="unsupported"] {
+  background: color-mix(in srgb, #c43d3d 20%, #11141a);
+  color: #ffc4c4;
+}
+
+.summary dd span[data-state="native-editable"],
+.state[data-state="native-editable"] {
+  background: color-mix(in srgb, #136f63 24%, #11141a);
+  color: #b9f2e9;
+}
+
+.detail {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.detail header {
+  min-width: 0;
+}
+
+.detail h3 {
+  margin: 0;
+  color: var(--studio-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.detailGrid {
+  display: grid;
+  gap: 6px;
+}
+
+.detailGrid > div {
+  display: grid;
+  grid-template-columns: 44px 76px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.detailGrid strong {
+  color: var(--studio-text);
+  font-size: 9px;
+}
+
+.detailGrid p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fallback {
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, #c77700 48%, var(--studio-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, #c77700 9%, transparent);
+  color: #ffd79b;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.disclosure {
+  padding-top: 2px;
+  color: #d4d7de;
+}

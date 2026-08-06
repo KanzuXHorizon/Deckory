@@ -79,6 +79,22 @@ describe("trusted component registry", () => {
     })).toThrow(/không an toàn|__proto__/i);
   });
 
+  it("requires editable export capabilities to be a trusted subset", () => {
+    expect(() => registerDeckComponent({
+      ...scoreRing,
+      id: "invalid-editable-export",
+      editableExportCapabilities: ["pptx"]
+    })).toThrow(/editable.*pptx.*exportCapabilities|subset/i);
+
+    const editable = registerDeckComponent({
+      ...scoreRing,
+      id: "editable-score-ring",
+      exportCapabilities: [...scoreRing.exportCapabilities, "pptx"],
+      editableExportCapabilities: ["pptx"]
+    });
+    expect(editable.editableExportCapabilities).toEqual(["pptx"]);
+  });
+
   it("requires strict Zod object props schemas", () => {
     expect(() => registerDeckComponent({
       ...scoreRing,

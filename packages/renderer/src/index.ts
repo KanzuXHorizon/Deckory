@@ -3,6 +3,7 @@ export * from "./chart-renderer";
 export * from "./component-host";
 export * from "./diagram-renderer";
 export * from "./element-renderer";
+export * from "./export-capabilities";
 export * from "./image-renderer";
 export * from "./legacy-renderer";
 export * from "./motion-compiler";

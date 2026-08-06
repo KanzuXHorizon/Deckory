@@ -39,6 +39,7 @@ export interface DeckComponentDefinition<
   readonly renderer: (context: DeckComponentRenderContext<Props>) => ReactNode;
   readonly accessibleSummary: (props: Props) => string;
   readonly exportCapabilities: readonly ExportCapability[];
+  readonly editableExportCapabilities?: readonly ExportCapability[];
   readonly migrateProps?: (context: DeckComponentMigrationContext) => unknown | undefined;
 }
 
@@ -53,6 +54,7 @@ export interface RegisterDeckComponentInput<Schema extends StrictObjectSchema> {
   renderer: (context: DeckComponentRenderContext<z.output<Schema>>) => ReactNode;
   accessibleSummary: (props: z.output<Schema>) => string;
   exportCapabilities: readonly ExportCapability[];
+  editableExportCapabilities?: readonly ExportCapability[];
   migrateProps?: (context: DeckComponentMigrationContext) => unknown | undefined;
 }
 
@@ -130,6 +132,7 @@ function assertDefinitionMetadata(definition: {
   renderer: unknown;
   accessibleSummary: unknown;
   exportCapabilities: readonly ExportCapability[];
+  editableExportCapabilities?: readonly ExportCapability[];
 }): void {
   if (!stableIdPattern.test(definition.id)) {
     throw new TypeError(`Component id "${definition.id}" phải là stable kebab-case ID.`);
@@ -151,6 +154,14 @@ function assertDefinitionMetadata(definition: {
   for (const capability of definition.exportCapabilities) {
     if (!allowedExportCapabilities.has(capability)) {
       throw new TypeError(`Export capability không được hỗ trợ: ${String(capability)}.`);
+    }
+  }
+  for (const capability of definition.editableExportCapabilities ?? []) {
+    if (!allowedExportCapabilities.has(capability)) {
+      throw new TypeError(`Editable export capability không được hỗ trợ: ${String(capability)}.`);
+    }
+    if (capability !== "pptx" || !definition.exportCapabilities.includes(capability)) {
+      throw new TypeError(`Editable export capability ${capability} phải là subset của exportCapabilities và hiện chỉ hỗ trợ pptx.`);
     }
   }
 }
@@ -216,6 +227,9 @@ export function registerDeckComponent<Schema extends StrictObjectSchema>(
     renderer: definition.renderer,
     accessibleSummary: definition.accessibleSummary,
     exportCapabilities: Object.freeze([...new Set(definition.exportCapabilities)]),
+    ...(definition.editableExportCapabilities
+      ? { editableExportCapabilities: Object.freeze([...new Set(definition.editableExportCapabilities)]) }
+      : {}),
     ...(definition.migrateProps ? { migrateProps: definition.migrateProps } : {})
   };
   const frozen = Object.freeze(normalized);

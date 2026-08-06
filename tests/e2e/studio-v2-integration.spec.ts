@@ -18,6 +18,10 @@ test.describe("Deckory V2 Studio integration", () => {
     await expect(page.locator('[data-scene-v2-surface="studio"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Layers" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Layout" })).toBeHidden();
+    const exportCapabilities = page.locator('[data-export-capability-panel="true"]');
+    await expect(exportCapabilities).toBeVisible();
+    await expect(exportCapabilities).toContainText("Khả năng xuất");
+    await expect(exportCapabilities).toContainText("PPTX");
     const qualityGate = page.locator('[data-v2-quality-summary="true"]');
     await expect(qualityGate).toBeVisible();
     await expect(qualityGate).toHaveAttribute("data-quality-state", "evidence-pending");
@@ -29,9 +33,12 @@ test.describe("Deckory V2 Studio integration", () => {
     await expect(title).toBeVisible();
 
     await title.click();
-    await expect(page.getByRole("heading", { name: "Title" })).toBeVisible();
+    const elementInspector = page.locator('[data-element-inspector="true"]');
+    await expect(elementInspector.getByRole("heading", { name: "Title" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Layout" })).toBeVisible();
     await expect(page.locator('[data-selection-label="Title"]')).toBeVisible();
+    await expect(exportCapabilities).toContainText("Title");
+    await expect(exportCapabilities).toContainText("Editable");
 
     const beforeLeft = await title.evaluate((element) => Number.parseFloat(getComputedStyle(element).left));
     await canvas.focus();

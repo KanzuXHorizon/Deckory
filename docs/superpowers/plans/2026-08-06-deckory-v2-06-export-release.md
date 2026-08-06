@@ -36,7 +36,7 @@
 **Interfaces:**
 - Produces: `ExportCapability`, `ElementExportResolution`, `resolveElementExportCapability`, `resolveDeckExportReport`.
 
-- [ ] **Step 1: Write failing capability tests**
+- [x] **Step 1: Write failing capability tests**
 
 ```ts
 it("reports native SVG for a supported shape", () => {
@@ -60,13 +60,13 @@ it("never labels a fallback as editable", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests and confirm RED**
+- [x] **Step 2: Run tests and confirm RED**
 
 Run: `pnpm --filter @deckory/renderer test -- src/export-capabilities.test.ts`
 
 Expected: FAIL because capability resolution does not exist.
 
-- [ ] **Step 3: Implement explicit capability states**
+- [x] **Step 3: Implement explicit capability states**
 
 ```ts
 type ExportCapabilityState =
@@ -78,11 +78,11 @@ type ExportCapabilityState =
 
 Resolution includes reason, fallback, warnings and the responsible component/version.
 
-- [ ] **Step 4: Build Studio disclosure UI**
+- [x] **Step 4: Build Studio disclosure UI**
 
 The Export Inspector shows a deck summary and selected-element detail. Unsupported and fallback elements are visible before the user starts export.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```bash
 pnpm --filter @deckory/renderer test -- src/export-capabilities.test.ts
@@ -333,7 +333,7 @@ git commit -m "feat(export): define editable PPTX adapter boundary"
 **Interfaces:**
 - Produces: `scoreDeckV2`, `DeckQualityScorecardV2`, `RuntimeEvidenceRecord`, 20 dimensions.
 
-- [ ] **Step 1: Write failing scorecard coverage tests**
+- [x] **Step 1: Write failing scorecard coverage tests**
 
 ```ts
 it("returns all twenty named dimensions", () => {
@@ -352,13 +352,13 @@ it("does not award runtime-only points without revision-matched evidence", () =>
 });
 ```
 
-- [ ] **Step 2: Run tests and confirm RED**
+- [x] **Step 2: Run tests and confirm RED**
 
 Run: `pnpm --filter @deckory/audit test -- src/v2-scorecard.test.ts`
 
 Expected: FAIL because the V2 scorecard does not exist.
 
-- [ ] **Step 3: Implement transparent deductions and evidence confidence**
+- [x] **Step 3: Implement transparent deductions and evidence confidence**
 
 Structural checks include:
 
@@ -382,11 +382,11 @@ Structural checks include:
 
 Runtime checks require revision, viewport, mode, timestamp and evidence artifact.
 
-- [ ] **Step 4: Integrate score summaries into Hub and Studio**
+- [x] **Step 4: Integrate score summaries into Hub and Studio**
 
 Show score, readiness, top three issues and categories awaiting runtime review. Never show a green 10/10 badge for a manual-review-required category.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```bash
 pnpm --filter @deckory/audit test
