@@ -180,6 +180,111 @@ describe("SlideFrame", () => {
     expect(html).toContain("Deckory");
   });
 
+  it("renders semantic diagrams with accessible summaries and final-state reduced motion", () => {
+    const diagramSlide: Slide = {
+      id: "semantic-diagrams",
+      layout: "data",
+      components: [{
+        id: "roadmap",
+        type: "diagram",
+        props: {
+          title: "Từ bản nháp đến production",
+          summary: "Roadmap gồm ba giai đoạn: cấu trúc, kiểm chứng và production.",
+          variant: "roadmap",
+          items: [
+            { id: "structure", label: "Cấu trúc", description: "Typed document", value: "01", tone: "cobalt" },
+            { id: "evidence", label: "Kiểm chứng", description: "Audit và browser QA", value: "02", tone: "teal", featured: true },
+            { id: "production", label: "Production", description: "Build và export", value: "03", tone: "amber" }
+          ]
+        }
+      }]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={diagramSlide} deckId="deckory-story" sequenceStep={0} reducedMotion />
+    );
+
+    expect(html).toContain("component-slot--diagram");
+    expect(html).toContain("semantic-diagram--roadmap");
+    expect(html).toContain('role="img"');
+    expect(html).toContain("Roadmap gồm ba giai đoạn");
+    expect(html).toContain('data-motion-off="true"');
+    expect(html).toContain('data-featured="true"');
+  });
+
+  it("places quadrant items in their semantic grid positions", () => {
+    const quadrantSlide: Slide = {
+      id: "priority-quadrant",
+      layout: "comparison",
+      components: [{
+        id: "quadrant",
+        type: "diagram",
+        props: {
+          title: "Ma trận ưu tiên",
+          summary: "Bốn nhóm được định vị theo tác động và nỗ lực.",
+          variant: "quadrant",
+          xLabel: "Tác động",
+          yLabel: "Nỗ lực",
+          items: [
+            { id: "defer", label: "Trì hoãn", position: "bottom-left" },
+            { id: "quick-win", label: "Quick win", position: "top-right", featured: true },
+            { id: "maintenance", label: "Duy trì", position: "top-left" },
+            { id: "strategic", label: "Chiến lược", position: "bottom-right" }
+          ]
+        }
+      }]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={quadrantSlide} deckId="deckory-story" sequenceStep={0} reducedMotion />
+    );
+
+    expect(html).toContain('data-position="bottom-left"');
+    expect(html).toContain('style="--item-index:0;grid-area:bottom-left"');
+    expect(html).toContain('style="--item-index:1;grid-area:top-right"');
+  });
+
+  it("renders local product evidence as an accessible media showcase", () => {
+    const mediaSlide: Slide = {
+      id: "product-evidence",
+      layout: "data",
+      components: [{
+        id: "media",
+        type: "media-showcase",
+        props: {
+          title: "Luồng sản phẩm đã được triển khai",
+          summary: "Hai bề mặt đại diện cho đầu vào và kết quả coaching.",
+          variant: "duo",
+          items: [
+            { assetId: "dashboard-shot", alt: "Bảng điều khiển MyInterview", eyebrow: "BỐI CẢNH", title: "Chuẩn bị đúng dữ liệu", caption: "CV, JD và mục tiêu nghề nghiệp." },
+            { assetId: "feedback-shot", alt: "Màn hình phản hồi MyInterview", eyebrow: "KẾT QUẢ", title: "Phản hồi có bằng chứng", caption: "Điểm, lý do và bước cải thiện.", featured: true }
+          ]
+        }
+      }]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame
+        slide={mediaSlide}
+        deckId="myinterview-defense"
+        sequenceStep={0}
+        reducedMotion
+        assets={[
+          { id: "dashboard-shot", type: "image", src: "/myinterview/dashboard.svg", mediaType: "image/svg+xml" },
+          { id: "feedback-shot", type: "image", src: "/myinterview/feedback.svg", mediaType: "image/svg+xml" }
+        ]}
+      />
+    );
+
+    expect(html).toContain("component-slot--media-showcase");
+    expect(html).toContain("media-showcase--duo");
+    expect(html).toContain('src="/myinterview/dashboard.svg"');
+    expect(html).toContain('alt="Bảng điều khiển MyInterview"');
+    expect(html).toContain("Phản hồi có bằng chứng");
+    expect(html).toContain('data-featured="true"');
+    expect(html.match(/<figure/g)).toHaveLength(2);
+  });
+
   it("marks six-member rosters for a compact two-column layout", () => {
     const rosterSlide: Slide = {
       id: "six-member-team",

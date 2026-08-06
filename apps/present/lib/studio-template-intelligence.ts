@@ -5,6 +5,7 @@ import type {
   SlideComponent
 } from "@deckory/schema";
 import type {
+  SlideMasterPreset,
   SlideRecipe,
   SlideRecipeCategory,
   VisualStylePreset
@@ -67,6 +68,25 @@ export function createSlideFromRecipe(
     ...(recipe.transition ? { transition: { ...recipe.transition } } : {}),
     notes: buildRecipeNotes(recipe),
     components
+  };
+}
+
+export function applySlideMaster(
+  slide: Slide,
+  master: SlideMasterPreset
+): Slide {
+  if (slide.layout !== master.layout) return slide;
+
+  return {
+    ...slide,
+    masterId: master.id,
+    variant: master.variant,
+    background: master.background,
+    transition: { ...master.transition },
+    components: slide.components.map((component) => {
+      const effect = master.componentEffects[component.type];
+      return effect ? { ...component, effect: { ...effect } } as SlideComponent : component;
+    })
   };
 }
 

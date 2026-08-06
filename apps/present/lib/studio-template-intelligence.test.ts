@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { slideRecipes, visualStyles } from "@deckory/templates";
+import { getSlideMaster, slideRecipes, visualStyles } from "@deckory/templates";
 import { validateDeck, type DeckDocument } from "@deckory/schema";
 import {
+  applySlideMaster,
   applyVisualStyle,
   createSlideFromRecipe,
   customizeDeckTheme,
@@ -53,6 +54,21 @@ describe("Studio template intelligence", () => {
       props: { variant: "line" }
     });
     expect(result).toMatchObject({ ok: true });
+  });
+
+  it("applies a slide master without replacing semantic content", () => {
+    const master = getSlideMaster("cover-cinematic")!;
+    const sourceSlide = sourceDeck.slides[0]!;
+    const mastered = applySlideMaster(sourceSlide, master);
+
+    expect(mastered.masterId).toBe(master.id);
+    expect(mastered.variant).toBe(master.variant);
+    expect(mastered.background).toBe(master.background);
+    expect(mastered.transition).toEqual(master.transition);
+    expect(mastered.components.map((component) => ({ id: component.id, type: component.type, props: component.props }))).toEqual(
+      sourceSlide.components.map((component) => ({ id: component.id, type: component.type, props: component.props }))
+    );
+    expect(validateDeck({ ...sourceDeck, slides: [mastered] })).toMatchObject({ ok: true });
   });
 
   it("applies a visual style without mutating the catalog object", () => {

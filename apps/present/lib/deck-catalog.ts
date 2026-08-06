@@ -1,7 +1,8 @@
 import { deckoryStory } from "@deckory/deckory-story";
 import { myInterviewDefense } from "@deckory/myinterview-defense";
 import { templateGalleryDeck } from "@deckory/template-gallery";
-import { defineDeck, type DeckDocument, type Slide } from "@deckory/schema";
+import { scoreDeckQuality, type DeckQualityScorecard } from "@deckory/audit";
+import { defineDeck, SUPPORTED_COMPONENT_TYPES, type DeckDocument, type Slide } from "@deckory/schema";
 
 const visualLab = defineDeck({
   id: "visual-lab",
@@ -210,6 +211,7 @@ export type DeckCatalogItem = {
   status: "ready" | "draft";
   updatedLabel: string;
   tags: string[];
+  quality: DeckQualityScorecard;
 };
 
 export const deckCatalog: DeckCatalogItem[] = [
@@ -218,28 +220,32 @@ export const deckCatalog: DeckCatalogItem[] = [
     description: "Deck bảo vệ dự án tốt nghiệp AI Technical Interviewer của nhóm NEXUS.",
     status: "ready",
     updatedLabel: "Summer 2026",
-    tags: ["Academic defense", "MyInterview", "AI"]
+    tags: ["Academic defense", "MyInterview", "AI"],
+    quality: scoreDeckQuality(myInterviewDefense)
   },
   {
     deck: deckoryStory,
     description: "Deck sản phẩm tham chiếu, trình bày thesis và kiến trúc của Deckory.",
     status: "ready",
     updatedLabel: "Bản tham chiếu",
-    tags: ["Product story", "Architecture", "Pitch"]
+    tags: ["Product story", "Architecture", "Pitch"],
+    quality: scoreDeckQuality(deckoryStory)
   },
   {
     deck: visualLab,
     description: "Bộ fixture để kiểm tra chart, metric, insight và visual grammar.",
     status: "ready",
     updatedLabel: "Visual QA",
-    tags: ["Charts", "Data story", "Component lab"]
+    tags: ["Charts", "Data story", "Component lab"],
+    quality: scoreDeckQuality(visualLab)
   },
   {
     deck: templateGalleryDeck,
     description: "Deck được instantiate hoàn toàn từ style, recipe và blueprint của @deckory/templates.",
     status: "ready",
     updatedLabel: "Template system",
-    tags: ["Templates", "Blueprints", "Agent authoring"]
+    tags: ["Templates", "Blueprints", "Agent authoring"],
+    quality: scoreDeckQuality(templateGalleryDeck)
   }
 ];
 
@@ -267,7 +273,7 @@ export function slideTitle(slide: Slide): string {
 
 export const visualCoverage = [
   { label: "Layouts", value: "9", note: "cover đến closing" },
-  { label: "Components", value: "13", note: "semantic và typed" },
+  { label: "Components", value: String(SUPPORTED_COMPONENT_TYPES.length), note: "semantic và typed" },
   { label: "Charts", value: "4", note: "bar, line, area, donut" },
   { label: "Themes", value: "3", note: "editorial và technical" }
 ] as const;

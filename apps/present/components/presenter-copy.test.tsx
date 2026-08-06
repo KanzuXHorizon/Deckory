@@ -25,6 +25,7 @@ describe("Presenter professional copy", () => {
     expect(html).toContain('aria-label="Về thư viện Deckory"');
     expect(html).toContain("Thư viện");
     expect(html).toContain('aria-label="Điều khiển trình chiếu"');
+    expect(html).toContain('<div class="wall-clock"><span>Hiện tại</span><strong>--:--</strong></div>');
     expect(html).not.toContain("Presenter Console");
     expect(html).not.toContain("Điều khiển presentation");
   });

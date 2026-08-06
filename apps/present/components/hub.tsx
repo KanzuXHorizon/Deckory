@@ -43,6 +43,7 @@ export function Hub() {
 
   const activeItem = deckCatalog.find((item) => item.deck.id === activeDeckId) ?? deckCatalog[0]!;
   const totalSlides = deckCatalog.reduce((sum, item) => sum + item.deck.slides.length, 0);
+  const averageQuality = Math.round((deckCatalog.reduce((sum, item) => sum + item.quality.overallScore, 0) / deckCatalog.length) * 10) / 10;
 
   return (
     <main className="hub-shell">
@@ -71,6 +72,11 @@ export function Hub() {
               <span>{activeItem.updatedLabel}</span>
               <strong>{activeItem.deck.title}</strong>
               <small>{activeItem.description}</small>
+              <div className="hub-quality-summary" aria-label={`Quality score ${activeItem.quality.overallScore} trên 10`}>
+                <span>QUALITY SCORE</span>
+                <strong>{activeItem.quality.overallScore}<small>/10</small></strong>
+                <em>{activeItem.quality.readiness}</em>
+              </div>
             </div>
             <div className="hub-active-actions">
               <Link className="primary-action primary-action--large" href={`/studio?deck=${activeItem.deck.id}`}><Pencil size={17} /> Mở deck</Link>
@@ -82,8 +88,8 @@ export function Hub() {
           <div className="hub-health-strip" aria-label="Tình trạng không gian làm việc">
             <article><LayoutGrid size={17} /><strong>{deckCatalog.length}</strong><span>deck có cấu trúc</span></article>
             <article><SlidersHorizontal size={17} /><strong>{totalSlides}</strong><span>slide có thể quản lý</span></article>
-            <article><BarChart3 size={17} /><strong>4</strong><span>kiểu biểu đồ</span></article>
-            <article><CheckCircle2 size={17} /><strong>{deckCatalog.length}</strong><span>deck hợp lệ</span></article>
+            <article><BarChart3 size={17} /><strong>{averageQuality}</strong><span>điểm chất lượng TB</span></article>
+            <article aria-label="15 tiêu chí được chấm"><CheckCircle2 size={17} /><strong>15</strong><span>tiêu chí được chấm</span></article>
           </div>
         </div>
 
@@ -112,7 +118,7 @@ export function Hub() {
               const hasDraft = draftDeckIds.includes(item.deck.id);
               const active = item.deck.id === activeDeckId;
               return (
-                <article className={`deck-card ${active ? "is-selected" : ""}`} key={item.deck.id}>
+                <article className={`deck-card ${active ? "is-selected" : ""}`} data-deck-id={item.deck.id} key={item.deck.id}>
                   <button className="deck-card-preview" onClick={() => setActiveDeckId(item.deck.id)} aria-label={`Chọn ${item.deck.title}`}>
                     <DeckThumbnail slide={item.deck.slides[0]!} assets={item.deck.assets} themeClassName={deckThemeClassName(item.deck)} />
                     <span className={`hub-status-chip ${hasDraft ? "hub-status-chip--draft" : "hub-status-chip--ready"}`}>
@@ -124,6 +130,11 @@ export function Hub() {
                     <div><span>{item.deck.slides.length} SLIDE</span><span>{item.updatedLabel}</span></div>
                     <h3>{item.deck.title}</h3>
                     <p>{item.description}</p>
+                    <div className="deck-card-quality" aria-label={`Quality score ${item.quality.overallScore} trên 10`}>
+                      <span>Quality score</span>
+                      <div aria-hidden="true"><i style={{ width: `${item.quality.overallScore * 10}%` }} /></div>
+                      <strong>{item.quality.overallScore}/10</strong>
+                    </div>
                     <ul>{item.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
                   </div>
                   <footer>

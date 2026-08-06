@@ -6,6 +6,7 @@ import {
   Check,
   ChevronRight,
   LayoutTemplate,
+  Layers3,
   Palette,
   Plus,
   Search,
@@ -15,20 +16,26 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DeckTheme } from "@deckory/schema";
-import type { SlideRecipe, SlideRecipeCategory, VisualStylePreset } from "@deckory/templates";
+import type { SlideMasterPreset, SlideRecipe, SlideRecipeCategory, VisualStylePreset } from "@deckory/templates";
 import { filterStudioRecipes } from "../lib/studio-template-intelligence";
 import { layoutOptions } from "../lib/studio-option-catalog";
 
-type TemplatePanelTab = "recipes" | "styles";
+type TemplatePanelTab = "recipes" | "masters" | "styles";
 
 type StudioTemplatePanelProps = {
   open: boolean;
   recipes: readonly SlideRecipe[];
+  masters: readonly SlideMasterPreset[];
   styles: readonly VisualStylePreset[];
+  currentMasterId: string | undefined;
+  recommendedMasterId: string | undefined;
+  recommendationReasons: readonly string[];
   currentThemeId: string;
   currentTheme: DeckTheme;
   onClose: () => void;
   onInsertRecipe: (recipe: SlideRecipe) => void;
+  onApplyMaster: (master: SlideMasterPreset) => void;
+  onAutoBalance: () => void;
   onApplyStyle: (style: VisualStylePreset) => void;
   onCustomizeTheme: (theme: DeckTheme) => void;
 };
@@ -72,11 +79,17 @@ const DENSITIES: readonly { value: DeckTheme["density"]; label: string; note: st
 export function StudioTemplatePanel({
   open,
   recipes,
+  masters,
   styles,
+  currentMasterId,
+  recommendedMasterId,
+  recommendationReasons,
   currentThemeId,
   currentTheme,
   onClose,
   onInsertRecipe,
+  onApplyMaster,
+  onAutoBalance,
   onApplyStyle,
   onCustomizeTheme
 }: StudioTemplatePanelProps) {
@@ -93,6 +106,7 @@ export function StudioTemplatePanel({
     () => filterStudioRecipes(recipes, query, category),
     [category, query, recipes]
   );
+  const recommendedMaster = masters.find((master) => master.id === recommendedMasterId);
 
   useEffect(() => {
     if (!open) return;
@@ -157,6 +171,19 @@ export function StudioTemplatePanel({
             <LayoutTemplate size={16} aria-hidden="true" />
             <span>Công thức slide</span>
             <small>{recipes.length}</small>
+          </button>
+          <button
+            id="studio-template-tab-masters"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "masters"}
+            aria-controls="studio-template-panel-masters"
+            className={activeTab === "masters" ? "is-active" : ""}
+            onClick={() => setActiveTab("masters")}
+          >
+            <Layers3 size={16} aria-hidden="true" />
+            <span>Slide master</span>
+            <small>{masters.length}</small>
           </button>
           <button
             id="studio-template-tab-styles"
@@ -225,6 +252,53 @@ export function StudioTemplatePanel({
               <strong>Không có công thức phù hợp</strong>
               <span>Thử từ khóa ngắn hơn hoặc chọn nhóm “Tất cả”.</span>
               <button type="button" onClick={() => { setQuery(""); setCategory("all"); }}>Xóa bộ lọc</button>
+            </div>
+          )}
+        </section>
+
+        <section
+          id="studio-template-panel-masters"
+          className="studio-template-content studio-template-content--masters"
+          role="tabpanel"
+          aria-labelledby="studio-template-tab-masters"
+          hidden={activeTab !== "masters"}
+        >
+          <div className="studio-master-intro">
+            <div>
+              <span>COMPOSITION SYSTEM</span>
+              <h3>Master đổi nhịp trình bày mà không phá nội dung semantic.</h3>
+              <p>Chỉ các master tương thích với layout hiện tại được hiển thị. Nội dung, nguồn và loại component luôn được giữ nguyên.</p>
+            </div>
+            {recommendedMaster && (
+              <aside className="studio-master-recommendation" aria-label="Master được đề xuất">
+                <div><Sparkles size={17} aria-hidden="true" /><span>ĐỀ XUẤT CÂN BẰNG</span></div>
+                <strong>{recommendedMaster.name}</strong>
+                <p>{recommendationReasons[0] ?? recommendedMaster.description}</p>
+                <button type="button" onClick={onAutoBalance} disabled={currentMasterId === recommendedMaster.id}>
+                  <Sparkles size={15} aria-hidden="true" />
+                  <span>{currentMasterId === recommendedMaster.id ? "Bố cục đã cân bằng" : "Tự cân bằng bố cục"}</span>
+                </button>
+              </aside>
+            )}
+          </div>
+
+          {masters.length > 0 ? (
+            <div className="studio-master-grid">
+              {masters.map((master) => (
+                <MasterCard
+                  key={master.id}
+                  master={master}
+                  active={currentMasterId === master.id}
+                  recommended={recommendedMasterId === master.id}
+                  onApply={() => onApplyMaster(master)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="studio-template-empty">
+              <Layers3 size={24} aria-hidden="true" />
+              <strong>Chưa có master tương thích</strong>
+              <span>Giữ bố cục hiện tại hoặc đổi layout semantic trước khi áp dụng master.</span>
             </div>
           )}
         </section>
@@ -330,6 +404,55 @@ function RecipeCard({ recipe, onInsert }: { recipe: SlideRecipe; onInsert: () =>
         <Plus size={15} aria-hidden="true" />
         <span>Thêm sau slide hiện tại</span>
         <ChevronRight size={14} aria-hidden="true" />
+      </button>
+    </article>
+  );
+}
+
+function MasterCard({
+  master,
+  active,
+  recommended,
+  onApply
+}: {
+  master: SlideMasterPreset;
+  active: boolean;
+  recommended: boolean;
+  onApply: () => void;
+}) {
+  return (
+    <article
+      className="studio-master-card"
+      data-active={active ? "true" : "false"}
+      data-recommended={recommended ? "true" : "false"}
+      data-family={master.compositionFamily}
+      data-variant={master.variant}
+    >
+      <div className="studio-master-preview" aria-hidden="true">
+        <div><i /><i /><i /></div>
+        <span>{master.compositionFamily}</span>
+      </div>
+      <div className="studio-master-card-copy">
+        <div>
+          <span>{master.role}</span>
+          {recommended && <small><Sparkles size={12} aria-hidden="true" /> Đề xuất</small>}
+          {active && <small><Check size={12} aria-hidden="true" /> Đang dùng</small>}
+        </div>
+        <h3>{master.name}</h3>
+        <p>{master.description}</p>
+        <dl>
+          <div><dt>Nhịp</dt><dd>{master.compositionFamily}</dd></div>
+          <div><dt>Mật độ</dt><dd>{master.density}</dd></div>
+          <div><dt>Chuyển cảnh</dt><dd>{master.transition.type}</dd></div>
+        </dl>
+        <div className="studio-master-guidance">
+          <p><strong>Dùng khi</strong>{master.useWhen[0]}</p>
+          <p><strong>Tránh khi</strong>{master.avoidWhen[0]}</p>
+        </div>
+      </div>
+      <button type="button" onClick={onApply} disabled={active}>
+        {active ? <Check size={15} aria-hidden="true" /> : <Layers3 size={15} aria-hidden="true" />}
+        <span>{active ? "Master đang dùng" : "Áp dụng master"}</span>
       </button>
     </article>
   );

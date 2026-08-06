@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
   BarChart3,
   Check,
@@ -12,7 +12,7 @@ import {
   UsersRound
 } from "lucide-react";
 import { motion, type MotionStyle } from "motion/react";
-import type { DeckAsset, Slide, SlideComponent } from "@deckory/schema";
+import { resolveDeckAsset, type DeckAsset, type Slide, type SlideComponent } from "@deckory/schema";
 import {
   decodeWeightSimulatorInteraction,
   encodeWeightSimulatorInteraction,
@@ -21,6 +21,7 @@ import {
   type WeightSimulatorInteractionState
 } from "./interaction-state";
 import { getElementMotion, getMorphLayoutId } from "./motion-system";
+import { SemanticDiagram } from "./semantic-diagrams";
 import { SemanticVisualizer, TeamShowcase as SemanticTeamShowcase } from "./semantic-visuals";
 
 type ComponentOf<Type extends SlideComponent["type"]> = Extract<SlideComponent, { type: Type }>;
@@ -37,6 +38,8 @@ type InsightProps = ComponentOf<"insight">["props"];
 type TeamShowcaseProps = ComponentOf<"team-showcase">["props"];
 type VisualizerProps = ComponentOf<"visualizer">["props"];
 type WeightSimulatorProps = ComponentOf<"weight-simulator">["props"];
+type CriterionGridProps = ComponentOf<"criterion-grid">["props"];
+type MediaShowcaseProps = ComponentOf<"media-showcase">["props"];
 type EvidenceProps = ComponentOf<"evidence-footer">["props"];
 
 export function SlideFrame({
@@ -64,6 +67,7 @@ export function SlideFrame({
     <article
       className={`slide slide--${slide.layout} slide--${variant}`}
       data-slide-id={slide.id}
+      data-deck-id={deckId}
       data-background={slide.background ?? "editorial"}
       data-motion-disabled={motionDisabled ? "true" : undefined}
     >
@@ -199,7 +203,7 @@ function Component({
     case "metric-grid":
       return <MetricGrid {...component.props} />;
     case "chart":
-      return <Chart {...component.props} />;
+      return <Chart {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} />;
     case "table":
       return <DataTable {...component.props} />;
     case "code":
@@ -218,6 +222,12 @@ function Component({
       return <SemanticVisualizer {...component.props} reducedMotion={reducedMotion} motionDisabled={motionDisabled} active={active} selectedId={selectedId} onSelectedIdChange={onSelectedIdChange} />;
     case "weight-simulator":
       return <WeightSimulator {...component.props} interactionValue={selectedId} onInteractionChange={onSelectedIdChange} motionDisabled={motionDisabled} />;
+    case "criterion-grid":
+      return <CriterionGrid {...component.props} active={active} reducedMotion={reducedMotion || motionDisabled} />;
+    case "media-showcase":
+      return <MediaShowcase {...component.props} assets={assets} active={active} reducedMotion={reducedMotion || motionDisabled} />;
+    case "diagram":
+      return <SemanticDiagram {...component.props} active={active} reducedMotion={reducedMotion || motionDisabled} />;
     case "evidence-footer":
       return <EvidenceFooter {...component.props} assets={assets} />;
   }
@@ -260,7 +270,86 @@ function MetricGrid({ metrics }: MetricGridProps) {
   );
 }
 
-function Chart({ title, unit, values, variant = "bar", showValues = true }: ChartProps) {
+function CriterionGrid({ items, active, reducedMotion }: CriterionGridProps & { active: boolean; reducedMotion: boolean }) {
+  return (
+    <div className="criterion-grid" data-active={active ? "true" : "false"} data-motion-off={reducedMotion ? "true" : "false"}>
+      {items.map((item, index) => (
+        <motion.section
+          className={`criterion-card criterion-card--${item.tone ?? "neutral"}${item.featured ? " is-featured" : ""}`}
+          key={item.label}
+          initial={reducedMotion ? false : { opacity: 0, y: 18, scale: 0.985 }}
+          animate={active || reducedMotion ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 18, scale: 0.985 }}
+          transition={{ duration: 0.34, delay: reducedMotion ? 0 : index * 0.055, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="criterion-card__index">{String(index + 1).padStart(2, "0")}</div>
+          <h2>{item.label}</h2>
+          <p>{item.question}</p>
+          <strong>{item.output}</strong>
+        </motion.section>
+      ))}
+    </div>
+  );
+}
+
+function MediaShowcase({
+  title,
+  summary,
+  variant = "single",
+  items,
+  assets,
+  active,
+  reducedMotion
+}: MediaShowcaseProps & {
+  assets: readonly DeckAsset[] | undefined;
+  active: boolean;
+  reducedMotion: boolean;
+}) {
+  const accessibleSummary = items.map((item) => `${item.title}${item.caption ? `: ${item.caption}` : ""}`).join("; ");
+
+  return (
+    <section
+      className={`media-showcase media-showcase--${variant}`}
+      data-active={active ? "true" : "false"}
+      data-motion-off={reducedMotion ? "true" : "false"}
+      aria-label={`${title ?? "Bằng chứng giao diện"}. ${accessibleSummary}`}
+    >
+      {(title || summary) && (
+        <header className="media-showcase__heading">
+          {title && <h2>{title}</h2>}
+          {summary && <p>{summary}</p>}
+        </header>
+      )}
+      <div className="media-showcase__grid" data-item-count={items.length}>
+        {items.map((item, index) => {
+          const source = resolveDeckAsset(assets, item.assetId)?.src;
+          return (
+            <motion.figure
+              className={`media-card${item.featured ? " is-featured" : ""}`}
+              data-featured={item.featured ? "true" : "false"}
+              key={`${item.assetId}-${item.title}`}
+              initial={reducedMotion ? false : { opacity: 0, y: 20, scale: 0.985 }}
+              animate={active || reducedMotion ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 20, scale: 0.985 }}
+              transition={{ duration: 0.42, delay: reducedMotion ? 0 : index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="media-card__chrome" aria-hidden="true"><i /><i /><i /></div>
+              <div className="media-card__viewport">
+                {source && <img src={source} alt={item.alt} loading="eager" decoding="async" />}
+              </div>
+              <figcaption>
+                {item.eyebrow && <span>{item.eyebrow}</span>}
+                <strong>{item.title}</strong>
+                {item.caption && <p>{item.caption}</p>}
+              </figcaption>
+            </motion.figure>
+          );
+        })}
+      </div>
+      <span className="sr-only">{accessibleSummary}</span>
+    </section>
+  );
+}
+
+function Chart({ title, unit, values, variant = "bar", showValues = true, reducedMotion, motionDisabled, active }: ChartProps & { reducedMotion: boolean; motionDisabled: boolean; active: boolean }) {
   const summary = values.map((item) => `${item.label}: ${item.value}`).join("; ");
 
   return (
@@ -277,7 +366,7 @@ function Chart({ title, unit, values, variant = "bar", showValues = true }: Char
         </div>
         <small>{unit}</small>
       </div>
-      {variant === "bar" && <BarChart values={values} showValues={showValues} />}
+      {variant === "bar" && <BarChart values={values} showValues={showValues} animate={active && !reducedMotion && !motionDisabled} />}
       {(variant === "line" || variant === "area") && (
         <CartesianChart values={values} variant={variant} showValues={showValues} />
       )}
@@ -287,7 +376,7 @@ function Chart({ title, unit, values, variant = "bar", showValues = true }: Char
   );
 }
 
-function BarChart({ values, showValues }: { values: ChartProps["values"]; showValues: boolean }) {
+function BarChart({ values, showValues, animate }: { values: ChartProps["values"]; showValues: boolean; animate: boolean }) {
   const highestValue = Math.max(1, ...values.map((item) => item.value));
   const scaleMax = Math.max(10, Math.ceil(highestValue / 10) * 10);
 
@@ -305,13 +394,43 @@ function BarChart({ values, showValues }: { values: ChartProps["values"]; showVa
             <span>{item.label}</span>
             <div className="bar-track">
               <i className={item.highlight ? "is-highlight" : ""} />
-              {showValues && <b>{item.value}</b>}
+              {showValues && <b><AnimatedNumber value={item.value} animate={animate} delay={360 + index * 70} /></b>}
             </div>
           </div>
         );
       })}
     </div>
   );
+}
+
+function AnimatedNumber({ value, animate, delay }: { value: number; animate: boolean; delay: number }) {
+  const [displayValue, setDisplayValue] = useState(animate ? 0 : value);
+
+  useEffect(() => {
+    if (!animate) {
+      setDisplayValue(value);
+      return;
+    }
+    setDisplayValue(0);
+    let frame = 0;
+    let startTime = 0;
+    const timeout = window.setTimeout(() => {
+      const tick = (time: number) => {
+        if (!startTime) startTime = time;
+        const progress = Math.min(1, (time - startTime) / 620);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplayValue(Math.round(value * eased));
+        if (progress < 1) frame = window.requestAnimationFrame(tick);
+      };
+      frame = window.requestAnimationFrame(tick);
+    }, delay);
+    return () => {
+      window.clearTimeout(timeout);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [animate, delay, value]);
+
+  return <>{displayValue}</>;
 }
 
 function CartesianChart({

@@ -83,6 +83,9 @@ function collectAssetReferences(deck: DeckDocument): Set<string> {
           if (member.image?.assetId) references.add(member.image.assetId);
         }
       }
+      if (component.type === "media-showcase") {
+        for (const item of component.props.items) references.add(item.assetId);
+      }
       if (component.type === "evidence-footer" && component.props.logoAssetId) {
         references.add(component.props.logoAssetId);
       }

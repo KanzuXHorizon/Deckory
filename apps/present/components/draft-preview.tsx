@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { CircleAlert, LoaderCircle } from "lucide-react";
 import { validateDeck, type DeckDocument } from "@deckory/schema";
 import { Presenter } from "./presenter";
+import type { PresentationView } from "./presenter-runtime";
 
 const DRAFT_KEY_PREFIX = "deckory:draft:v1:";
 
-export function DraftPreview({ sourceDeck }: { sourceDeck: DeckDocument }) {
+export function DraftPreview({ sourceDeck, view = "audience" }: { sourceDeck: DeckDocument; view?: PresentationView }) {
   const [deck, setDeck] = useState<DeckDocument | null>(null);
   const [message, setMessage] = useState("");
 
@@ -39,7 +40,7 @@ export function DraftPreview({ sourceDeck }: { sourceDeck: DeckDocument }) {
   return (
     <div className="preview-shell">
       {message && <div className="preview-warning" role="status"><CircleAlert size={16} />{message}</div>}
-      <Presenter deck={deck} returnHref={`/studio?deck=${sourceDeck.id}`} editHref={`/studio?deck=${sourceDeck.id}`} modeLabel="XEM TRƯỚC BẢN NHÁP" />
+      <Presenter deck={deck} view={view} returnHref={`/studio?deck=${sourceDeck.id}`} editHref={`/studio?deck=${sourceDeck.id}`} modeLabel="XEM TRƯỚC BẢN NHÁP" />
     </div>
   );
 }

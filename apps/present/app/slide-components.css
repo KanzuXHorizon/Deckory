@@ -1441,9 +1441,723 @@
   color: #aeb2ba;
 }
 
+.component-slot--criterion-grid {
+  min-width: 0;
+}
+
+.slide--dashboard .component-slot--criterion-grid,
+.slide--data .component-slot--criterion-grid {
+  grid-column: 1 / -1;
+}
+
+.criterion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: stretch;
+  min-width: 0;
+  margin-top: clamp(16px, 2.4vh, 26px);
+}
+
+.criterion-card {
+  --criterion-tone: var(--line-strong);
+  position: relative;
+  min-width: 0;
+  min-height: 132px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  align-content: start;
+  gap: 6px;
+  overflow: hidden;
+  padding: 14px 16px 15px;
+  border: 1px solid color-mix(in srgb, var(--criterion-tone) 44%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface) 97%, var(--criterion-tone));
+}
+
+.criterion-card--cobalt { --criterion-tone: var(--cobalt); }
+.criterion-card--teal { --criterion-tone: var(--teal); }
+.criterion-card--amber { --criterion-tone: var(--amber); }
+.criterion-card--neutral { --criterion-tone: var(--line-strong); }
+
+.criterion-card.is-featured {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--criterion-tone) 7%, var(--surface));
+  box-shadow: 0 17px 34px color-mix(in srgb, var(--criterion-tone) 14%, rgba(22, 26, 31, .08));
+}
+
+.criterion-card__index {
+  color: var(--criterion-tone);
+  font-family: var(--font-data);
+  font-size: clamp(8px, .62vw, 10px);
+  font-weight: 800;
+  letter-spacing: .09em;
+}
+
+.criterion-card h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(15px, 1.35vw, 20px);
+  line-height: 1.12;
+  letter-spacing: -.025em;
+}
+
+.criterion-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(9px, .74vw, 11px);
+  line-height: 1.4;
+}
+
+.criterion-card > strong {
+  color: var(--ink-soft);
+  font-size: clamp(9px, .76vw, 11px);
+  line-height: 1.25;
+}
+
+.slide--technical .criterion-card {
+  border-color: color-mix(in srgb, var(--criterion-tone) 44%, #343941);
+  background: color-mix(in srgb, var(--criterion-tone) 7%, #1b1e23);
+}
+
+.slide--technical .criterion-card h2,
+.slide--technical .criterion-card > strong {
+  color: #f4f4f0;
+}
+
+.slide--technical .criterion-card p {
+  color: #aeb2ba;
+}
+
+.component-slot--media-showcase {
+  min-width: 0;
+}
+
+.slide--data .component-slot--media-showcase,
+.slide--dashboard .component-slot--media-showcase,
+.slide--split .component-slot--media-showcase {
+  grid-column: 1 / -1;
+}
+
+.media-showcase {
+  min-width: 0;
+  margin-top: clamp(18px, 2.6vh, 30px);
+}
+
+.media-showcase__heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 14px;
+}
+
+.media-showcase__heading h2 {
+  max-width: 22ch;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(18px, 2vw, 30px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.media-showcase__heading p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(8px, .78vw, 11px);
+  line-height: 1.5;
+}
+
+.media-showcase__grid {
+  display: grid;
+  gap: clamp(14px, 1.6vw, 22px);
+  align-items: stretch;
+}
+
+.media-showcase--single .media-showcase__grid {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 980px;
+  margin-inline: auto;
+}
+
+.media-showcase--duo .media-showcase__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.media-showcase--triptych .media-showcase__grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.media-card {
+  --media-tone: var(--line-strong);
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--media-tone) 54%, var(--line));
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 18px 46px rgba(22, 26, 31, .11);
+}
+
+.media-card.is-featured {
+  --media-tone: var(--teal);
+  transform: translateY(-3px);
+  box-shadow: 0 24px 54px color-mix(in srgb, var(--teal) 15%, rgba(22, 26, 31, .11));
+}
+
+.media-card__chrome {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-inline: 11px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-soft) 76%, var(--surface));
+}
+
+.media-card__chrome i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+.media-card__viewport {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #e8e9e5;
+}
+
+.media-card__viewport::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(16, 19, 23, .05);
+}
+
+.media-card__viewport img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.media-card figcaption {
+  min-height: 92px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 13px 15px 15px;
+}
+
+.media-card figcaption > span {
+  color: var(--teal);
+  font-family: var(--font-data);
+  font-size: clamp(7px, .58vw, 9px);
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.media-card figcaption > strong {
+  color: var(--ink);
+  font-size: clamp(13px, 1.2vw, 18px);
+  line-height: 1.16;
+  letter-spacing: -.02em;
+}
+
+.media-card figcaption > p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: clamp(8px, .72vw, 10px);
+  line-height: 1.45;
+}
+
+.slide--technical .media-card {
+  border-color: #41464f;
+  background: #1b1e23;
+}
+
+.slide--technical .media-card__chrome {
+  border-color: #343941;
+  background: #22262c;
+}
+
+.slide--technical .media-card figcaption > strong {
+  color: #f4f4f0;
+}
+
+.slide--technical .media-card figcaption > p,
+.slide--technical .media-showcase__heading p {
+  color: #aeb2ba;
+}
+
+.slide--technical .media-showcase__heading h2 {
+  color: #f4f4f0;
+}
+
+/* Typed semantic diagrams */
+.semantic-diagram {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(16px, 2.2vw, 28px);
+  margin: 0;
+}
+
+.semantic-diagram__heading {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(260px, 1.1fr);
+  align-items: end;
+  gap: clamp(18px, 3vw, 42px);
+  padding-bottom: clamp(11px, 1.3vw, 18px);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 13%, transparent);
+}
+
+.semantic-diagram__heading h2 {
+  max-width: 24ch;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(21px, 2.4vw, 34px);
+  line-height: 1.08;
+  letter-spacing: -.032em;
+}
+
+.semantic-diagram__heading p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: clamp(10px, .9vw, 13px);
+  line-height: 1.52;
+}
+
+.semantic-diagram__canvas {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  align-items: stretch;
+}
+
+.semantic-diagram [data-tone="cobalt"] { --diagram-tone: var(--accent); --diagram-soft: var(--accent-soft); }
+.semantic-diagram [data-tone="teal"] { --diagram-tone: var(--teal); --diagram-soft: var(--teal-soft); }
+.semantic-diagram [data-tone="amber"] { --diagram-tone: var(--amber); --diagram-soft: #fff1d9; }
+.semantic-diagram [data-tone="neutral"] { --diagram-tone: #70747c; --diagram-soft: #eff0ed; }
+
+.diagram-timeline,
+.diagram-roadmap,
+.diagram-stack,
+.diagram-cycle ol {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.diagram-timeline {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--diagram-columns, 4), minmax(0, 1fr));
+  gap: clamp(10px, 1.4vw, 18px);
+  align-items: stretch;
+}
+
+.diagram-timeline::before {
+  content: "";
+  position: absolute;
+  inset: clamp(21px, 2.2vw, 30px) 5% auto;
+  height: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 25%, transparent), var(--accent), color-mix(in srgb, var(--teal) 35%, transparent));
+  transform-origin: left;
+  animation: semantic-line-reveal .72s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.diagram-timeline li {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  min-width: 0;
+  opacity: 0;
+  transform: translateY(16px);
+  animation: semantic-item-enter .42s cubic-bezier(.16, 1, .3, 1) calc(.12s + var(--item-index, 0) * .07s) forwards;
+}
+
+.diagram-timeline__marker {
+  width: clamp(42px, 4.4vw, 58px);
+  height: clamp(42px, 4.4vw, 58px);
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--diagram-tone);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--diagram-tone);
+  font-family: var(--font-data);
+  font-size: clamp(10px, .92vw, 13px);
+  font-weight: 800;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--diagram-tone) 10%, transparent);
+}
+
+.diagram-timeline li > div {
+  min-height: 118px;
+  padding: clamp(12px, 1.25vw, 17px);
+  border: 1px solid color-mix(in srgb, var(--diagram-tone) 20%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--diagram-soft) 46%, var(--surface));
+}
+
+.diagram-timeline small,
+.diagram-roadmap__phase {
+  color: var(--diagram-tone);
+  font-family: var(--font-data);
+  font-size: clamp(7px, .62vw, 9px);
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.diagram-timeline strong,
+.diagram-roadmap strong,
+.diagram-stack strong,
+.diagram-cycle strong,
+.diagram-quadrant strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: clamp(12px, 1.15vw, 17px);
+  line-height: 1.16;
+  letter-spacing: -.018em;
+}
+
+.diagram-timeline p,
+.diagram-roadmap p,
+.diagram-stack p,
+.diagram-cycle p,
+.diagram-quadrant p {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: clamp(8px, .72vw, 10px);
+  line-height: 1.46;
+}
+
+.diagram-timeline li[data-featured="true"] > div,
+.diagram-roadmap li[data-featured="true"],
+.diagram-stack li[data-featured="true"],
+.diagram-quadrant article[data-featured="true"] {
+  border-color: var(--diagram-tone);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--diagram-tone) 12%, transparent);
+}
+
+.diagram-roadmap {
+  display: grid;
+  gap: clamp(8px, 1vw, 13px);
+  align-content: center;
+  counter-reset: roadmap;
+}
+
+.diagram-roadmap li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(86px, .38fr) minmax(0, 1.62fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--diagram-tone) 18%, var(--line));
+  border-radius: 12px;
+  background: var(--surface);
+  opacity: 0;
+  transform: translateX(-18px);
+  animation: semantic-roadmap-enter .44s cubic-bezier(.16, 1, .3, 1) calc(.08s + var(--item-index, 0) * .07s) forwards;
+}
+
+.diagram-roadmap__phase {
+  min-height: 68px;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  background: color-mix(in srgb, var(--diagram-soft) 76%, var(--surface));
+  text-align: center;
+}
+
+.diagram-roadmap li > div {
+  display: grid;
+  align-content: center;
+  padding: 12px 16px;
+}
+
+.diagram-roadmap strong { margin-top: 0; }
+
+.diagram-stack {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.diagram-stack--pyramid { flex-direction: column-reverse; }
+
+.diagram-stack li {
+  width: var(--diagram-width);
+  min-height: clamp(48px, 6vw, 72px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 10px clamp(16px, 2vw, 28px);
+  border: 1px solid color-mix(in srgb, var(--diagram-tone) 22%, var(--line));
+  border-radius: 10px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--diagram-soft) 86%, var(--surface)), var(--surface));
+  clip-path: polygon(4% 0, 96% 0, 100% 100%, 0 100%);
+  opacity: 0;
+  transform: scaleX(.84);
+  animation: semantic-stack-enter .48s cubic-bezier(.16, 1, .3, 1) calc(.07s + var(--item-index, 0) * .075s) forwards;
+}
+
+.diagram-stack--pyramid li {
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+}
+
+.diagram-stack li > span {
+  color: var(--diagram-tone);
+  font-family: var(--font-data);
+  font-size: clamp(12px, 1.4vw, 20px);
+  font-weight: 800;
+}
+
+.diagram-stack strong { margin-top: 0; }
+
+.diagram-cycle {
+  position: relative;
+  min-height: 330px;
+  display: grid;
+  place-items: center;
+}
+
+.diagram-cycle::before,
+.diagram-cycle::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.diagram-cycle::before {
+  width: min(52%, 390px);
+  aspect-ratio: 1;
+  border: 2px dashed color-mix(in srgb, var(--accent) 28%, transparent);
+  animation: semantic-cycle-rotate 24s linear infinite;
+}
+
+.diagram-cycle::after {
+  width: min(40%, 290px);
+  aspect-ratio: 1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 8%, transparent), transparent 67%);
+}
+
+.diagram-cycle__center {
+  position: relative;
+  z-index: 2;
+  width: clamp(104px, 12vw, 150px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 16px 42px color-mix(in srgb, var(--accent) 12%, transparent);
+  text-align: center;
+}
+
+.diagram-cycle__center span {
+  max-width: 9ch;
+  font-size: clamp(13px, 1.5vw, 20px);
+  font-weight: 760;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+}
+
+.diagram-cycle ol {
+  position: absolute;
+  inset: 0;
+}
+
+.diagram-cycle li {
+  --cycle-angle: calc((360deg / var(--cycle-count)) * var(--cycle-index) - 90deg);
+  position: absolute;
+  width: clamp(150px, 18vw, 224px);
+  min-height: 76px;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--diagram-tone) 22%, var(--line));
+  border-radius: 12px;
+  background: var(--surface);
+  transform: translate(-50%, -50%) rotate(var(--cycle-angle)) translateX(clamp(168px, 20vw, 255px)) rotate(calc(var(--cycle-angle) * -1));
+  opacity: 0;
+  animation: semantic-cycle-item .44s cubic-bezier(.16, 1, .3, 1) calc(.1s + var(--cycle-index) * .07s) forwards;
+}
+
+.diagram-cycle li > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--diagram-soft);
+  color: var(--diagram-tone);
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.diagram-cycle strong { margin-top: 0; }
+
+.diagram-quadrant {
+  position: relative;
+  min-height: 320px;
+  padding: 12px 12px 24px 34px;
+}
+
+.diagram-quadrant__grid {
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border-left: 2px solid color-mix(in srgb, var(--ink) 32%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--ink) 32%, transparent);
+  background:
+    linear-gradient(90deg, transparent calc(50% - .5px), color-mix(in srgb, var(--ink) 11%, transparent) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+    linear-gradient(180deg, transparent calc(50% - .5px), color-mix(in srgb, var(--ink) 11%, transparent) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px));
+}
+
+.diagram-quadrant article {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: clamp(12px, 1.5vw, 20px);
+  border: 1px solid color-mix(in srgb, var(--diagram-tone) 18%, var(--line));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--diagram-soft) 44%, var(--surface));
+  opacity: 0;
+  transform: scale(.96);
+  animation: semantic-quadrant-enter .4s cubic-bezier(.16, 1, .3, 1) calc(.06s + var(--item-index, 0) * .06s) forwards;
+}
+
+.diagram-quadrant article > span {
+  color: var(--diagram-tone);
+  font-family: var(--font-data);
+  font-size: clamp(12px, 1.3vw, 18px);
+  font-weight: 800;
+}
+
+.diagram-quadrant strong { margin-top: 0; }
+
+.diagram-quadrant__axis {
+  position: absolute;
+  color: var(--muted);
+  font-family: var(--font-data);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.diagram-quadrant__axis--x { inset: auto 12px 4px auto; }
+.diagram-quadrant__axis--y { inset: 12px auto auto 4px; writing-mode: vertical-rl; transform: rotate(180deg); }
+
+.slide--technical .semantic-diagram__heading h2,
+.slide--technical .diagram-timeline strong,
+.slide--technical .diagram-roadmap strong,
+.slide--technical .diagram-stack strong,
+.slide--technical .diagram-cycle strong,
+.slide--technical .diagram-quadrant strong,
+.slide--cinematic .semantic-diagram__heading h2,
+.slide--cinematic .diagram-timeline strong,
+.slide--cinematic .diagram-roadmap strong,
+.slide--cinematic .diagram-stack strong,
+.slide--cinematic .diagram-cycle strong,
+.slide--cinematic .diagram-quadrant strong {
+  color: #f4f4f0;
+}
+
+.slide--technical .semantic-diagram__heading p,
+.slide--cinematic .semantic-diagram__heading p,
+.slide--technical .diagram-timeline p,
+.slide--cinematic .diagram-timeline p,
+.slide--technical .diagram-roadmap p,
+.slide--cinematic .diagram-roadmap p,
+.slide--technical .diagram-stack p,
+.slide--cinematic .diagram-stack p,
+.slide--technical .diagram-cycle p,
+.slide--cinematic .diagram-cycle p,
+.slide--technical .diagram-quadrant p,
+.slide--cinematic .diagram-quadrant p {
+  color: #aeb2ba;
+}
+
+.slide--technical .diagram-timeline li > div,
+.slide--technical .diagram-roadmap li,
+.slide--technical .diagram-stack li,
+.slide--technical .diagram-cycle li,
+.slide--technical .diagram-cycle__center,
+.slide--technical .diagram-quadrant article,
+.slide--cinematic .diagram-timeline li > div,
+.slide--cinematic .diagram-roadmap li,
+.slide--cinematic .diagram-stack li,
+.slide--cinematic .diagram-cycle li,
+.slide--cinematic .diagram-cycle__center,
+.slide--cinematic .diagram-quadrant article {
+  border-color: color-mix(in srgb, var(--diagram-tone) 42%, #41464f);
+  background: #1b1e23;
+}
+
+.semantic-diagram[data-motion-off="true"] .diagram-timeline::before,
+.semantic-diagram[data-motion-off="true"] .diagram-timeline li,
+.semantic-diagram[data-motion-off="true"] .diagram-roadmap li,
+.semantic-diagram[data-motion-off="true"] .diagram-stack li,
+.semantic-diagram[data-motion-off="true"] .diagram-cycle::before,
+.semantic-diagram[data-motion-off="true"] .diagram-cycle li,
+.semantic-diagram[data-motion-off="true"] .diagram-quadrant article,
+.overview-thumbnail .semantic-diagram *,
+.scaled-slide-preview .semantic-diagram * {
+  animation: none !important;
+  opacity: 1;
+}
+
+@keyframes semantic-line-reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes semantic-item-enter { to { opacity: 1; transform: none; } }
+@keyframes semantic-roadmap-enter { to { opacity: 1; transform: none; } }
+@keyframes semantic-stack-enter { to { opacity: 1; transform: scaleX(1); } }
+@keyframes semantic-cycle-rotate { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes semantic-cycle-item { to { opacity: 1; } }
+@keyframes semantic-quadrant-enter { to { opacity: 1; transform: none; } }
+
+@media (max-width: 900px) {
+  .semantic-diagram__heading { grid-template-columns: 1fr; gap: 8px; }
+  .diagram-timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diagram-cycle { transform: scale(.88); transform-origin: center; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .team-showcase[data-motion-off="true"] *,
-  .semantic-visualizer[data-motion-off="true"] * {
+  .semantic-visualizer[data-motion-off="true"] *,
+  .media-showcase[data-motion-off="true"] *,
+  .semantic-diagram * {
     animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
   }
 }

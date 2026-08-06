@@ -4,5 +4,12 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./deck.ts" },
-  "dependencies": { "@deckory/schema": "workspace:*" }
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@deckory/schema": "workspace:*",
+    "@deckory/templates": "workspace:*"
+  }
 }

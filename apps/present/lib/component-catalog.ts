@@ -1,15 +1,15 @@
 import type { Slide, SlideComponent } from "@deckory/schema";
 
 const compatibleComponents: Record<Slide["layout"], SlideComponent["type"][]> = {
-  cover: ["heading", "evidence-footer"],
-  statement: ["statement", "heading", "visualizer", "evidence-footer"],
-  split: ["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"],
-  dashboard: ["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"],
-  comparison: ["heading", "comparison", "table", "evidence-footer"],
-  process: ["heading", "process", "team-showcase", "visualizer", "evidence-footer"],
-  architecture: ["heading", "architecture", "code", "insight", "team-showcase", "visualizer", "evidence-footer"],
-  data: ["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "weight-simulator", "evidence-footer"],
-  closing: ["heading", "statement", "team-showcase", "visualizer", "evidence-footer"]
+  cover: ["heading", "team-showcase", "media-showcase", "evidence-footer"],
+  statement: ["statement", "heading", "visualizer", "media-showcase", "diagram", "evidence-footer"],
+  split: ["heading", "metric-grid", "code", "insight", "team-showcase", "visualizer", "weight-simulator", "criterion-grid", "media-showcase", "diagram", "evidence-footer"],
+  dashboard: ["heading", "metric-grid", "chart", "table", "insight", "team-showcase", "visualizer", "weight-simulator", "criterion-grid", "media-showcase", "diagram", "evidence-footer"],
+  comparison: ["heading", "comparison", "table", "media-showcase", "diagram", "evidence-footer"],
+  process: ["heading", "process", "team-showcase", "visualizer", "media-showcase", "diagram", "evidence-footer"],
+  architecture: ["heading", "architecture", "code", "insight", "team-showcase", "visualizer", "media-showcase", "diagram", "evidence-footer"],
+  data: ["heading", "chart", "table", "code", "metric-grid", "insight", "team-showcase", "visualizer", "weight-simulator", "criterion-grid", "media-showcase", "diagram", "evidence-footer"],
+  closing: ["heading", "statement", "team-showcase", "visualizer", "media-showcase", "diagram", "evidence-footer"]
 };
 
 export function isCompatible(layout: Slide["layout"], type: SlideComponent["type"]): boolean {
@@ -191,6 +191,38 @@ export function createComponent(type: SlideComponent["type"], id: string): Slide
             }
           ],
           disclaimer: "Kết quả chỉ mang tính minh hoạ; không dùng làm quyết định tự động."
+        }
+      };
+    case "criterion-grid":
+      return {
+        id,
+        type,
+        props: {
+          items: [
+            { label: "Đúng trọng tâm", question: "Có trả lời đúng vấn đề không?", output: "Mức lệch trọng tâm", tone: "cobalt" },
+            { label: "Rõ ràng", question: "Có dễ hiểu và súc tích không?", output: "Gợi ý diễn đạt", tone: "teal" },
+            { label: "Bằng chứng", question: "Có ví dụ, hành động và kết quả không?", output: "Khoảng thiếu bằng chứng", tone: "amber", featured: true }
+          ]
+        }
+      };
+    case "media-showcase":
+      return { id, type, props: { title: "Bằng chứng sản phẩm", variant: "duo", items: [
+        { assetId: "product-shot-one", alt: "Ảnh sản phẩm thứ nhất", title: "Bối cảnh đầu vào", caption: "Mô tả ngắn." },
+        { assetId: "product-shot-two", alt: "Ảnh sản phẩm thứ hai", title: "Kết quả đầu ra", caption: "Mô tả ngắn.", featured: true }
+      ] } };
+    case "diagram":
+      return {
+        id,
+        type,
+        props: {
+          title: "Từ bản nháp đến production",
+          summary: "Roadmap gồm ba giai đoạn: cấu trúc, kiểm chứng và production.",
+          variant: "roadmap",
+          items: [
+            { id: "structure", label: "Cấu trúc", description: "Typed document", value: "01", tone: "cobalt" },
+            { id: "evidence", label: "Kiểm chứng", description: "Audit và browser QA", value: "02", tone: "teal", featured: true },
+            { id: "production", label: "Production", description: "Build và export", value: "03", tone: "amber" }
+          ]
         }
       };
     case "evidence-footer":

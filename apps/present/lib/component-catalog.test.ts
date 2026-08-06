@@ -52,7 +52,7 @@ describe("Studio component catalog", () => {
       ["statement", "code", false],
       ["process", "team-showcase", true],
       ["data", "visualizer", true],
-      ["cover", "team-showcase", false],
+      ["cover", "team-showcase", true],
       ["comparison", "visualizer", false]
     ];
 
@@ -117,7 +117,7 @@ describe("Studio component catalog", () => {
       ["split", "team-showcase", true],
       ["data", "team-showcase", true],
       ["closing", "team-showcase", true],
-      ["cover", "team-showcase", false],
+      ["cover", "team-showcase", true],
       ["statement", "visualizer", true],
       ["architecture", "visualizer", true],
       ["cover", "visualizer", false],

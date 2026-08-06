@@ -98,6 +98,61 @@ describe("ComponentInspector", () => {
     expect(html).toContain("Nút tiêu điểm");
   });
 
+  it("renders every editable field required by the media showcase contract", () => {
+    const component: Extract<SlideComponent, { type: "media-showcase" }> = {
+      id: "product-proof",
+      type: "media-showcase",
+      props: {
+        title: "Luồng sản phẩm",
+        summary: "Ảnh thật từ phiên đã xác thực.",
+        variant: "duo",
+        items: [
+          { assetId: "dashboard-shot", alt: "Bảng điều khiển", eyebrow: "BỐI CẢNH", title: "Chuẩn bị", caption: "CV và JD", featured: true },
+          { assetId: "feedback-shot", alt: "Màn hình phản hồi", eyebrow: "KẾT QUẢ", title: "Phản hồi", caption: "Điểm và bằng chứng" }
+        ]
+      }
+    };
+
+    const html = renderToStaticMarkup(<ComponentInspector component={component} onChange={() => undefined} />);
+
+    expect(html).toContain("Bằng chứng sản phẩm");
+    expect(html).toContain("Bố cục");
+    expect(html).toContain("Hai ảnh");
+    expect(html).toContain("Nhãn ngữ cảnh");
+    expect(html).toContain("Tiêu điểm");
+    expect(html).toContain("dashboard-shot");
+  });
+
+  it("renders every editable field required by the semantic diagram contract", () => {
+    const component: Extract<SlideComponent, { type: "diagram" }> = {
+      id: "positioning-matrix",
+      type: "diagram",
+      props: {
+        title: "Ma trận ưu tiên",
+        summary: "Bốn nhóm được định vị theo tác động và nỗ lực.",
+        variant: "quadrant",
+        xLabel: "Tác động",
+        yLabel: "Nỗ lực",
+        items: [
+          { id: "quick-win", label: "Quick win", value: "A", tone: "teal", position: "top-right", featured: true },
+          { id: "strategic", label: "Chiến lược", value: "B", tone: "cobalt", position: "bottom-right" },
+          { id: "maintenance", label: "Duy trì", value: "C", tone: "neutral", position: "top-left" },
+          { id: "defer", label: "Trì hoãn", value: "D", tone: "amber", position: "bottom-left" }
+        ]
+      }
+    };
+
+    const html = renderToStaticMarkup(<ComponentInspector component={component} onChange={() => undefined} />);
+
+    expect(html).toContain("Sơ đồ semantic");
+    expect(html).toContain("Tóm tắt accessible");
+    expect(html).toContain("Ma trận bốn vùng");
+    expect(html).toContain("Nhãn trục ngang");
+    expect(html).toContain("Nhãn trục dọc");
+    expect(html).toContain("Vị trí");
+    expect(html).toContain("Tiêu điểm");
+  });
+
   it("renders every editable field required by the weight simulator contract", () => {
     const component: Extract<SlideComponent, { type: "weight-simulator" }> = {
       id: "quality-weighting",

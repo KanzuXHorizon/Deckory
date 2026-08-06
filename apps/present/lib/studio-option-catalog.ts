@@ -56,7 +56,12 @@ export const variantOptions: readonly StudioChoiceOption<NonNullable<Slide["vari
   { value: "default", label: "Chuẩn", description: "Cân bằng và trung tính", icon: Circle },
   { value: "spotlight", label: "Tiêu điểm", description: "Tăng độ tập trung", icon: Focus },
   { value: "quiet", label: "Tĩnh", description: "Giảm nhiễu thị giác", icon: Blend },
-  { value: "technical", label: "Kỹ thuật", description: "Dành cho cấu trúc hệ thống và mã nguồn", icon: Code2 }
+  { value: "technical", label: "Kỹ thuật", description: "Dành cho cấu trúc hệ thống và mã nguồn", icon: Code2 },
+  { value: "cinematic", label: "Điện ảnh", description: "Tương phản mạnh cho opening, cao trào và closing", icon: Sparkles },
+  { value: "asymmetric", label: "Bất đối xứng", description: "Một điểm nhìn dẫn dắt, phần còn lại hỗ trợ", icon: Columns2 },
+  { value: "editorial", label: "Biên tập", description: "Typography và khoảng trắng dẫn nhịp", icon: FileText },
+  { value: "evidence", label: "Bằng chứng", description: "Ưu tiên chart, table, nguồn và kết luận", icon: BarChart3 },
+  { value: "gallery", label: "Trưng bày", description: "Đưa visual hoặc screenshot thành bằng chứng chính", icon: PanelTopOpen }
 ];
 
 export const transitionOptions: readonly StudioChoiceOption<NonNullable<Slide["transition"]>["type"]>[] = [
@@ -99,6 +104,9 @@ export const componentOptions: readonly StudioChoiceOption<SlideComponent["type"
   { value: "team-showcase", label: "Đội ngũ", description: "Vai trò, năng lực và đóng góp", icon: UsersRound },
   { value: "visualizer", label: "Sơ đồ tương tác", description: "Cây tăng trưởng, lộ trình, quỹ đạo hoặc mạng lưới", icon: Network },
   { value: "weight-simulator", label: "Mô phỏng trọng số", description: "Điều chỉnh tỷ trọng và quan sát điểm tổng hợp", icon: Gauge },
+  { value: "criterion-grid", label: "Lưới tiêu chí", description: "Câu hỏi, đầu ra và tiêu chí đánh giá", icon: Grid3X3 },
+  { value: "media-showcase", label: "Bằng chứng sản phẩm", description: "Screenshot hoặc visual cục bộ có chú thích", icon: PanelTopOpen },
+  { value: "diagram", label: "Sơ đồ semantic", description: "Timeline, roadmap, funnel, pyramid, cycle hoặc quadrant", icon: Network },
   { value: "evidence-footer", label: "Nguồn", description: "Trang, nguồn và bằng chứng", icon: FileText }
 ];
 

@@ -28,6 +28,10 @@ describe("Deckory component contract coverage", () => {
         title: `${type} contract`,
         locale: "vi-VN",
         themeId: "deckory-editorial",
+        ...(type === "media-showcase" ? { assets: [
+          { id: "product-shot-one", type: "image", src: "/fixtures/product-one.svg", mediaType: "image/svg+xml" },
+          { id: "product-shot-two", type: "image", src: "/fixtures/product-two.svg", mediaType: "image/svg+xml" }
+        ] } : {}),
         slides: [slide]
       });
 

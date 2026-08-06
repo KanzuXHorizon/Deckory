@@ -96,7 +96,7 @@ export function Presenter({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [noteScale, setNoteScale] = useState(1);
-  const [wallClock, setWallClock] = useState(() => new Date());
+  const [wallClock, setWallClock] = useState<Date | null>(null);
   const [interactionState, setInteractionState] = useState<Record<string, string>>({});
   const [laser, setLaser] = useState<LaserPointerState>({ enabled: false, visible: false, x: 0.5, y: 0.5 });
   const stateRef = useRef(state);
@@ -358,6 +358,7 @@ export function Presenter({
   }, [isFullscreen, publishAudiencePresence, view]);
 
   useEffect(() => {
+    setWallClock(new Date());
     const interval = window.setInterval(() => {
       setWallClock(new Date());
       if (timerRunning) setElapsedSeconds((seconds) => seconds + 1);
@@ -645,7 +646,7 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
   state: PresenterState;
   slideCount: number;
   elapsedSeconds: number;
-  wallClock: Date;
+  wallClock: Date | null;
   timerRunning: boolean;
   blackout: boolean;
   audienceStatus: AudienceStatus;
@@ -665,7 +666,7 @@ function PresenterTransport({ state, slideCount, elapsedSeconds, wallClock, time
         <div className="clock-readout"><Clock3 size={17} /><div><span>Thời gian</span><strong>{formatElapsedTime(elapsedSeconds)}</strong></div></div>
         <button type="button" className="transport-icon" onClick={onToggleTimer} aria-label={timerRunning ? "Tạm dừng đồng hồ" : "Chạy đồng hồ"}>{timerRunning ? <Pause size={17} /> : <Play size={17} />}</button>
         <button type="button" className="transport-icon" onClick={onResetTimer} aria-label="Đặt lại đồng hồ"><TimerReset size={17} /></button>
-        <div className="wall-clock"><span>Hiện tại</span><strong>{wallClock.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</strong></div>
+        <div className="wall-clock"><span>Hiện tại</span><strong>{wallClock ? wallClock.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "--:--"}</strong></div>
       </div>
       <div className="primary-navigation">
         <button type="button" onClick={onPrevious} disabled={state.slideIndex === 0 && state.sequenceStep === 0} aria-label="Quay lại"><ChevronLeft size={23} /></button>

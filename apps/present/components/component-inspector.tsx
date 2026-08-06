@@ -241,6 +241,87 @@ export function ComponentInspector({
           <TextAreaField label="Lưu ý sử dụng" value={component.props.disclaimer} onChange={(value) => update({ disclaimer: value })} rows={2} />
         </InspectorSection>
       );
+    case "criterion-grid":
+      return (
+        <InspectorSection title="Lưới tiêu chí" description="Mỗi tiêu chí gồm câu hỏi đánh giá và đầu ra cho người học.">
+          {component.props.items.map((item, index) => (
+            <FieldGroup key={`${item.label}-${index}`} label={`Tiêu chí ${index + 1}`}>
+              <TextField label="Tên tiêu chí" value={item.label} onChange={(label) => updateCriterionItem(component, index, { label }, onChange)} />
+              <TextAreaField label="Câu hỏi đánh giá" value={item.question} onChange={(question) => updateCriterionItem(component, index, { question }, onChange)} rows={2} />
+              <TextField label="Đầu ra" value={item.output} onChange={(output) => updateCriterionItem(component, index, { output }, onChange)} />
+              <IconChoiceGroup label="Màu nhấn" value={item.tone ?? "neutral"} options={insightToneOptions} compact onChange={(tone) => updateCriterionItem(component, index, { tone }, onChange)} />
+              <BooleanChoice label="Tiêu điểm" value={item.featured === true} onChange={(featured) => updateCriterionFeatured(component, index, featured, onChange)} trueLabel="Nhấn" falseLabel="Thường" trueIcon={booleanIcons.yes} falseIcon={booleanIcons.no} />
+            </FieldGroup>
+          ))}
+        </InspectorSection>
+      );
+    case "media-showcase":
+      return (
+        <InspectorSection title="Bằng chứng sản phẩm" description="Dùng ảnh cục bộ có nguồn rõ và mô tả ngắn.">
+          <TextField label="Tiêu đề" value={component.props.title ?? ""} onChange={(title) => update({ title: optional(title) })} />
+          <TextAreaField label="Tóm tắt" value={component.props.summary ?? ""} onChange={(summary) => update({ summary: optional(summary) })} rows={2} />
+          <SelectField
+            label="Bố cục"
+            value={component.props.variant ?? "single"}
+            options={["single", "duo", "triptych"]}
+            labels={{ single: "Một ảnh", duo: "Hai ảnh", triptych: "Ba ảnh" }}
+            onChange={(variant) => update({ variant: variant as "single" | "duo" | "triptych" })}
+          />
+          {component.props.items.map((item, index) => (
+            <FieldGroup key={`${item.assetId}-${index}`} label={`Ảnh ${index + 1}`}>
+              <TextField label="Asset ID" value={item.assetId} onChange={(assetId) => updateMediaItem(component, index, { assetId }, onChange)} />
+              <TextField label="Mô tả ảnh" value={item.alt} onChange={(alt) => updateMediaItem(component, index, { alt }, onChange)} />
+              <TextField label="Nhãn ngữ cảnh" value={item.eyebrow ?? ""} onChange={(eyebrow) => updateMediaItem(component, index, { eyebrow: optional(eyebrow) }, onChange)} />
+              <TextField label="Tiêu đề" value={item.title} onChange={(title) => updateMediaItem(component, index, { title }, onChange)} />
+              <TextAreaField label="Chú thích" value={item.caption ?? ""} onChange={(caption) => updateMediaItem(component, index, { caption: optional(caption) }, onChange)} rows={2} />
+              <BooleanChoice label="Tiêu điểm" value={item.featured === true} onChange={(featured) => updateMediaFeatured(component, index, featured, onChange)} trueLabel="Nhấn" falseLabel="Thường" trueIcon={booleanIcons.yes} falseIcon={booleanIcons.no} />
+            </FieldGroup>
+          ))}
+        </InspectorSection>
+      );
+    case "diagram":
+      return (
+        <InspectorSection title="Sơ đồ semantic" description="Chọn dạng sơ đồ theo quan hệ cần giải thích; tóm tắt accessible luôn bắt buộc.">
+          <TextField label="Tiêu đề" value={component.props.title} onChange={(title) => update({ title })} />
+          <TextAreaField label="Tóm tắt accessible" value={component.props.summary} onChange={(summary) => update({ summary })} rows={3} />
+          <SelectField
+            label="Dạng sơ đồ"
+            value={component.props.variant}
+            options={["timeline", "roadmap", "funnel", "pyramid", "cycle", "quadrant"]}
+            labels={{ timeline: "Dòng thời gian", roadmap: "Lộ trình", funnel: "Phễu", pyramid: "Kim tự tháp", cycle: "Chu trình", quadrant: "Ma trận bốn vùng" }}
+            onChange={(variant) => updateDiagramVariant(component, variant as typeof component.props.variant, onChange)}
+          />
+          {component.props.variant === "cycle" && (
+            <TextField label="Nhãn trung tâm" value={component.props.center ?? ""} onChange={(center) => update({ center: optional(center) })} />
+          )}
+          {component.props.variant === "quadrant" && (
+            <div className="inspector-field-grid inspector-field-grid--two">
+              <TextField label="Nhãn trục ngang" value={component.props.xLabel ?? ""} onChange={(xLabel) => update({ xLabel: optional(xLabel) })} />
+              <TextField label="Nhãn trục dọc" value={component.props.yLabel ?? ""} onChange={(yLabel) => update({ yLabel: optional(yLabel) })} />
+            </div>
+          )}
+          {component.props.items.map((item, index) => (
+            <FieldGroup key={item.id} label={`Mục ${index + 1}`}>
+              <div className="inspector-field-grid inspector-field-grid--two">
+                <TextField label="Nhãn" value={item.label} onChange={(label) => updateDiagramItem(component, index, { label }, onChange)} />
+                <TextField label="Giá trị" value={item.value ?? ""} onChange={(value) => updateDiagramItem(component, index, { value: optional(value) }, onChange)} />
+              </div>
+              <TextAreaField label="Diễn giải" value={item.description ?? ""} onChange={(description) => updateDiagramItem(component, index, { description: optional(description) }, onChange)} rows={2} />
+              <IconChoiceGroup label="Màu nhấn" value={item.tone ?? "neutral"} options={insightToneOptions} compact onChange={(tone) => updateDiagramItem(component, index, { tone }, onChange)} />
+              {component.props.variant === "quadrant" && (
+                <SelectField
+                  label="Vị trí"
+                  value={item.position ?? ["top-left", "top-right", "bottom-left", "bottom-right"][index] ?? "top-left"}
+                  options={["top-left", "top-right", "bottom-left", "bottom-right"]}
+                  labels={{ "top-left": "Trên trái", "top-right": "Trên phải", "bottom-left": "Dưới trái", "bottom-right": "Dưới phải" }}
+                  onChange={(position) => updateDiagramItem(component, index, { position: position as NonNullable<typeof item.position> }, onChange)}
+                />
+              )}
+              <BooleanChoice label="Tiêu điểm" value={item.featured === true} onChange={(featured) => updateDiagramFeatured(component, index, featured, onChange)} trueLabel="Nhấn" falseLabel="Thường" trueIcon={booleanIcons.yes} falseIcon={booleanIcons.no} />
+            </FieldGroup>
+          ))}
+        </InspectorSection>
+      );
     case "evidence-footer":
       return (
         <InspectorSection title="Chân trang nguồn" description="Nguồn phải rõ hoặc được ghi nhãn là dữ liệu minh hoạ.">
@@ -397,6 +478,32 @@ function updateWeightPresetWeight(component: Extract<SlideComponent, { type: "we
   updateWeightPreset(component, presetIndex, { weights: { ...preset.weights, [dimensionId]: weight } }, onChange);
 }
 
+function updateCriterionItem(component: Extract<SlideComponent, { type: "criterion-grid" }>, index: number, patch: Partial<(typeof component.props.items)[number]>, onChange: (component: SlideComponent) => void) {
+  const items = component.props.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
+  onChange({ ...component, props: { ...component.props, items } });
+}
+
+function updateCriterionFeatured(component: Extract<SlideComponent, { type: "criterion-grid" }>, index: number, featured: boolean, onChange: (component: SlideComponent) => void) {
+  const items = component.props.items.map((item, itemIndex) => ({
+    ...item,
+    featured: featured ? itemIndex === index : itemIndex === index ? false : item.featured
+  }));
+  onChange({ ...component, props: { ...component.props, items } });
+}
+
+function updateMediaItem(component: Extract<SlideComponent, { type: "media-showcase" }>, index: number, patch: Partial<(typeof component.props.items)[number]>, onChange: (component: SlideComponent) => void) {
+  const items = component.props.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
+  onChange({ ...component, props: { ...component.props, items } });
+}
+
+function updateMediaFeatured(component: Extract<SlideComponent, { type: "media-showcase" }>, index: number, featured: boolean, onChange: (component: SlideComponent) => void) {
+  const items = component.props.items.map((item, itemIndex) => ({
+    ...item,
+    featured: featured ? itemIndex === index : itemIndex === index ? false : item.featured
+  }));
+  onChange({ ...component, props: { ...component.props, items } });
+}
+
 function updateVisualizerItem(component: Extract<SlideComponent, { type: "visualizer" }>, index: number, patch: Partial<(typeof component.props.items)[number]>, onChange: (component: SlideComponent) => void) {
   const items = component.props.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
   onChange({ ...component, props: { ...component.props, items } });
@@ -408,4 +515,50 @@ function updateVisualizerFeatured(component: Extract<SlideComponent, { type: "vi
     featured: featured ? itemIndex === index : itemIndex === index ? false : item.featured
   }));
   onChange({ ...component, props: { ...component.props, items } });
+}
+
+function updateDiagramItem(component: Extract<SlideComponent, { type: "diagram" }>, index: number, patch: Partial<(typeof component.props.items)[number]>, onChange: (component: SlideComponent) => void) {
+  const items = component.props.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
+  onChange({ ...component, props: { ...component.props, items } });
+}
+
+function updateDiagramFeatured(component: Extract<SlideComponent, { type: "diagram" }>, index: number, featured: boolean, onChange: (component: SlideComponent) => void) {
+  const items = component.props.items.map((item, itemIndex) => ({
+    ...item,
+    featured: featured ? itemIndex === index : itemIndex === index ? false : item.featured
+  }));
+  onChange({ ...component, props: { ...component.props, items } });
+}
+
+function updateDiagramVariant(
+  component: Extract<SlideComponent, { type: "diagram" }>,
+  variant: Extract<SlideComponent, { type: "diagram" }>["props"]["variant"],
+  onChange: (component: SlideComponent) => void
+) {
+  const minimum = ["cycle", "funnel", "pyramid"].includes(variant) ? 3 : 2;
+  const target = variant === "quadrant" ? 4 : Math.max(minimum, component.props.items.length);
+  const positions = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+  const items = Array.from({ length: target }, (_, index) => {
+    const current = component.props.items[index];
+    const fallback = {
+      id: `item-${index + 1}`,
+      label: `Mục ${index + 1}`,
+      tone: index === 0 ? "cobalt" as const : "neutral" as const
+    };
+    const item = current ?? fallback;
+    return variant === "quadrant"
+      ? { ...item, position: positions[index] }
+      : { ...item, position: undefined };
+  });
+
+  onChange({
+    ...component,
+    props: {
+      ...component.props,
+      variant,
+      items,
+      ...(variant !== "cycle" ? { center: undefined } : {}),
+      ...(variant !== "quadrant" ? { xLabel: undefined, yLabel: undefined } : {})
+    }
+  });
 }

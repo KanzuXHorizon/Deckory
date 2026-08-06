@@ -7,6 +7,7 @@ import "./presenter.css";
 import "./export.css";
 import "./workspace.css";
 import "./slide-quality.css";
+import "./myinterview-defense.css";
 
 const deckSans = Be_Vietnam_Pro({
   weight: ["400", "500", "600", "700", "800"],

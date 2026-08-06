@@ -28,6 +28,7 @@ import {
   Undo2,
   X
 } from "lucide-react";
+import { scoreDeckQuality } from "@deckory/audit";
 import {
   validateDeck,
   type DeckDocument,
@@ -35,7 +36,16 @@ import {
   type Slide,
   type SlideComponent
 } from "@deckory/schema";
-import { slideRecipes, visualStyles, type SlideRecipe, type VisualStylePreset } from "@deckory/templates";
+import {
+  compatibleSlideMasters,
+  recommendSlideMaster,
+  slideMasters,
+  slideRecipes,
+  visualStyles,
+  type SlideMasterPreset,
+  type SlideRecipe,
+  type VisualStylePreset
+} from "@deckory/templates";
 import { cloneDeckDocument as cloneDeck, getSlideTitle as slideTitle } from "../lib/deck-document";
 import {
   canRedoDocumentHistory,
@@ -60,6 +70,7 @@ import {
   type StudioCommandId
 } from "../lib/studio-command-catalog";
 import {
+  applySlideMaster,
   applyVisualStyle,
   createSlideFromRecipe,
   customizeDeckTheme
@@ -171,6 +182,7 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
   }, [sourceDeck.id]);
 
   const validation = useMemo(() => validateDeck(deck), [deck]);
+  const qualityScorecard = useMemo(() => scoreDeckQuality(deck), [deck]);
   const diagnostics = validation.diagnostics;
   const selectedSlideIndex = Math.max(0, deck.slides.findIndex((slide) => slide.id === selectedSlideId));
   const selectedSlide = deck.slides[selectedSlideIndex] ?? deck.slides[0]!;
@@ -192,6 +204,13 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     typography: "editorial",
     density: "comfortable"
   };
+  const currentStyle = visualStyles.find((style) => style.id === deck.themeId);
+  const compatibleMasters = compatibleSlideMasters(selectedSlide, slideMasters);
+  const masterRecommendation = recommendSlideMaster({
+    slide: selectedSlide,
+    previousSlides: deck.slides.slice(Math.max(0, selectedSlideIndex - 2), selectedSlideIndex),
+    ...(currentStyle ? { style: currentStyle } : {})
+  });
 
   useEffect(() => {
     if (!selectedSlide.components.some((component) => component.id === selectedComponentId)) {
@@ -467,6 +486,16 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
     setSlideQuery("");
     setTemplatePanelOpen(false);
     setStorageMessage(`Đã thêm công thức “${recipe.name}” sau slide hiện tại.`);
+  };
+
+  const applyMaster = (master: SlideMasterPreset) => {
+    updateSlide(applySlideMaster(selectedSlide, master));
+    setStorageMessage(`Đã áp dụng slide master “${master.name}” mà không thay đổi nội dung semantic.`);
+  };
+
+  const autoBalanceMaster = () => {
+    if (!masterRecommendation) return;
+    applyMaster(masterRecommendation.master);
   };
 
   const applyStyle = (style: VisualStylePreset) => {
@@ -901,6 +930,24 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
 
             {inspectorTab === "quality" && (
               <div id="inspector-panel-quality" role="tabpanel" aria-labelledby="inspector-tab-quality">
+                <section className="studio-quality-scorecard" aria-label="Bảng điểm chất lượng 15 tiêu chí">
+                  <header>
+                    <div><span>QUALITY SCORE</span><strong>{qualityScorecard.overallScore}<small>/10</small></strong></div>
+                    <p>{qualityScorecard.readiness} · Điểm runtime chỉ tăng sau browser QA có evidence.</p>
+                  </header>
+                  <div className="studio-quality-dimensions">
+                    {qualityScorecard.dimensions.map((dimension) => {
+                      const failed = dimension.checks.filter((check) => !check.passed);
+                      return (
+                        <article key={dimension.id} data-confidence={dimension.confidence}>
+                          <div><span>{dimension.label}</span><strong>{dimension.score}</strong></div>
+                          <div aria-hidden="true"><i style={{ width: `${dimension.score * 10}%` }} /></div>
+                          <small>{failed[0]?.remediation ?? "Đã qua các kiểm tra cấu trúc hiện có."}</small>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
                 <section className={`diagnostics ${validation.ok ? "diagnostics--ready" : "diagnostics--error"}`}>
                   <header>{validation.ok ? <CheckCircle2 size={17} /> : <CircleAlert size={17} />}<div><h3>{validation.ok ? "Nội dung đã sẵn sàng" : "Cần xử lý trước khi xem trước"}</h3><p>{validation.ok ? "Bố cục, nội dung và thành phần đều đáp ứng yêu cầu trình chiếu." : `${diagnostics.length} vấn đề đang ảnh hưởng đến khả năng xem trước.`}</p></div></header>
                   {!validation.ok && <ul>{diagnostics.slice(0, 8).map((diagnostic, index) => <li key={`${diagnostic.propertyPath}-${index}`}><strong>{diagnostic.message}</strong><small>{diagnostic.remediation}</small><details><summary>Chi tiết kỹ thuật</summary><span>{diagnostic.propertyPath}</span></details></li>)}</ul>}
@@ -926,11 +973,17 @@ export function Studio({ sourceDeck, initialSlideId }: { sourceDeck: DeckDocumen
       <StudioTemplatePanel
         open={templatePanelOpen}
         recipes={slideRecipes}
+        masters={compatibleMasters}
         styles={visualStyles}
+        currentMasterId={selectedSlide.masterId}
+        recommendedMasterId={masterRecommendation?.master.id}
+        recommendationReasons={masterRecommendation?.reasons ?? []}
         currentThemeId={deck.themeId}
         currentTheme={currentTheme}
         onClose={() => setTemplatePanelOpen(false)}
         onInsertRecipe={insertRecipe}
+        onApplyMaster={applyMaster}
+        onAutoBalance={autoBalanceMaster}
         onApplyStyle={applyStyle}
         onCustomizeTheme={customizeTheme}
       />

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": { "dev": "next dev", "start": "next start", "build": "next build", "test": "vitest run", "typecheck": "tsc --noEmit", "lint": "tsc --noEmit" },
   "dependencies": {
+    "@deckory/audit": "workspace:*",
     "@deckory/core": "workspace:*",
     "@deckory/deckory-story": "workspace:*",
     "@deckory/myinterview-defense": "workspace:*",
