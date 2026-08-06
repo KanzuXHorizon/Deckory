@@ -4,6 +4,7 @@ export * from "./charts/chart-spec";
 export * from "./charts/echarts-adapter";
 export * from "./charts/editorial-geometry";
 export * from "./intent";
+export * from "./inventory";
 export * from "./evidence/data-transform";
 export * from "./diagrams/diagram-spec";
 export * from "./diagrams/elk-adapter";
