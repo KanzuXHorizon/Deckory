@@ -44,6 +44,27 @@ describe("Vietnamese-safe text measurement and fitting", () => {
     expect(measureRichText(heading, request)).toEqual(measureRichText(heading, request));
   });
 
+  it("accounts for semantic list markers during measurement", () => {
+    const request = {
+      fontFamily: "Inter Variable",
+      fontWeight: 500,
+      fontSize: 20,
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      width: 400
+    } as const;
+    const plain = normalizeRichText({
+      paragraphs: [{ id: "plain", runs: [{ text: "Bằng chứng" }] }]
+    });
+    const listed = normalizeRichText({
+      paragraphs: [{ id: "listed", list: { kind: "bullet", level: 1 }, runs: [{ text: "Bằng chứng" }] }]
+    });
+
+    expect(measureRichText(listed, request).maximumLineWidth).toBeGreaterThan(
+      measureRichText(plain, request).maximumLineWidth
+    );
+  });
+
   it("never shrinks below the declared minimum", () => {
     const result = fitTextToFrame(heading, { width: 520, height: 122 }, {
       fontFamily: "Inter Variable",
@@ -76,5 +97,94 @@ describe("Vietnamese-safe text measurement and fitting", () => {
       expect(result.measuredLines).toBeGreaterThan(1);
       expect(result.recommendation).toMatch(/split|rewrite|frame/i);
     }
+  });
+
+  it("includes line height and tracking in measurement cache identity", () => {
+    const base = {
+      fontFamily: "Inter Variable",
+      fontWeight: 700,
+      fontSize: 48,
+      width: 640,
+      text: "Phản hồi",
+      lineHeight: 1.05,
+      letterSpacing: -0.5
+    };
+
+    expect(buildTextMeasurementCacheKey(base)).not.toBe(
+      buildTextMeasurementCacheKey({ ...base, lineHeight: 1.2 })
+    );
+    expect(buildTextMeasurementCacheKey(base)).not.toBe(
+      buildTextMeasurementCacheKey({ ...base, letterSpacing: 0 })
+    );
+  });
+
+  it("reports the paragraph where cumulative line overflow begins", () => {
+    const document = normalizeRichText({
+      paragraphs: [
+        { id: "first", runs: [{ text: "Dòng đầu" }] },
+        { id: "second", runs: [{ text: "Dòng sau" }] }
+      ]
+    });
+    const result = fitTextToFrame(document, { width: 400, height: 100 }, {
+      fontFamily: "Inter Variable",
+      fontWeight: 500,
+      preferredSize: 20,
+      minimumSize: 20,
+      lineHeight: 1,
+      letterSpacing: 0,
+      maximumLines: 3
+    }, {
+      measure: () => ({
+        lineCount: 4,
+        height: 80,
+        maximumLineWidth: 300,
+        paragraphLines: [2, 2]
+      })
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.overflowingParagraph).toBe(1);
+  });
+
+  it("always evaluates the exact declared minimum size", () => {
+    const result = fitTextToFrame(heading, { width: 400, height: 100 }, {
+      fontFamily: "Inter Variable",
+      fontWeight: 700,
+      preferredSize: 40.3,
+      minimumSize: 40,
+      lineHeight: 1,
+      letterSpacing: 0,
+      maximumLines: 2
+    }, {
+      measure: (_document, request) => ({
+        lineCount: request.fontSize <= 40 ? 2 : 3,
+        height: request.fontSize <= 40 ? 80 : 120,
+        maximumLineWidth: 390,
+        paragraphLines: [request.fontSize <= 40 ? 2 : 3]
+      })
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.fontSize).toBe(40);
+  });
+
+  it("includes paragraph spacing and local line-height overrides in measured height", () => {
+    const document = normalizeRichText({
+      paragraphs: [{
+        id: "spaced",
+        style: { lineHeight: 2, spacingBefore: 10, spacingAfter: 5 },
+        runs: [{ text: "Một dòng" }]
+      }]
+    });
+    const measurement = measureRichText(document, {
+      fontFamily: "Inter Variable",
+      fontWeight: 500,
+      fontSize: 20,
+      lineHeight: 1,
+      letterSpacing: 0,
+      width: 400
+    });
+
+    expect(measurement.height).toBe(55);
   });
 });

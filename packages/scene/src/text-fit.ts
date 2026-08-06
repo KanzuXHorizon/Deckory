@@ -25,6 +25,8 @@ export type TextMeasurementCacheKeyInput = {
   fontWeight: number;
   fontSize: number;
   width: number;
+  lineHeight?: number;
+  letterSpacing?: number;
   text: string;
 };
 
@@ -79,6 +81,8 @@ export function buildTextMeasurementCacheKey(input: TextMeasurementCacheKeyInput
     compactNumber(input.fontWeight),
     compactNumber(input.fontSize),
     compactNumber(input.width),
+    ...(input.lineHeight === undefined ? [] : [`lh:${compactNumber(input.lineHeight)}`]),
+    ...(input.letterSpacing === undefined ? [] : [`ls:${compactNumber(input.letterSpacing)}`]),
     hashText(input.text)
   ].join("|");
 }
@@ -168,18 +172,25 @@ export const deterministicLocalTextMeasurer: TextMeasurer = {
 
     const paragraphLines: number[] = [];
     let maximumLineWidth = 0;
+    let height = 0;
     for (const paragraph of document.paragraphs) {
-      const result = measureParagraph(paragraph.runs.map((run) => run.text).join(""), request);
+      const body = paragraph.runs.map((run) => run.text).join("");
+      const prefix = paragraph.list
+        ? `${"  ".repeat(paragraph.list.level)}${paragraph.list.kind === "bullet" ? "•" : `${paragraph.list.ordinal ?? 1}.`} `
+        : "";
+      const paragraphRequest = {
+        ...request,
+        letterSpacing: paragraph.style?.tracking ?? request.letterSpacing
+      };
+      const result = measureParagraph(`${prefix}${body}`, paragraphRequest);
       paragraphLines.push(result.lines);
       maximumLineWidth = Math.max(maximumLineWidth, result.maximumLineWidth);
+      height += (paragraph.style?.spacingBefore ?? 0) +
+        result.lines * request.fontSize * (paragraph.style?.lineHeight ?? request.lineHeight) +
+        (paragraph.style?.spacingAfter ?? 0);
     }
     const lineCount = paragraphLines.reduce((sum, count) => sum + count, 0);
-    return {
-      lineCount,
-      height: lineCount * request.fontSize * request.lineHeight,
-      maximumLineWidth,
-      paragraphLines
-    };
+    return { lineCount, height, maximumLineWidth, paragraphLines };
   }
 };
 
@@ -191,13 +202,23 @@ export function measureRichText(
   return measurer.measure(document, request);
 }
 
+function measurementFingerprint(document: NormalizedRichTextDocument): string {
+  return JSON.stringify(document.paragraphs.map((paragraph) => ({
+    text: paragraph.runs.map((run) => run.text).join(""),
+    list: paragraph.list,
+    style: paragraph.style
+  })));
+}
+
 function cacheKeyFor(document: NormalizedRichTextDocument, request: TextMeasurementRequest): string {
   return buildTextMeasurementCacheKey({
     fontFamily: request.fontFamily,
     fontWeight: request.fontWeight,
     fontSize: request.fontSize,
     width: request.width,
-    text: document.plainText
+    lineHeight: request.lineHeight,
+    letterSpacing: request.letterSpacing,
+    text: measurementFingerprint(document)
   });
 }
 
@@ -207,15 +228,24 @@ export function fitTextToFrame(
   policy: TextFitPolicy,
   measurer: TextMeasurer = deterministicLocalTextMeasurer
 ): TextFitResult {
-  if (policy.minimumSize <= 0 || policy.preferredSize < policy.minimumSize) {
-    throw new Error("Text fit policy requires preferredSize >= minimumSize > 0");
+  if (!Number.isFinite(frame.width) || frame.width <= 0 || !Number.isFinite(frame.height) || frame.height <= 0) {
+    throw new Error("Text fit frame requires finite positive width and height");
+  }
+  if (!Number.isFinite(policy.minimumSize) || !Number.isFinite(policy.preferredSize) ||
+      policy.minimumSize <= 0 || policy.preferredSize < policy.minimumSize) {
+    throw new Error("Text fit policy requires finite preferredSize >= minimumSize > 0");
+  }
+  if (!Number.isFinite(policy.fontWeight) || !Number.isFinite(policy.lineHeight) || policy.lineHeight <= 0 ||
+      !Number.isFinite(policy.letterSpacing)) {
+    throw new Error("Text fit policy requires finite fontWeight, positive lineHeight and finite letterSpacing");
   }
   if (policy.maximumLines < 1 || !Number.isInteger(policy.maximumLines)) {
     throw new Error("Text fit policy requires a positive integer maximumLines");
   }
 
   const step = 0.5;
-  for (let size = policy.preferredSize; size + 1e-9 >= policy.minimumSize; size -= step) {
+  let size = policy.preferredSize;
+  while (true) {
     const fontSize = Math.max(policy.minimumSize, Number(size.toFixed(3)));
     const request: TextMeasurementRequest = {
       fontFamily: policy.fontFamily,
@@ -230,6 +260,7 @@ export function fitTextToFrame(
       return { ok: true, fontSize, measurement, cacheKey: cacheKeyFor(document, request) };
     }
     if (fontSize === policy.minimumSize) break;
+    size = Math.max(policy.minimumSize, size - step);
   }
 
   const minimumRequest: TextMeasurementRequest = {
@@ -241,10 +272,20 @@ export function fitTextToFrame(
     width: frame.width
   };
   const minimumMeasurement = measureRichText(document, minimumRequest, measurer);
-  const overflowingParagraph = Math.max(
-    0,
-    minimumMeasurement.paragraphLines.findIndex((lineCount) => lineCount > policy.maximumLines)
-  );
+  let cumulativeLines = 0;
+  let cumulativeHeight = 0;
+  let overflowingParagraph = Math.max(0, minimumMeasurement.paragraphLines.length - 1);
+  for (const [index, lineCount] of minimumMeasurement.paragraphLines.entries()) {
+    const paragraph = document.paragraphs[index];
+    cumulativeLines += lineCount;
+    cumulativeHeight += (paragraph?.style?.spacingBefore ?? 0) +
+      lineCount * policy.minimumSize * (paragraph?.style?.lineHeight ?? policy.lineHeight) +
+      (paragraph?.style?.spacingAfter ?? 0);
+    if (cumulativeLines > policy.maximumLines || cumulativeHeight > frame.height) {
+      overflowingParagraph = index;
+      break;
+    }
+  }
 
   return {
     ok: false,

@@ -52,12 +52,64 @@ function shapeClip(spec: ShapeRenderSpec): string | undefined {
   return undefined;
 }
 
+function finiteInRange(value: number, minimum: number, maximum: number): boolean {
+  return Number.isFinite(value) && value >= minimum && value <= maximum;
+}
+
+function safeCssFragment(value: string): boolean {
+  const source = value.trim();
+  return source.length > 0 && !/(?:url\s*\(|@import|javascript:|expression\s*\(|[;{}])/i.test(source);
+}
+
 function effectError(spec: ShapeRenderSpec): boolean {
-  return (spec.blur ?? 0) > 16 ||
-    (spec.glow?.blur ?? 0) > 56 ||
-    (spec.glow?.opacity ?? 0) > 0.4 ||
-    (spec.shadow?.blur ?? 0) > 48 ||
-    (spec.shadow?.opacity ?? 0) > 0.4;
+  if (spec.blur !== undefined && !finiteInRange(spec.blur, 0, 16)) return true;
+  if (spec.glow && (
+    !finiteInRange(spec.glow.blur, 0, 56) ||
+    !finiteInRange(spec.glow.opacity, 0, 0.4)
+  )) return true;
+  if (spec.shadow && (
+    !Number.isFinite(spec.shadow.x) ||
+    !Number.isFinite(spec.shadow.y) ||
+    !finiteInRange(spec.shadow.blur, 0, 48) ||
+    !finiteInRange(spec.shadow.spread, -32, 32) ||
+    !finiteInRange(spec.shadow.opacity, 0, 0.4)
+  )) return true;
+  return false;
+}
+
+function geometryError(spec: ShapeRenderSpec): boolean {
+  return !Number.isFinite(spec.width) || spec.width <= 0 ||
+    !Number.isFinite(spec.height) || spec.height <= 0;
+}
+
+function styleError(spec: ShapeRenderSpec): boolean {
+  if (spec.opacity !== undefined && !finiteInRange(spec.opacity, 0, 1)) return true;
+  if (spec.stroke && (
+    !safeCssFragment(spec.stroke.color) ||
+    !finiteInRange(spec.stroke.width, 0, 64) ||
+    (spec.stroke.dash?.some((value) => !finiteInRange(value, 0.25, 256)) ?? false)
+  )) return true;
+  const radii = typeof spec.cornerRadii === "number"
+    ? [spec.cornerRadii]
+    : spec.cornerRadii ?? [];
+  if (radii.some((value) => !finiteInRange(value, 0, Math.max(spec.width, spec.height)))) return true;
+  if (spec.fill.type === "solid") {
+    if (!safeCssFragment(spec.fill.color)) return true;
+  } else {
+    if (spec.fill.stops.length < 2 || spec.fill.stops.some((stop) =>
+      !finiteInRange(stop.offset, 0, 1) || !safeCssFragment(stop.color)
+    )) return true;
+    if (spec.fill.type === "linear-gradient" && !Number.isFinite(spec.fill.angle)) return true;
+    if (spec.fill.type === "radial-gradient" && spec.fill.position && (
+      !finiteInRange(spec.fill.position.x, 0, 100) || !finiteInRange(spec.fill.position.y, 0, 100)
+    )) return true;
+  }
+  if (spec.shadow && !safeCssFragment(spec.shadow.color)) return true;
+  if (spec.glow && !safeCssFragment(spec.glow.color)) return true;
+  if (spec.clipPath && !safeCssFragment(spec.clipPath)) return true;
+  if (spec.path && !safeCssFragment(spec.path)) return true;
+  if (spec.mask && !safeCssFragment(spec.mask.value)) return true;
+  return false;
 }
 
 function shadowValue(spec: ShapeRenderSpec): string | undefined {
@@ -72,8 +124,14 @@ function shadowValue(spec: ShapeRenderSpec): string | undefined {
 }
 
 export function ShapeRenderer({ spec }: { spec: ShapeRenderSpec }) {
+  if (geometryError(spec)) {
+    return <div data-shape-id={spec.id} data-shape-error="geometry-invalid" />;
+  }
   if (effectError(spec)) {
     return <div data-shape-id={spec.id} data-shape-error="effect-budget-exceeded" />;
+  }
+  if (styleError(spec)) {
+    return <div data-shape-id={spec.id} data-shape-error="style-invalid" />;
   }
 
   const dash = spec.stroke?.dash?.map((value) => `${value}px`).join(" ");

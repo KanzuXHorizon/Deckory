@@ -47,4 +47,48 @@ describe("semantic rich text", () => {
       ]
     })).toThrow(/paragraph ID/i);
   });
+
+  it("rejects executable link schemes before they enter the document", () => {
+    expect(() => normalizeRichText({
+      paragraphs: [{
+        id: "unsafe-link",
+        runs: [{ text: "Mở", marks: { link: { href: "javascript:alert(1)" } } }]
+      }]
+    })).toThrow(/link/i);
+  });
+
+  it("rejects rich-text colors that could escape into raw CSS", () => {
+    expect(() => normalizeRichText({
+      paragraphs: [{
+        id: "unsafe-color",
+        runs: [{ text: "Màu", marks: { color: "red);background:url(https://example.com/x)" } }]
+      }]
+    })).toThrow(/color/i);
+  });
+
+  it("rejects non-finite list and paragraph metrics", () => {
+    expect(() => normalizeRichText({
+      paragraphs: [{
+        id: "invalid-list",
+        list: { kind: "bullet", level: Number.NaN },
+        runs: [{ text: "Không hợp lệ" }]
+      }]
+    })).toThrow(/list level/i);
+
+    expect(() => normalizeRichText({
+      paragraphs: [{
+        id: "too-deep",
+        list: { kind: "bullet", level: 9 },
+        runs: [{ text: "Quá sâu" }]
+      }]
+    })).toThrow(/list level/i);
+
+    expect(() => normalizeRichText({
+      paragraphs: [{
+        id: "invalid-style",
+        style: { lineHeight: Number.POSITIVE_INFINITY },
+        runs: [{ text: "Không hợp lệ" }]
+      }]
+    })).toThrow(/lineHeight/i);
+  });
 });

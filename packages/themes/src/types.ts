@@ -86,7 +86,7 @@ export type ImageryTokens = {
   fit: "cover" | "contain";
   saturation: number;
   contrast: number;
-  duotone?: readonly [string, string];
+  duotone: readonly [string, string] | undefined;
   overlay: { color: string; opacity: number };
   effects: { blur: number; grain: number; vignette: number };
 };
@@ -156,6 +156,7 @@ export type ThemeTokenOverrides = DeepPartial<ThemeTokens>;
 
 export type ThemeDiagnosticCode =
   | "theme-token-unknown"
+  | "theme-reference-cycle"
   | "theme-value-out-of-bounds"
   | "theme-contrast-insufficient"
   | "theme-value-invalid";

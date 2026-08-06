@@ -21,9 +21,16 @@ function seeded(seed: number): () => number {
   };
 }
 
-function isLocalAssetSource(source: string): boolean {
-  return source.startsWith("/") || source.startsWith("./") || source.startsWith("../") ||
-    source.startsWith("data:") || source.startsWith("file:");
+function isLocalAssetSource(source: string, mediaType: string): boolean {
+  const value = source.trim();
+  if (value.startsWith("//")) return false;
+  if (value.startsWith("/") || value.startsWith("./") || value.startsWith("../") || value.startsWith("file:")) {
+    return true;
+  }
+  if (value.startsWith("data:")) {
+    return /^data:image\//i.test(value) && /^image\//i.test(mediaType);
+  }
+  return false;
 }
 
 function layerAsset(layer: BackgroundLayer, assets: readonly DeckAssetV2[]) {
@@ -38,6 +45,43 @@ function dataNumber(layer: BackgroundLayer, key: string, fallback: number): numb
 function dataString(layer: BackgroundLayer, key: string, fallback: string): string {
   const value = layer.data?.[key];
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function finiteInRange(value: number, minimum: number, maximum: number): boolean {
+  return Number.isFinite(value) && value >= minimum && value <= maximum;
+}
+
+function safeCssFragment(value: string): boolean {
+  const source = value.trim();
+  return source.length > 0 && !/(?:url\s*\(|@import|javascript:|expression\s*\(|[;{}])/i.test(source);
+}
+
+function layerParametersValid(layer: BackgroundLayer): boolean {
+  if (!finiteInRange(layer.opacity, 0, 1)) return false;
+  if (layer.blur !== undefined && !finiteInRange(layer.blur, 0, MAX_BACKGROUND_BLUR)) return false;
+  if (layer.scale !== undefined && !finiteInRange(layer.scale, 0.1, 16)) return false;
+  if (layer.angle !== undefined && !Number.isFinite(layer.angle)) return false;
+  if (layer.color !== undefined && !safeCssFragment(layer.color)) return false;
+  if (layer.colors?.some((color) => !safeCssFragment(color))) return false;
+  if (layer.position && (!finiteInRange(layer.position.x, 0, 100) || !finiteInRange(layer.position.y, 0, 100))) return false;
+  if (layer.size && (!finiteInRange(layer.size.width, 0.1, 1280) || !finiteInRange(layer.size.height, 0.1, 720))) return false;
+
+  const size = layer.data?.size;
+  if ((layer.type === "grid" || layer.type === "pattern") && size !== undefined &&
+      (typeof size !== "number" || !finiteInRange(size, 2, 512))) return false;
+  const lineWidth = layer.data?.lineWidth;
+  if (layer.type === "pattern" && lineWidth !== undefined &&
+      (typeof lineWidth !== "number" || !finiteInRange(lineWidth, 0.25, 32))) return false;
+  const edge = layer.data?.edge;
+  if (layer.type === "edge-mask" && edge !== undefined &&
+      (typeof edge !== "number" || !finiteInRange(edge, 0, 50))) return false;
+  return true;
+}
+
+function assetTypeValid(layer: BackgroundLayer, asset: DeckAssetV2): boolean {
+  return layer.type === "svg"
+    ? asset.type === "svg"
+    : asset.type === "image" || asset.type === "svg";
 }
 
 function gradientStops(colors: readonly string[]): string {
@@ -149,11 +193,17 @@ function renderLayer(layer: BackgroundLayer, assets: readonly DeckAssetV2[]): Re
   if ((layer.blur ?? 0) > MAX_BACKGROUND_BLUR || (layer.type === "glow" && layer.opacity > MAX_GLOW_OPACITY)) {
     return <div data-background-error="effect-budget-exceeded" data-background-layer={layer.id} />;
   }
+  if (!layerParametersValid(layer)) {
+    return <div data-background-error="parameter-invalid" data-background-layer={layer.id} />;
+  }
 
   if (layer.type === "image" || layer.type === "svg") {
     const asset = layerAsset(layer, assets);
     if (!asset) return <div data-background-error="asset-missing" data-background-layer={layer.id} />;
-    if (!isLocalAssetSource(asset.src)) {
+    if (!assetTypeValid(layer, asset)) {
+      return <div data-background-error="asset-type-invalid" data-background-layer={layer.id} />;
+    }
+    if (!isLocalAssetSource(asset.src, asset.mediaType)) {
       return <div data-background-error="remote-asset-rejected" data-background-layer={layer.id} />;
     }
     const fit = dataString(layer, "fit", "cover");

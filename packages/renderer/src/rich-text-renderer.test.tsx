@@ -32,4 +32,51 @@ describe("RichTextRenderer", () => {
 
     expect(html).toContain('aria-label="Phản hồi có bằng chứng."');
   });
+
+  it("groups consecutive list paragraphs into one semantic list", () => {
+    const html = renderToStaticMarkup(<RichTextRenderer document={{
+      verticalAlign: "top",
+      readingOrder: ["first", "second"],
+      plainText: "• Một\n• Hai",
+      paragraphs: [
+        { id: "first", list: { kind: "bullet", level: 0 }, runs: [{ text: "Một" }] },
+        { id: "second", list: { kind: "bullet", level: 0 }, runs: [{ text: "Hai" }] }
+      ]
+    }} />);
+
+    expect(html.match(/<ul/g)).toHaveLength(1);
+    expect(html.match(/<li/g)).toHaveLength(2);
+    expect(html).toContain('data-paragraph-id="first"');
+    expect(html).toContain('data-paragraph-id="second"');
+  });
+
+  it("rejects protocol-relative links at the renderer boundary", () => {
+    const html = renderToStaticMarkup(<RichTextRenderer document={{
+      verticalAlign: "top",
+      readingOrder: ["link"],
+      plainText: "Mở liên kết",
+      paragraphs: [{
+        id: "link",
+        runs: [{ text: "Mở liên kết", marks: { link: { href: "//example.com" } } }]
+      }]
+    }} />);
+
+    expect(html).toContain('data-rich-text-error="unsafe-link"');
+    expect(html).not.toContain('href="//example.com"');
+  });
+
+  it("rejects unsafe color values at the renderer boundary", () => {
+    const html = renderToStaticMarkup(<RichTextRenderer document={{
+      verticalAlign: "top",
+      readingOrder: ["color"],
+      plainText: "Màu",
+      paragraphs: [{
+        id: "color",
+        runs: [{ text: "Màu", marks: { color: "red);background:url(https://example.com/x)" } }]
+      }]
+    }} />);
+
+    expect(html).toContain('data-rich-text-error="unsafe-color"');
+    expect(html).not.toContain("https://example.com");
+  });
 });

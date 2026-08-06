@@ -46,4 +46,101 @@ describe("theme token resolution", () => {
     expect(result.tokens.depth.glow).toEqual(world.depth.glow);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("theme-value-out-of-bounds");
   });
+
+  it("preserves a valid deck override when a later slide override is invalid", () => {
+    const world = visualWorlds.get("deckory-editorial-control-room")!;
+    const result = resolveThemeTokens(
+      world,
+      { depth: { glow: { blur: 24 } } },
+      { depth: { glow: { blur: 400 } } }
+    );
+
+    expect(result.tokens.depth.glow.blur).toBe(24);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: "theme-value-out-of-bounds",
+      path: "depth.glow.blur"
+    }));
+  });
+
+  it("rejects semantic references whose resolved type does not match the target token", () => {
+    const world = visualWorlds.get("data-journalism")!;
+    const result = resolveThemeTokens(world, {
+      colors: { accent: "$charts.categorical" }
+    });
+
+    expect(result.tokens.colors.accent).toBe(world.colors.accent);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: "theme-value-invalid",
+      path: "colors.accent",
+      reference: "$charts.categorical"
+    }));
+  });
+
+  it("allows a typed optional imagery duotone override", () => {
+    const world = visualWorlds.get("product-showcase")!;
+    const result = resolveThemeTokens(world, {
+      imagery: { duotone: ["#121826", "#2855e8"] }
+    });
+
+    expect(result.tokens.imagery.duotone).toEqual(["#121826", "#2855e8"]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("resolves same-layer references independently of object key order", () => {
+    const world = visualWorlds.get("academic-defense")!;
+    const referenceFirst = resolveThemeTokens(world, {
+      colors: { accent: "$charts.highlight" },
+      charts: { highlight: "#0057ff" }
+    });
+    const literalFirst = resolveThemeTokens(world, {
+      charts: { highlight: "#0057ff" },
+      colors: { accent: "$charts.highlight" }
+    });
+
+    expect(referenceFirst.tokens.colors.accent).toBe("#0057ff");
+    expect(referenceFirst).toEqual(literalFirst);
+  });
+
+  it("resolves chained semantic references without depending on key order", () => {
+    const world = visualWorlds.get("academic-defense")!;
+    const result = resolveThemeTokens(world, {
+      colors: {
+        accent: "$colors.accentSecondary",
+        accentSecondary: "$colors.positive",
+        positive: "#176b45"
+      }
+    });
+
+    expect(result.tokens.colors.accent).toBe("#176b45");
+    expect(result.tokens.colors.accentSecondary).toBe("#176b45");
+  });
+
+  it("reports contrast diagnostics introduced by resolved overrides", () => {
+    const world = visualWorlds.get("swiss-precision")!;
+    const result = resolveThemeTokens(world, {
+      colors: { foreground: "#ffffff", canvas: "#ffffff" }
+    });
+
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: "theme-contrast-insufficient",
+      path: "colors.foreground"
+    }));
+  });
+
+  it("rejects semantic reference cycles without changing prior-layer values", () => {
+    const world = visualWorlds.get("academic-defense")!;
+    const result = resolveThemeTokens(world, {
+      colors: {
+        accent: "$colors.accentSecondary",
+        accentSecondary: "$colors.accent"
+      }
+    });
+
+    expect(result.tokens.colors.accent).toBe(world.colors.accent);
+    expect(result.tokens.colors.accentSecondary).toBe(world.colors.accentSecondary);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "theme-reference-cycle", path: "colors.accent" }),
+      expect.objectContaining({ code: "theme-reference-cycle", path: "colors.accentSecondary" })
+    ]));
+  });
 });

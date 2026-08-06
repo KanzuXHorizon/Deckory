@@ -34,4 +34,55 @@ describe("ShapeRenderer", () => {
     expect(html).toContain('data-shape-error="effect-budget-exceeded"');
     expect(html).not.toContain("blur(80px)");
   });
+
+  it("rejects negative effects and invalid geometry instead of emitting invalid CSS", () => {
+    const negativeEffect = renderToStaticMarkup(<ShapeRenderer spec={{
+      id: "negative-effect",
+      shape: "rectangle",
+      width: 200,
+      height: 120,
+      fill: { type: "solid", color: "#5147e8" },
+      blur: -1
+    }} />);
+    const invalidGeometry = renderToStaticMarkup(<ShapeRenderer spec={{
+      id: "invalid-geometry",
+      shape: "rectangle",
+      width: -200,
+      height: 120,
+      fill: { type: "solid", color: "#5147e8" }
+    }} />);
+
+    expect(negativeEffect).toContain('data-shape-error="effect-budget-exceeded"');
+    expect(invalidGeometry).toContain('data-shape-error="geometry-invalid"');
+  });
+
+  it("rejects invalid opacity, stroke and corner-radius values", () => {
+    const html = renderToStaticMarkup(<ShapeRenderer spec={{
+      id: "invalid-style",
+      shape: "rectangle",
+      width: 200,
+      height: 120,
+      fill: { type: "solid", color: "#5147e8" },
+      opacity: 1.4,
+      stroke: { color: "#15171a", width: -2, dash: [8, -4] },
+      cornerRadii: [12, -1, 4, 18]
+    }} />);
+
+    expect(html).toContain('data-shape-error="style-invalid"');
+  });
+
+  it("rejects remote CSS URLs in shape fills, clips and masks", () => {
+    const html = renderToStaticMarkup(<ShapeRenderer spec={{
+      id: "unsafe-css",
+      shape: "rectangle",
+      width: 200,
+      height: 120,
+      fill: { type: "solid", color: "url(https://example.com/fill.svg)" },
+      clipPath: "url(https://example.com/clip.svg)",
+      mask: { type: "linear", value: "to right, black), url(https://example.com/mask.svg)" }
+    }} />);
+
+    expect(html).toContain('data-shape-error="style-invalid"');
+    expect(html).not.toContain("https://example.com");
+  });
 });

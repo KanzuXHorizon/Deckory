@@ -48,7 +48,14 @@ export type CompiledMotionCue = CompilerMotionCue & {
 };
 
 export type MotionCompilerDiagnostic = {
-  code: "motion-final-state-missing" | "motion-duration-invalid" | "motion-value-invalid";
+  code:
+    | "motion-final-state-missing"
+    | "motion-duration-invalid"
+    | "motion-value-invalid"
+    | "motion-path-id-missing"
+    | "motion-group-id-missing"
+    | "motion-click-step-invalid"
+    | "motion-source-order-invalid";
   trackId: string;
   cueId?: string;
   property?: CompilerMotionProperty;
@@ -79,6 +86,40 @@ function validateTrack(track: CompilerMotionTrack): MotionCompilerDiagnostic[] {
         trackId: track.id,
         cueId: cue.id,
         message: `Cue ${cue.id} must use duration and delay between 0 and 30 seconds.`
+      });
+    }
+    if (cue.sourceOrder !== undefined &&
+        (!Number.isFinite(cue.sourceOrder) || !Number.isInteger(cue.sourceOrder) || cue.sourceOrder < 0)) {
+      diagnostics.push({
+        code: "motion-source-order-invalid",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `Cue ${cue.id} must use a finite non-negative integer sourceOrder.`
+      });
+    }
+    if (cue.type === "path" && !cue.pathId?.trim()) {
+      diagnostics.push({
+        code: "motion-path-id-missing",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `Path cue ${cue.id} requires a pathId.`
+      });
+    }
+    if (cue.type === "stagger" && !cue.groupId?.trim()) {
+      diagnostics.push({
+        code: "motion-group-id-missing",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `Stagger cue ${cue.id} requires a groupId.`
+      });
+    }
+    if (cue.trigger === "on-click" &&
+        (cue.clickStep === undefined || !Number.isInteger(cue.clickStep) || cue.clickStep < 1)) {
+      diagnostics.push({
+        code: "motion-click-step-invalid",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `On-click cue ${cue.id} requires a positive integer clickStep.`
       });
     }
     for (const [property, value] of [...Object.entries(cue.from), ...Object.entries(cue.to)] as [CompilerMotionProperty, number][]) {
@@ -153,11 +194,15 @@ export function compileMotionTimeline(tracks: readonly CompilerMotionTrack[]): C
     previousEnd = Math.max(previousEnd, end);
   }
 
-  const finalStateByElement = Object.fromEntries(
-    [...tracks]
-      .sort((left, right) => left.elementId.localeCompare(right.elementId) || left.id.localeCompare(right.id))
-      .map((track) => [track.elementId, cloneState(track.finalState)])
-  );
+  const finalStateByElement: Record<string, CompilerMotionState> = {};
+  for (const track of [...tracks].sort((left, right) =>
+    left.elementId.localeCompare(right.elementId) || left.id.localeCompare(right.id)
+  )) {
+    finalStateByElement[track.elementId] = {
+      ...finalStateByElement[track.elementId],
+      ...cloneState(track.finalState)
+    };
+  }
 
   return {
     cues,
@@ -180,8 +225,18 @@ export function resolveMotionState(
   }
 
   const timeline = compileMotionTimeline([track]);
+  if (options.time >= timeline.duration) return cloneState(track.finalState);
+
   const state: CompilerMotionState = {};
   for (const cue of timeline.cues) {
+    for (const property of new Set([
+      ...Object.keys(cue.from),
+      ...Object.keys(cue.to)
+    ] as CompilerMotionProperty[])) {
+      if (state[property] === undefined) {
+        state[property] = cue.from[property] ?? track.finalState[property] ?? cue.to[property] ?? 0;
+      }
+    }
     if (options.time < cue.start) continue;
     const progress = cue.duration === 0 ? 1 : (options.time - cue.start) / cue.duration;
     for (const property of new Set([

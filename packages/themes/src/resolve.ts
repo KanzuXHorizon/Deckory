@@ -1,3 +1,4 @@
+import { validateVisualWorld } from "./themes";
 import type {
   ThemeDiagnostic,
   ThemeResolution,
@@ -46,23 +47,49 @@ function readPath(root: unknown, path: string): unknown {
   return cursor;
 }
 
+function validOptionalTokenValue(path: string, candidate: unknown): boolean {
+  return path === "imagery.duotone" &&
+    Array.isArray(candidate) &&
+    candidate.length === 2 &&
+    candidate.every((entry) => typeof entry === "string" && /^#[0-9a-f]{6}$/i.test(entry));
+}
+
+function compatibleValueTypes(current: unknown, candidate: unknown, path: string): boolean {
+  if (current === undefined) return validOptionalTokenValue(path, candidate);
+  if (Array.isArray(current) || Array.isArray(candidate)) {
+    if (!Array.isArray(current) || !Array.isArray(candidate)) return false;
+    if (path === "imagery.duotone") return validOptionalTokenValue(path, candidate);
+    const sample = current.find((entry) => entry !== undefined);
+    return sample === undefined || candidate.every((entry) => typeof entry === typeof sample);
+  }
+  if (isPlainObject(current) || isPlainObject(candidate)) return false;
+  return typeof current === typeof candidate;
+}
+
+type MergePhase = "literal" | "reference";
+
 function mergeOverrides(
   target: Record<string, unknown>,
   fallback: Record<string, unknown>,
   overrides: Record<string, unknown>,
   diagnostics: ThemeDiagnostic[],
+  phase: MergePhase,
   prefix = "",
-  root: Record<string, unknown> = target
+  root: Record<string, unknown> = target,
+  blockedReferences: ReadonlySet<string> = new Set()
 ): void {
   for (const [key, override] of Object.entries(overrides)) {
     const path = prefix ? `${prefix}.${key}` : key;
+    const isReference = typeof override === "string" && override.startsWith("$");
     if (!(key in target)) {
-      diagnostics.push({
-        code: "theme-token-unknown",
-        path,
-        value: override,
-        message: `Không có theme token ${path}; giá trị override đã bị bỏ qua.`
-      });
+      if ((phase === "reference") === isReference) {
+        diagnostics.push({
+          code: "theme-token-unknown",
+          path,
+          value: override,
+          message: `Không có theme token ${path}; giá trị override đã bị bỏ qua.`
+        });
+      }
       continue;
     }
 
@@ -70,23 +97,49 @@ function mergeOverrides(
     const original = fallback[key];
 
     if (isPlainObject(override) && isPlainObject(current) && isPlainObject(original)) {
-      mergeOverrides(current, original, override, diagnostics, path, root);
+      mergeOverrides(current, original, override, diagnostics, phase, path, root, blockedReferences);
       continue;
     }
 
-    if (typeof override === "string" && override.startsWith("$")) {
+    if (phase === "literal" && isReference) continue;
+    if (phase === "reference" && !isReference) continue;
+    if (isReference && blockedReferences.has(path)) continue;
+
+    if (isReference) {
       const referencePath = override.slice(1);
       const resolved = readPath(root, referencePath);
-      if (resolved === undefined || isPlainObject(resolved)) {
+      if (resolved === undefined) {
         target[key] = cloneValue(original);
         diagnostics.push({
           code: "theme-token-unknown",
           path,
           reference: override,
-          message: `Không thể resolve ${override} cho ${path}; giữ nguyên giá trị visual world.`
+          message: `Không thể resolve ${override} cho ${path}; giữ nguyên giá trị ở lớp trước.`
+        });
+      } else if (!compatibleValueTypes(current, resolved, path)) {
+        target[key] = cloneValue(original);
+        diagnostics.push({
+          code: "theme-value-invalid",
+          path,
+          reference: override,
+          value: resolved,
+          message: `Theme reference ${override} không tương thích với kiểu token ${path}; giữ nguyên giá trị ở lớp trước.`
         });
       } else {
-        target[key] = cloneValue(resolved);
+        const constraint = bounds[path];
+        if (constraint && typeof resolved === "number" &&
+            (!Number.isFinite(resolved) || resolved < constraint.minimum || resolved > constraint.maximum)) {
+          target[key] = cloneValue(original);
+          diagnostics.push({
+            code: "theme-value-out-of-bounds",
+            path,
+            reference: override,
+            value: resolved,
+            message: `${override} resolve thành giá trị ngoài [${constraint.minimum}, ${constraint.maximum}] cho ${path}; giữ nguyên giá trị ở lớp trước.`
+          });
+        } else {
+          target[key] = cloneValue(resolved);
+        }
       }
       continue;
     }
@@ -105,7 +158,7 @@ function mergeOverrides(
       }
     }
 
-    if (typeof current !== typeof override && !(Array.isArray(current) && Array.isArray(override))) {
+    if (!compatibleValueTypes(current, override, path)) {
       target[key] = cloneValue(original);
       diagnostics.push({
         code: "theme-value-invalid",
@@ -118,6 +171,60 @@ function mergeOverrides(
 
     target[key] = cloneValue(override);
   }
+}
+
+function collectReferences(
+  value: unknown,
+  prefix = "",
+  references: Map<string, string> = new Map()
+): Map<string, string> {
+  if (!isPlainObject(value)) return references;
+  for (const [key, entry] of Object.entries(value)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (typeof entry === "string" && entry.startsWith("$")) {
+      references.set(path, entry.slice(1));
+    } else if (isPlainObject(entry)) {
+      collectReferences(entry, path, references);
+    }
+  }
+  return references;
+}
+
+function findReferenceCycles(references: ReadonlyMap<string, string>): Set<string> {
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const stack: string[] = [];
+  const cyclic = new Set<string>();
+
+  const visit = (path: string) => {
+    if (visited.has(path)) return;
+    if (visiting.has(path)) {
+      const start = stack.indexOf(path);
+      for (const member of stack.slice(Math.max(0, start))) cyclic.add(member);
+      cyclic.add(path);
+      return;
+    }
+
+    visiting.add(path);
+    stack.push(path);
+    const dependency = references.get(path);
+    if (dependency && references.has(dependency)) visit(dependency);
+    stack.pop();
+    visiting.delete(path);
+    visited.add(path);
+  };
+
+  for (const path of [...references.keys()].sort()) visit(path);
+  return cyclic;
+}
+
+function resolvedTokenDiagnostics(tokens: ThemeTokens): ThemeDiagnostic[] {
+  return validateVisualWorld({
+    id: "resolved-theme",
+    name: "Resolved theme",
+    description: "Resolved Deckory theme tokens.",
+    ...tokens
+  });
 }
 
 function toTokens(world: VisualWorld): ThemeTokens {
@@ -139,19 +246,35 @@ function toTokens(world: VisualWorld): ThemeTokens {
 
 function resolveFromBase(base: ThemeTokens, overrideSets: readonly (ThemeTokenOverrides | undefined)[]): ThemeResolution {
   const tokens = cloneValue(base);
-  const fallback = cloneValue(base);
   const diagnostics: ThemeDiagnostic[] = [];
 
   for (const overrides of overrideSets) {
     if (!overrides) continue;
-    mergeOverrides(
-      tokens as unknown as Record<string, unknown>,
-      fallback as unknown as Record<string, unknown>,
-      overrides as unknown as Record<string, unknown>,
-      diagnostics
-    );
+    const fallback = cloneValue(tokens);
+    const target = tokens as unknown as Record<string, unknown>;
+    const original = fallback as unknown as Record<string, unknown>;
+    const layer = overrides as unknown as Record<string, unknown>;
+    mergeOverrides(target, original, layer, diagnostics, "literal");
+
+    const references = collectReferences(layer);
+    const cyclicReferences = findReferenceCycles(references);
+    for (const path of [...cyclicReferences].sort()) {
+      const reference = references.get(path);
+      diagnostics.push({
+        code: "theme-reference-cycle",
+        path,
+        ...(reference ? { reference: `$${reference}` } : {}),
+        message: `Theme reference cycle tại ${path}; giữ nguyên giá trị ở lớp trước.`
+      });
+    }
+
+    for (let pass = 0; pass < references.size; pass += 1) {
+      const passDiagnostics = pass === references.size - 1 ? diagnostics : [];
+      mergeOverrides(target, original, layer, passDiagnostics, "reference", "", target, cyclicReferences);
+    }
   }
 
+  diagnostics.push(...resolvedTokenDiagnostics(tokens));
   return { tokens, diagnostics };
 }
 

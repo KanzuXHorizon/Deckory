@@ -56,7 +56,11 @@ export type MotionDiagnosticCode =
   | "motion-exit-before-entrance"
   | "motion-final-state-missing"
   | "motion-duration-invalid"
-  | "motion-value-invalid";
+  | "motion-value-invalid"
+  | "motion-path-id-missing"
+  | "motion-group-id-missing"
+  | "motion-click-step-invalid"
+  | "motion-source-order-invalid";
 
 export type MotionDiagnostic = {
   code: MotionDiagnosticCode;
@@ -121,6 +125,40 @@ export function validateMotionTrack(track: MotionTrack): MotionDiagnostic[] {
         trackId: track.id,
         cueId: cue.id,
         message: `Motion cue ${cue.id} must use duration and delay values between 0 and 30 seconds.`
+      });
+    }
+    if (cue.sourceOrder !== undefined &&
+        (!Number.isFinite(cue.sourceOrder) || !Number.isInteger(cue.sourceOrder) || cue.sourceOrder < 0)) {
+      diagnostics.push({
+        code: "motion-source-order-invalid",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `Motion cue ${cue.id} must use a finite non-negative integer sourceOrder.`
+      });
+    }
+    if (cue.type === "path" && !cue.pathId?.trim()) {
+      diagnostics.push({
+        code: "motion-path-id-missing",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `Path cue ${cue.id} requires a pathId.`
+      });
+    }
+    if (cue.type === "stagger" && !cue.groupId?.trim()) {
+      diagnostics.push({
+        code: "motion-group-id-missing",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `Stagger cue ${cue.id} requires a groupId.`
+      });
+    }
+    if (cue.trigger === "on-click" &&
+        (cue.clickStep === undefined || !Number.isInteger(cue.clickStep) || cue.clickStep < 1)) {
+      diagnostics.push({
+        code: "motion-click-step-invalid",
+        trackId: track.id,
+        cueId: cue.id,
+        message: `On-click cue ${cue.id} requires a positive integer clickStep.`
       });
     }
 

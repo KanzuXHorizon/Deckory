@@ -87,4 +87,29 @@ describe("typed motion tracks", () => {
       expect(preset.finalStatePolicy).toBe("complete");
     }
   });
+
+  it("requires type-specific path, stagger and click metadata", () => {
+    const track = validTrack();
+    track.cues = [
+      { ...track.cues[0]!, id: "move-path", type: "path" },
+      { ...track.cues[0]!, id: "stagger-group", type: "stagger" },
+      { ...track.cues[0]!, id: "click", trigger: "on-click", clickStep: 0 }
+    ];
+
+    expect(validateMotionTrack(track)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "motion-path-id-missing", cueId: "move-path" }),
+      expect.objectContaining({ code: "motion-group-id-missing", cueId: "stagger-group" }),
+      expect.objectContaining({ code: "motion-click-step-invalid", cueId: "click" })
+    ]));
+  });
+
+  it("rejects invalid source ordering metadata", () => {
+    const track = validTrack();
+    track.cues[0] = { ...track.cues[0]!, sourceOrder: Number.NaN };
+
+    expect(validateMotionTrack(track)).toContainEqual(expect.objectContaining({
+      code: "motion-source-order-invalid",
+      cueId: "claim-in"
+    }));
+  });
 });

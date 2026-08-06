@@ -33,6 +33,14 @@ describe("ImageRenderer", () => {
       height: 180,
       fit: "cover"
     }} />);
+    const protocolRelative = renderToStaticMarkup(<ImageRenderer spec={{
+      id: "protocol-relative",
+      src: "//example.com/image.png",
+      alt: "Remote",
+      width: 320,
+      height: 180,
+      fit: "cover"
+    }} />);
     const unsafe = renderToStaticMarkup(<ImageRenderer spec={{
       id: "unsafe",
       src: "/assets/local.png",
@@ -44,6 +52,69 @@ describe("ImageRenderer", () => {
     }} />);
 
     expect(remote).toContain('data-image-error="remote-asset-rejected"');
+    expect(protocolRelative).toContain('data-image-error="remote-asset-rejected"');
     expect(unsafe).toContain('data-image-error="effect-budget-exceeded"');
+  });
+
+  it("uses the declared duotone colors in the generated SVG filter", () => {
+    const html = renderToStaticMarkup(<ImageRenderer spec={{
+      id: "duotone-proof",
+      src: "/assets/local.png",
+      alt: "Local",
+      width: 320,
+      height: 180,
+      fit: "cover",
+      duotone: ["#000000", "#ffffff"]
+    }} />);
+
+    expect(html).toContain('data-duotone-shadow="#000000"');
+    expect(html).toContain('data-duotone-highlight="#ffffff"');
+    expect(html).toContain('<feColorMatrix type="matrix"');
+    expect(html).toContain("0.2126 0.7152 0.0722 0 0");
+  });
+
+  it("rejects focal points outside the normalized image bounds", () => {
+    const html = renderToStaticMarkup(<ImageRenderer spec={{
+      id: "invalid-focal",
+      src: "/assets/local.png",
+      alt: "Local",
+      width: 320,
+      height: 180,
+      fit: "cover",
+      focalPoint: { x: 1.2, y: 0.5 }
+    }} />);
+
+    expect(html).toContain('data-image-error="focal-point-invalid"');
+  });
+
+  it("rejects invalid opacity and corner-radius values", () => {
+    const html = renderToStaticMarkup(<ImageRenderer spec={{
+      id: "invalid-style",
+      src: "/assets/local.png",
+      alt: "Local",
+      width: 320,
+      height: 180,
+      fit: "cover",
+      opacity: 1.2,
+      cornerRadii: [8, -4, 8, 8]
+    }} />);
+
+    expect(html).toContain('data-image-error="style-invalid"');
+  });
+
+  it("rejects remote CSS URLs in overlays and masks", () => {
+    const html = renderToStaticMarkup(<ImageRenderer spec={{
+      id: "unsafe-css",
+      src: "/assets/local.png",
+      alt: "Local",
+      width: 320,
+      height: 180,
+      fit: "cover",
+      overlay: { color: "url(https://example.com/overlay.svg)", opacity: 0.2 },
+      mask: { type: "radial", value: "black), url(https://example.com/mask.svg)" }
+    }} />);
+
+    expect(html).toContain('data-image-error="style-invalid"');
+    expect(html).not.toContain("https://example.com");
   });
 });

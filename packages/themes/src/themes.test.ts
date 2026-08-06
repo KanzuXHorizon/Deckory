@@ -56,4 +56,30 @@ describe("visual worlds", () => {
       expect(world.imagery.effects.blur).toBeLessThanOrEqual(16);
     }
   });
+
+  it("reports invalid typography floors and effect budgets in custom worlds", () => {
+    const base = visualWorlds.get("minimal-luxury")!;
+    const invalid: VisualWorld = {
+      ...base,
+      typography: {
+        ...base.typography,
+        title: { ...base.typography.title, size: 32, minimumSize: 40 }
+      },
+      depth: {
+        ...base.depth,
+        glow: { blur: 80, opacity: 0.8 }
+      },
+      imagery: {
+        ...base.imagery,
+        effects: { ...base.imagery.effects, blur: 24 }
+      }
+    };
+
+    expect(validateVisualWorld(invalid)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "theme-value-invalid", path: "typography.title.minimumSize" }),
+      expect.objectContaining({ code: "theme-value-out-of-bounds", path: "depth.glow.blur" }),
+      expect.objectContaining({ code: "theme-value-out-of-bounds", path: "depth.glow.opacity" }),
+      expect.objectContaining({ code: "theme-value-out-of-bounds", path: "imagery.effects.blur" })
+    ]));
+  });
 });

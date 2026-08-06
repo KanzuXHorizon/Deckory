@@ -81,6 +81,7 @@ const baseTokens: ThemeTokens = {
   imagery: {
     fit: "cover",
     saturation: 0.94,
+    duotone: undefined,
     contrast: 1.04,
     overlay: { color: "#15171a", opacity: 0.08 },
     effects: { blur: 0, grain: 0.08, vignette: 0.08 }
@@ -287,6 +288,30 @@ export function contrastRatio(foreground: string, background: string): number | 
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+function validateBoundedNumber(
+  diagnostics: ThemeDiagnostic[],
+  path: string,
+  value: number,
+  minimum: number,
+  maximum: number
+): void {
+  if (!Number.isFinite(value)) {
+    diagnostics.push({
+      code: "theme-value-invalid",
+      path,
+      value,
+      message: `Token ${path} phải là số hữu hạn.`
+    });
+  } else if (value < minimum || value > maximum) {
+    diagnostics.push({
+      code: "theme-value-out-of-bounds",
+      path,
+      value,
+      message: `Token ${path} phải nằm trong [${minimum}, ${maximum}].`
+    });
+  }
+}
+
 export function validateVisualWorld(world: VisualWorld): ThemeDiagnostic[] {
   const diagnostics: ThemeDiagnostic[] = [];
   const checks = [
@@ -313,6 +338,83 @@ export function validateVisualWorld(world: VisualWorld): ThemeDiagnostic[] {
         message: `Tương phản tại ${check.path} là ${ratio.toFixed(2)}:1, thấp hơn ngưỡng ${check.minimum}:1.`
       });
     }
+  }
+
+  for (const [role, token] of Object.entries(world.typography)) {
+    validateBoundedNumber(diagnostics, `typography.${role}.size`, token.size, 1, 240);
+    validateBoundedNumber(diagnostics, `typography.${role}.minimumSize`, token.minimumSize, 1, 240);
+    validateBoundedNumber(diagnostics, `typography.${role}.lineHeight`, token.lineHeight, 0.5, 4);
+    validateBoundedNumber(diagnostics, `typography.${role}.weight`, token.weight, 100, 1000);
+    validateBoundedNumber(diagnostics, `typography.${role}.tracking`, token.tracking, -20, 100);
+    if (token.minimumSize > token.size) {
+      diagnostics.push({
+        code: "theme-value-invalid",
+        path: `typography.${role}.minimumSize`,
+        value: token.minimumSize,
+        message: `Typography minimumSize của ${role} không được lớn hơn preferred size.`
+      });
+    }
+    if (token.maximumLines !== undefined && (!Number.isInteger(token.maximumLines) || token.maximumLines < 1 || token.maximumLines > 100)) {
+      diagnostics.push({
+        code: "theme-value-invalid",
+        path: `typography.${role}.maximumLines`,
+        value: token.maximumLines,
+        message: `Typography maximumLines của ${role} phải là số nguyên trong [1, 100].`
+      });
+    }
+  }
+
+  const bounded = [
+    ["depth.shadow.blur", world.depth.shadow.blur, 0, 48],
+    ["depth.shadow.spread", world.depth.shadow.spread, -32, 32],
+    ["depth.shadow.opacity", world.depth.shadow.opacity, 0, 0.4],
+    ["depth.glow.blur", world.depth.glow.blur, 0, 56],
+    ["depth.glow.opacity", world.depth.glow.opacity, 0, 0.4],
+    ["imagery.saturation", world.imagery.saturation, 0, 2],
+    ["imagery.contrast", world.imagery.contrast, 0.5, 2],
+    ["imagery.overlay.opacity", world.imagery.overlay.opacity, 0, 0.65],
+    ["imagery.effects.blur", world.imagery.effects.blur, 0, 16],
+    ["imagery.effects.grain", world.imagery.effects.grain, 0, 0.3],
+    ["imagery.effects.vignette", world.imagery.effects.vignette, 0, 0.4],
+    ["backgrounds.grain.opacity", world.backgrounds.grain.opacity, 0, 0.2],
+    ["backgrounds.grain.scale", world.backgrounds.grain.scale, 0.1, 8],
+    ["motion.durationFast", world.motion.durationFast, 0, 2],
+    ["motion.durationStandard", world.motion.durationStandard, 0, 3],
+    ["motion.durationDeliberate", world.motion.durationDeliberate, 0, 5],
+    ["motion.stagger", world.motion.stagger, 0, 1],
+    ["motion.travel", world.motion.travel, 0, 160]
+  ] as const;
+  for (const [path, value, minimum, maximum] of bounded) {
+    validateBoundedNumber(diagnostics, path, value, minimum, maximum);
+  }
+
+  if (world.imagery.duotone && world.imagery.duotone.some((color) => luminance(color) === undefined)) {
+    diagnostics.push({
+      code: "theme-value-invalid",
+      path: "imagery.duotone",
+      value: world.imagery.duotone,
+      message: "Imagery duotone phải dùng đúng hai màu hex 6 ký tự."
+    });
+  }
+
+  for (const [edge, value] of Object.entries(world.safeArea)) {
+    validateBoundedNumber(diagnostics, `safeArea.${edge}`, value, 0, 360);
+  }
+  if (world.safeArea.left + world.safeArea.right >= 1280) {
+    diagnostics.push({
+      code: "theme-value-invalid",
+      path: "safeArea",
+      value: world.safeArea,
+      message: "Safe area ngang phải chừa lại vùng nội dung dương trên canvas 1280px."
+    });
+  }
+  if (world.safeArea.top + world.safeArea.bottom >= 720) {
+    diagnostics.push({
+      code: "theme-value-invalid",
+      path: "safeArea",
+      value: world.safeArea,
+      message: "Safe area dọc phải chừa lại vùng nội dung dương trên canvas 720px."
+    });
   }
 
   return diagnostics;
