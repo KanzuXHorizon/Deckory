@@ -94,7 +94,12 @@ Apply in this order:
 7. `1697d29b65d96b7cf3e3fb1e0dad13d7b0a5a6bc` — `fix(scene): harden layout and hierarchy edge cases`
 8. `d5abacf903ea8dededeafe3984c054c099a45fc5` — `fix(studio): complete layout panel keyboard workflows`
 9. `8a518f083af6fe3fab315e569bd363de68827d0d` — `fix(studio): prevent duplicate layer rename commits`
-10. The final review-manifest commit is recorded in the final report after creation.
+10. `a79437030beb67fc1d90e787d031d8239d655c4c` — `docs(parallel): finalize Studio layout review findings`
+11. `02a47058239e948bec99fa55206755f9fd37918d` — `feat(scene): complete Studio layout interaction actions`
+12. `f7004abef94b0dc91bc4242cd8cc530eebb1dca5` — `feat(studio): finish keyboard drag and rotation adapters`
+13. `09c68d8746722785cd3240750a42bcce36b510c5` — `feat(studio): add Layers drag reorder adapter`
+14. `98adc89817659b2ec29605ee1e924362f2556463` — `fix(studio): preserve transforms in frame-only gestures`
+15. The final completion-manifest commit is recorded in the final report after creation.
 
 ## Implemented behavior
 
@@ -142,9 +147,11 @@ Apply in this order:
 - Distribute horizontally and vertically while preserving the actual outer bounds, including cases where a wider middle element extends furthest.
 - Reject distribution when selected element sizes exceed the available span.
 - One toolbar action produces one `transform-elements` command.
+- Alignment/distribution availability includes explicit Vietnamese disabled reasons for insufficient selection.
 - Canvas edge/center, safe area, custom, sibling edge/center, text baseline and auto-layout guide sources.
 - Closest-guide snapping with zoom-normalized logical-pixel tolerance supplied by the caller.
-- Equal-spacing measurements for temporary labels.
+- Equal-spacing measurements for temporary labels; overlapping elements do not produce misleading negative-gap labels.
+- Safe-area and custom-guide validation rejects impossible or off-canvas guide definitions.
 
 ### Hierarchy
 
@@ -153,7 +160,9 @@ Apply in this order:
 - Reject selected parent/descendant mixtures and hierarchy cycles.
 - Reject ungroup/reparent operations across rotated, scaled or skewed coordinate spaces until a transform-matrix integration is available, rather than silently changing visual geometry.
 - Stable document-order hierarchy flattening with depth metadata.
-- Grouping and reparenting produce one proposed atomic command plus one inverse command.
+- Reorder/reparent to an explicit sibling index preserves absolute frames and updates sibling z-order deterministically.
+- Detach from stack/grid preserves the absolute frame and returns one proposed atomic transaction.
+- Grouping, reparenting, reorder and detach produce one proposed atomic command plus one inverse command.
 
 ### Isolated Studio modules
 
@@ -163,13 +172,18 @@ Only focused files under owned Studio subdirectories were added; the Studio root
 - Marquee contain/intersect selection with deep-select mode.
 - Hidden and locked elements excluded from marquee selection.
 - Gesture transaction adapter converts viewport deltas to logical pixels.
-- One completed multi-element gesture produces exactly one `transform-elements` command.
-- Cancel produces no command; keyboard nudge uses the same command path.
+- One completed multi-element drag, resize or rotation gesture produces exactly one local `transform-elements` command payload.
+- Frame-only gestures omit unchanged transforms while preserving them in transaction state; rotation payloads normalize transform values deterministically.
+- Cancel produces no command; Arrow and Shift+Arrow map to 1- and 10-logical-pixel nudge deltas through the same command path.
+- A polite atomic selection-status overlay reports empty, single and multi-selection changes outside artifact semantics.
 - Canvas guide overlay and equal-spacing labels are outside artifact semantics.
 - Layers tree model, search preserving ancestors, roving keyboard focus and patch-command generation.
 - Accessible Vietnamese Layers panel with Arrow/Home/End navigation, Enter selection, Space additive selection, F2 inline rename, non-empty-name validation, selection, lock/hide status and clear empty search state.
+- Optional HTML drag adapter resolves before/inside/after drop zones into validated reorder/reparent intents without wiring the frozen Studio root.
 - Controlled Vietnamese Layout panel for mode, direction, wrap, columns, gap, independent padding, alignment, distribution, fixed/hug/fill, constraints and detach.
 - Layout fields use progressive disclosure: freeform hides unrelated controls, constraint shows anchoring only, and stack/grid show only their applicable auto-layout controls.
+- Number controls allow temporary empty drafts without emitting `NaN` or invalid values.
+- Layout action builders produce one `patch-element` command for stack/grid settings and child fixed/hug/fill sizing.
 - Actionable fit diagnostics remain visible alongside controls.
 - Local CSS modules establish the Deckory editorial control-room visual baseline, visible focus, usable targets and narrow-panel behavior without touching shared workspace CSS.
 
@@ -184,6 +198,8 @@ packages/scene/src/guides.test.ts
 packages/scene/src/guides.ts
 packages/scene/src/hierarchy.test.ts
 packages/scene/src/hierarchy.ts
+packages/scene/src/layout/actions.test.ts
+packages/scene/src/layout/actions.ts
 packages/scene/src/layout/auto-layout.test.ts
 packages/scene/src/layout/auto-layout.ts
 packages/scene/src/layout/constraints.test.ts
@@ -205,6 +221,8 @@ apps/present/components/studio-v2/canvas/gesture-transaction.test.ts
 apps/present/components/studio-v2/canvas/gesture-transaction.ts
 apps/present/components/studio-v2/canvas/selection-controller.test.ts
 apps/present/components/studio-v2/canvas/selection-controller.ts
+apps/present/components/studio-v2/canvas/selection-status.test.tsx
+apps/present/components/studio-v2/canvas/selection-status.tsx
 ```
 
 ### Studio Layers
@@ -234,6 +252,7 @@ docs/superpowers/parallel/requests/studio-layout-atomic-scene-command.md
 docs/superpowers/parallel/requests/studio-layout-grid-contract.md
 docs/superpowers/parallel/requests/studio-layout-public-wiring.md
 docs/superpowers/parallel/requests/studio-layout-renderer-hierarchy.md
+docs/superpowers/parallel/requests/studio-layout-transform-command.md
 ```
 
 No schema, shared barrel, root manifest, lockfile, route, shared renderer root, shared Studio root or another track's production path was modified.
@@ -373,6 +392,42 @@ Studio GREEN:
 
 Two additional defensive cases—empty layer names and reparenting across transformed coordinate spaces—were added before their production guards but after the first grouped RED capture. They are included in the final GREEN suite; no separate isolated RED transcript is claimed for those two assertions.
 
+### Completion review pass
+
+A second comparison against the Track A checklist found isolated interaction capabilities that still had no implementation.
+
+Scene RED command:
+
+```bash
+pnpm --filter @deckory/scene test -- src/alignment.test.ts src/guides.test.ts src/hierarchy.test.ts src/layout/actions.test.ts
+```
+
+Observed RED:
+
+- 7 missing behaviors were reproduced: no layout action builder module, no hierarchy reorder/detach functions, no alignment availability helper, no safe-area/custom-guide validation and negative equal-spacing labels for overlaps.
+
+Scene GREEN:
+
+- 11 Scene test files passed.
+- 57 tests passed, 0 failed.
+- Scene typecheck exited 0.
+
+Studio RED command:
+
+```bash
+pnpm --filter @deckory/present test -- components/studio-v2/canvas/gesture-transaction.test.ts components/studio-v2/canvas/selection-status.test.tsx components/studio-v2/layers/layers-model.test.ts
+```
+
+Observed RED:
+
+- 8 missing behaviors were reproduced: rotation was not persisted by the adapter, frame-only gestures did not track transforms, cancellation did not restore transform state, keyboard delta mapping and selection status were absent, invalid Layers hierarchy was not rejected, and drag/rename intent resolvers did not exist.
+
+Studio GREEN after the focused completion and drag-adapter slices:
+
+- 37 Present test files passed.
+- 167 tests passed, 0 failed.
+- Present typecheck exited 0.
+
 ### Mechanical UI scan
 
 Executed:
@@ -401,15 +456,15 @@ pnpm build
 
 Results:
 
-- 291 tests passed, 0 failed across package, app and script suites.
+- 313 tests passed, 0 failed across package, app and script suites.
   - schema: 36
   - audit: 9
   - core: 2
   - renderer: 3
-  - scene: 47
+  - scene: 57
   - templates: 29
   - MyInterview deck: 6
-  - Present: 155
+  - Present: 167
   - export/PPTX script contracts: 4
 - Workspace typecheck: passed.
 - Workspace lint: passed.
@@ -436,6 +491,8 @@ The final report also records the post-manifest verification and final clean sta
 5. `docs/superpowers/parallel/requests/studio-layout-renderer-hierarchy.md`
    - Correct the accepted V2 renderer so parent-local frames and container transforms render as a hierarchy instead of as flat slide-local siblings.
    - This request is required before browser claims for grouping, nested selection or layout containers.
+6. `docs/superpowers/parallel/requests/studio-layout-transform-command.md`
+   - Extend `transform-elements` with optional normalized `Transform2D` payloads so rotation remains one command and one undo step.
 
 No dependency or lockfile was changed in this track.
 
@@ -447,23 +504,26 @@ No dependency or lockfile was changed in this track.
 4. Apply `studio-layout-aspect-ratio-contract.md`; map the persisted ratio into the authoritative sizing policy and add schema/conversion/reload tests.
 5. Apply `studio-layout-atomic-scene-command.md` as a coordinator-owned command-contract commit. Run the official command regression test, Scene package tests and Scene typecheck.
 6. Review and apply `studio-layout-grid-contract.md`. Update `convertGroupLayoutMode` to store tuple padding and `align`; add the requested round-trip test.
-7. Add the requested exports to `packages/scene/src/index.ts` in the coordinator's shared-barrel batch.
-8. Apply `studio-layout-renderer-hierarchy.md` before wiring group/reparent UI or claiming browser geometry; verify nested parent-local rendering and transformed containers in `@deckory/renderer`.
-9. Add `@deckory/scene`, `react-moveable@0.56.0` and `react-selecto@1.26.3` to `apps/present/package.json`; resolve `pnpm-lock.yaml` once after all parallel-track dependency requests are reviewed.
-10. Wire the Studio root without moving persistent logic into third-party adapters:
+7. Apply `studio-layout-transform-command.md` and its frame-only/rotation/inverse regression tests before connecting Moveable rotation.
+8. Add the requested exports to `packages/scene/src/index.ts` in the coordinator's shared-barrel batch.
+9. Apply `studio-layout-renderer-hierarchy.md` before wiring group/reparent UI or claiming browser geometry; verify nested parent-local rendering and transformed containers in `@deckory/renderer`.
+10. Add `@deckory/scene`, `react-moveable@0.56.0` and `react-selecto@1.26.3` to `apps/present/package.json`; resolve `pnpm-lock.yaml` once after all parallel-track dependency requests are reviewed.
+11. Wire the Studio root without moving persistent logic into third-party adapters:
    - use `selection-controller.ts` for pointer and marquee results;
    - confine Selecto events to a thin overlay that translates rectangles into logical canvas coordinates;
-   - use `gesture-transaction.ts` to begin from immutable frames, preview transiently and dispatch only its final one-command result;
+   - use `gesture-transaction.ts` to begin from immutable frames/transforms, preview transiently and dispatch only its final one-command result;
    - confine Moveable events to transient CSS/frame previews; never store its event object in the deck;
    - dispatch `createAlignmentCommand` for align/distribute actions;
    - dispatch the accepted atomic command for group, ungroup, reparent and layout conversion;
-   - render `CanvasGuides` outside the artifact DOM;
+   - render `CanvasGuides` and `SelectionStatus` outside the artifact DOM;
    - mount `LayersPanel` and `LayoutPanel` as controlled modules;
+   - connect `LayersPanel.onMove` to `moveElementInHierarchy` and dispatch its proposed atomic command;
+   - use `createLayoutContainerPatchCommand` and `createChildSizingCommand` for layout Inspector changes;
    - preserve selection when Inspector/Layout values change;
    - keep zoom and panel state outside document history.
-11. Verify one gesture maps to one `SceneCommand` and one undo step for pointer drag, resize, rotate, keyboard nudge, align, distribute, group, reparent and layout conversion.
-12. Confirm Presenter, Preview, thumbnails and export do not import `react-moveable` or `react-selecto` by inspecting the production bundle/module graph.
-13. Run the combined unit, typecheck, lint and build gates, then perform the browser QA below on the integrated revision.
+12. Verify one gesture maps to one `SceneCommand` and one undo step for pointer drag, resize, rotate, keyboard nudge, align, distribute, group, reparent and layout conversion.
+13. Confirm Presenter, Preview, thumbnails and export do not import `react-moveable` or `react-selecto` by inspecting the production bundle/module graph.
+14. Run the combined unit, typecheck, lint and build gates, then perform the browser QA below on the integrated revision.
 
 ## Browser QA still required after root integration
 
@@ -499,6 +559,7 @@ output/playwright/screenshots/<run-id>/studio-v2-*
 ## Residual risks
 
 - Structural actions return the proposed atomic command but cannot enter official history until the frozen `SceneCommand` union is extended.
+- Rotation is normalized and emitted by the isolated adapter, but persistent one-step rotation remains blocked until `studio-layout-transform-command.md` is applied.
 - The accepted Scene Foundation renderer currently flattens nested V2 elements and ignores `parentId` when positioning. Browser geometry for group/reparent/layout containers is blocked until `studio-layout-renderer-hierarchy.md` is applied.
 - Aspect-ratio sizing cannot be persisted until its schema request is accepted; the pure engine is implemented and bounded, but Studio round-trip is intentionally not claimed.
 - Independent grid padding/alignment cannot be fully serialized until the schema request is accepted; the track rejects unsupported persistence rather than losing data.

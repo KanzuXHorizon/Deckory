@@ -16,6 +16,7 @@ Add these exports in the coordinator integration batch:
 export * from "./alignment";
 export * from "./guides";
 export * from "./hierarchy";
+export * from "./layout/actions";
 export * from "./layout/auto-layout";
 export * from "./layout/constraints";
 export * from "./layout/conversion";
@@ -53,8 +54,12 @@ pnpm view react-selecto version
 - Failing test that motivates the change:
   - Integration import test should import `layoutStack`, `resolveConstraints`, `groupElements`, `collectSnapGuides` and `createAlignmentCommand` from `@deckory/scene`.
   - Studio integration test should dispatch the structural command emitted by the Layout mode control and the single `transform-elements` command emitted by `gesture-transaction.ts`.
+  - Mount `SelectionStatus` outside the artifact DOM and verify it reports empty, single and multi-selection changes without announcing pointer previews.
+  - Connect `LayersPanel.onMove` to `resolveLayerDropIntent` → `moveElementInHierarchy` and dispatch its one proposed atomic command.
+  - Use `createLayoutContainerPatchCommand` and `createChildSizingCommand` instead of rebuilding patch payloads in the Studio root.
 - Compatibility impact:
   - Public exports are additive.
   - `@deckory/scene` is editor-side only; Presenter and Preview must continue importing only `@deckory/renderer` and schema contracts.
   - `react-moveable` and `react-selecto` must be dynamically confined to Studio-owned overlay adapters so they do not enter Presenter, Preview, thumbnail or export bundles.
+  - Persistent rotation requires the separate `studio-layout-transform-command.md` contract request; do not split one rotate gesture into multiple history commands.
 - Can the track continue without it: yes for all committed pure/UI modules; no for Moveable/Selecto overlays, shared imports and end-to-end Studio interaction QA.
