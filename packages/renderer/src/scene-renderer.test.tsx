@@ -29,7 +29,7 @@ const sceneSlideWithEvidence: SceneSlide = {
       kind: "evidence-footer",
       frame: { x: 72, y: 660, width: 1136, height: 28 },
       zIndex: 2,
-      content: { source: "Fixture minh hoạ", page: "01" },
+      content: { source: "Fixture minh hoạ", page: "01", brandLabel: "FPT Polytechnic" },
       accessibility: { label: "Nguồn: Fixture minh hoạ", readingOrder: 2 }
     }
   ]
@@ -47,7 +47,30 @@ describe("SceneRenderer", () => {
   it("keeps the evidence footer in the final renderer", () => {
     const html = renderToStaticMarkup(<SceneRenderer slide={sceneSlideWithEvidence} assets={[]} mode="final" />);
     expect(html).toContain("Fixture minh hoạ");
+    expect(html).toContain("FPT Polytechnic");
     expect(html).toContain('data-element-kind="evidence-footer"');
+    expect(html).toContain("font-variant-numeric:tabular-nums");
+  });
+
+  it("renders semantic table hierarchy with bounded layout", () => {
+    const tableSlide: SceneSlide = {
+      ...sceneSlide,
+      id: "table",
+      elements: [{
+        id: "matrix",
+        name: "Evidence matrix",
+        kind: "table",
+        frame: { x: 72, y: 180, width: 1136, height: 360 },
+        zIndex: 1,
+        content: { columns: ["Luận điểm", "Bằng chứng"], rows: [["Luồng", "E2E"], ["AI", "Schema"]] },
+        accessibility: { label: "Ma trận bằng chứng", readingOrder: 1 }
+      }]
+    };
+    const html = renderToStaticMarkup(<SceneRenderer slide={tableSlide} assets={[]} mode="final" />);
+    expect(html).toContain('<th scope="col"');
+    expect(html).toContain("table-layout:fixed");
+    expect(html).toContain("Luận điểm");
+    expect(html).toContain("E2E");
   });
 
   it("sorts by z-index while preserving stable document order", () => {

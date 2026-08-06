@@ -178,10 +178,26 @@ function elementContent(
       return <ChartRenderer spec={element.content.chart} width={element.frame.width} height={element.frame.height} mode={mode} assets={assets} />;
     case "table":
       return (
-        <table>
-          <thead><tr>{element.content.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
-          <tbody>{element.content.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex}>{String(cell ?? "")}</td>)}</tr>)}</tbody>
-        </table>
+        <div style={{ width: "100%", height: "100%", overflow: "hidden", border: "1px solid color-mix(in srgb, currentColor 18%, transparent)", borderRadius: 14, background: "rgba(255,255,255,.92)" }}>
+          <table style={{ width: "100%", height: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontSize: "inherit", lineHeight: "inherit" }}>
+            <thead>
+              <tr>{element.content.columns.map((column) => (
+                <th key={column} scope="col" style={{ padding: "11px 14px", borderBottom: "2px solid color-mix(in srgb, currentColor 24%, transparent)", background: "color-mix(in srgb, currentColor 7%, white)", textAlign: "left", fontWeight: 780 }}>
+                  {column}
+                </th>
+              ))}</tr>
+            </thead>
+            <tbody>{element.content.rows.map((row, rowIndex) => (
+              <tr key={rowIndex} style={{ background: rowIndex % 2 === 0 ? "rgba(255,255,255,.72)" : "color-mix(in srgb, currentColor 3%, white)" }}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex} style={{ padding: "9px 14px", borderBottom: rowIndex === element.content.rows.length - 1 ? "none" : "1px solid color-mix(in srgb, currentColor 12%, transparent)", verticalAlign: "middle", fontWeight: cellIndex === 0 ? 680 : 500 }}>
+                    {String(cell ?? "")}
+                  </td>
+                ))}
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
       );
     case "diagram":
       return <DiagramRenderer spec={element.content.diagram} width={element.frame.width} height={element.frame.height} />;
@@ -232,9 +248,12 @@ function elementContent(
     }
     case "evidence-footer":
       return (
-        <footer className="scene-evidence-footer">
-          <span>{element.content.source}</span>
-          {element.content.page && <b>{element.content.page}</b>}
+        <footer className="scene-evidence-footer" style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, borderTop: "1px solid color-mix(in srgb, currentColor 22%, transparent)", fontSize: "inherit", lineHeight: 1.2 }}>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{element.content.source}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 12, flex: "none", fontWeight: 720 }}>
+            {element.content.brandLabel && <em style={{ fontStyle: "normal", opacity: .82 }}>{element.content.brandLabel}</em>}
+            {element.content.page && <b style={{ minWidth: 28, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{element.content.page}</b>}
+          </span>
         </footer>
       );
   }
