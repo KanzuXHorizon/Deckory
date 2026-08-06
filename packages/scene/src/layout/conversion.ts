@@ -59,6 +59,7 @@ function childPolicy(child: SceneElement, axis: "width" | "height"): LayoutSizin
   const maxValue = axis === "width" ? constraints?.maxWidth : constraints?.maxHeight;
   if (minValue !== undefined) policy.min = minValue;
   if (maxValue !== undefined) policy.max = maxValue;
+  if (constraints?.aspectRatio?.preserve === axis) policy.aspectRatio = constraints.aspectRatio.value;
   return policy;
 }
 
@@ -149,23 +150,17 @@ export function convertGroupLayoutMode(input: LayoutGroupSnapshot, options: Layo
     } as Extract<SceneElement, { kind: "stack" }>;
   } else {
     const padding = normalizePadding(options.padding ?? 0);
-    if (!(padding.top === padding.right && padding.right === padding.bottom && padding.bottom === padding.left)) {
-      return failure({
-        code: "invalid-layout-input",
-        message: "Grid contract hiện tại chỉ lưu được padding đồng nhất ở bốn cạnh.",
-        recommendation: "Dùng một giá trị padding chung hoặc yêu cầu mở rộng schema grid.",
-        elementIds: [input.parent.id]
-      });
-    }
     const columns = options.columns ?? Math.max(1, Math.ceil(Math.sqrt(input.children.length)));
     const gap = options.gap ?? 0;
+    const align = options.align ?? "stretch";
+    const serializedPadding = [padding.top, padding.right, padding.bottom, padding.left] as [number, number, number, number];
     const result = layoutGrid({
       frame: { x: 0, y: 0, width: parentFrame.width, height: parentFrame.height },
       columns,
-      padding: padding.top,
+      padding: serializedPadding,
       columnGap: gap,
       rowGap: gap,
-      align: options.align ?? "stretch",
+      align,
       children: input.children.map(toLayoutChild)
     });
     if (!result.ok) return conversionFailure(result, childrenIds);
@@ -178,7 +173,8 @@ export function convertGroupLayoutMode(input: LayoutGroupSnapshot, options: Layo
         rows: Math.max(1, Math.ceil(input.children.length / columns)),
         columnGap: gap,
         rowGap: gap,
-        padding: padding.top
+        padding: serializedPadding,
+        align
       }
     } as Extract<SceneElement, { kind: "grid" }>;
   }

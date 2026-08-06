@@ -1,5 +1,8 @@
-import type { CSSProperties, ReactNode } from "react";
+import { Children, type CSSProperties, type ReactNode } from "react";
 import type { DeckAssetV2, SceneElement } from "@deckory/schema";
+import { TrustedComponentHost } from "./component-host";
+import type { SceneRendererExtensions } from "./renderer-extensions";
+import { WebBlockHost, type WebBlockHostManifest } from "./web-block-host";
 
 export type SceneRenderMode = "final" | "thumbnail" | "studio" | "export";
 
@@ -31,12 +34,40 @@ function legacyComponent(element: Extract<SceneElement, { kind: "component-insta
   );
 }
 
-function elementContent(element: SceneElement, assets: readonly DeckAssetV2[]): ReactNode {
+function parseWebBlockManifest(input: Record<string, unknown>): WebBlockHostManifest | undefined {
+  const staticFallback = input.staticFallback;
+  if (
+    typeof input.id !== "string" || !input.id.trim() ||
+    typeof input.version !== "string" || !input.version.trim() ||
+    typeof input.accessibleSummary !== "string" || !input.accessibleSummary.trim() ||
+    !staticFallback || typeof staticFallback !== "object"
+  ) return undefined;
+
+  const fallback = staticFallback as Record<string, unknown>;
+  if ((fallback.type !== "svg" && fallback.type !== "png") || typeof fallback.assetId !== "string" || !fallback.assetId.trim()) {
+    return undefined;
+  }
+
+  return {
+    id: input.id,
+    version: input.version,
+    accessibleSummary: input.accessibleSummary,
+    staticFallback: { type: fallback.type, assetId: fallback.assetId }
+  };
+}
+
+function elementContent(
+  element: SceneElement,
+  assets: readonly DeckAssetV2[],
+  mode: SceneRenderMode,
+  extensions: SceneRendererExtensions | undefined,
+  children: ReactNode
+): ReactNode {
   switch (element.kind) {
     case "group":
     case "stack":
     case "grid":
-      return null;
+      return children;
     case "text":
       return element.content.text;
     case "rich-text":
@@ -78,10 +109,47 @@ function elementContent(element: SceneElement, assets: readonly DeckAssetV2[]): 
       const src = assetSource(assets, element.content.assetId);
       return src ? <img src={src} alt={element.accessibility.label ?? ""} draggable={false} /> : <span data-scene-error="asset-missing">Thiếu asset: {element.content.assetId}</span>;
     }
-    case "component-instance":
-      return legacyComponent(element);
-    case "web-block":
-      return <div className="scene-web-block-fallback">{element.accessibility.description ?? element.accessibility.label ?? element.name}</div>;
+    case "component-instance": {
+      const definition = extensions?.components?.resolve({
+        componentId: element.content.componentId,
+        version: element.content.version
+      });
+      return definition ? (
+        <TrustedComponentHost
+          element={{
+            id: element.id,
+            name: element.name,
+            content: element.content,
+            accessibility: {
+              ...(element.accessibility.label ? { label: element.accessibility.label } : {}),
+              ...(element.accessibility.description ? { description: element.accessibility.description } : {})
+            }
+          }}
+          definition={definition}
+          mode={mode}
+          {...(extensions?.exportTarget ? { exportTarget: extensions.exportTarget } : {})}
+        />
+      ) : legacyComponent(element);
+    }
+    case "web-block": {
+      const manifest = parseWebBlockManifest(element.content.manifest);
+      if (!manifest) {
+        return <div className="scene-web-block-fallback" data-web-block-status="manifest-invalid">{element.accessibility.description ?? element.accessibility.label ?? element.name}</div>;
+      }
+      const resolution = extensions?.webBlocks?.resolve({
+        elementId: element.id,
+        manifest: element.content.manifest,
+        ...(element.content.sourceId ? { sourceId: element.content.sourceId } : {})
+      });
+      return (
+        <WebBlockHost
+          element={{ id: element.id, name: element.name, manifest }}
+          mode={mode}
+          {...(resolution?.bundle ? { bundle: resolution.bundle } : {})}
+          {...(resolution?.fallbackSrc ? { fallbackSrc: resolution.fallbackSrc } : {})}
+        />
+      );
+    }
     case "evidence-footer":
       return (
         <footer className="scene-evidence-footer">
@@ -95,11 +163,15 @@ function elementContent(element: SceneElement, assets: readonly DeckAssetV2[]): 
 export function ElementRenderer({
   element,
   assets,
-  mode
+  mode,
+  children,
+  extensions
 }: {
   element: SceneElement;
   assets: readonly DeckAssetV2[];
   mode: SceneRenderMode;
+  children?: ReactNode;
+  extensions?: SceneRendererExtensions;
 }) {
   const customProperties = {
     "--scene-x": element.frame.x,
@@ -150,13 +222,14 @@ export function ElementRenderer({
       data-parent-id={element.parentId}
       data-locked={element.locked ? "true" : undefined}
       data-render-mode={mode}
+      data-scene-child-count={Children.count(children) || undefined}
       style={style}
       role={role}
       aria-label={element.accessibility.decorative ? undefined : element.accessibility.label}
       aria-description={element.accessibility.decorative ? undefined : element.accessibility.description}
       aria-hidden={element.accessibility.decorative || undefined}
     >
-      {elementContent(element, assets)}
+      {elementContent(element, assets, mode, extensions, children)}
     </div>
   );
 }

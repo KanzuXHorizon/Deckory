@@ -37,18 +37,24 @@ describe("convertGroupLayoutMode", () => {
     expect(result.inverse.type).toBe("replace-scene-elements");
   });
 
-  it("round-trips through the generated inverse payload", () => {
+  it("round-trips independent grid padding and alignment through the generated inverse payload", () => {
     const result = convertGroupLayoutMode({ parent, children }, {
       mode: "grid",
       slideId: "cover",
       columns: 2,
       gap: 20,
-      padding: 20
+      padding: { top: 12, right: 20, bottom: 28, left: 36 },
+      align: "center"
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.inverse.elements).toEqual([parent, ...children]);
+    expect(result.after.parent.kind).toBe("grid");
+    if (result.after.parent.kind === "grid") {
+      expect(result.after.parent.content.padding).toEqual([12, 20, 28, 36]);
+      expect(result.after.parent.content.align).toBe("center");
+    }
   });
 
   it("rejects a conversion that cannot satisfy child minimums", () => {

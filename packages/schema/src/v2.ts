@@ -40,7 +40,11 @@ export const ElementConstraintsSchema = z.object({
   minWidth: finiteNumber.nonnegative().optional(),
   maxWidth: finiteNumber.positive().optional(),
   minHeight: finiteNumber.nonnegative().optional(),
-  maxHeight: finiteNumber.positive().optional()
+  maxHeight: finiteNumber.positive().optional(),
+  aspectRatio: z.object({
+    value: finiteNumber.positive(),
+    preserve: z.enum(["width", "height"])
+  }).strict().optional()
 }).strict().superRefine((value, context) => {
   if (value.minWidth !== undefined && value.maxWidth !== undefined && value.minWidth > value.maxWidth) {
     context.addIssue({ code: "custom", path: ["minWidth"], message: "Expected minWidth to be less than or equal to maxWidth" });
@@ -188,7 +192,11 @@ const gridContent = z.object({
   rows: z.number().int().positive().max(24).optional(),
   columnGap: finiteNumber.nonnegative().default(0),
   rowGap: finiteNumber.nonnegative().default(0),
-  padding: finiteNumber.nonnegative().default(0)
+  padding: z.union([
+    finiteNumber.nonnegative(),
+    z.tuple([finiteNumber.nonnegative(), finiteNumber.nonnegative(), finiteNumber.nonnegative(), finiteNumber.nonnegative()])
+  ]).default(0),
+  align: z.enum(["start", "center", "end", "stretch"]).default("stretch")
 }).strict();
 const textContent = z.object({ text: z.string() }).strict();
 const richTextContent = z.object({ document: z.unknown(), plainText: z.string().optional() }).strict();

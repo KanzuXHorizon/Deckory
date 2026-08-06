@@ -107,9 +107,15 @@ importers:
 
   packages/renderer:
     dependencies:
+      '@deckory/scene':
+        specifier: workspace:*
+        version: link:../scene
       '@deckory/schema':
         specifier: workspace:*
         version: link:../schema
+      '@deckory/themes':
+        specifier: workspace:*
+        version: link:../themes
       react:
         specifier: 19.2.8
         version: 19.2.8

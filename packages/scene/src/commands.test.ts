@@ -64,4 +64,89 @@ describe("scene commands", () => {
       elementIds: ["missing"]
     })).toThrow(/không tồn tại/i);
   });
+
+  it("persists frame and transform changes atomically and restores them through the inverse", () => {
+    const rotatedDeck: DeckDocumentV2 = structuredClone(deck);
+    rotatedDeck.slides[0]!.elements[0]!.transform = { rotation: 8, originX: 360, originY: 70 };
+
+    const result = applySceneCommand(rotatedDeck, {
+      type: "transform-elements",
+      slideId: "cover",
+      changes: [
+        {
+          elementId: "title",
+          frame: { x: 100, y: 80, width: 700, height: 140 },
+          transform: { rotation: 24, originX: 350, originY: 70 }
+        },
+        {
+          elementId: "hero",
+          frame: { x: 780, y: 100, width: 340, height: 400 }
+        }
+      ]
+    });
+
+    expect(result.deck.revision).toBe(rotatedDeck.revision + 1);
+    expect(result.deck.slides[0]!.elements[0]!.transform?.rotation).toBe(24);
+    expect(result.deck.slides[0]!.elements[1]!.transform).toBeUndefined();
+
+    const restored = applySceneCommand(result.deck, result.inverse);
+    expect(restored.deck.slides[0]!.elements[0]!.frame).toEqual(rotatedDeck.slides[0]!.elements[0]!.frame);
+    expect(restored.deck.slides[0]!.elements[0]!.transform).toEqual(rotatedDeck.slides[0]!.elements[0]!.transform);
+    expect(restored.deck.slides[0]!.elements[1]!.frame).toEqual(rotatedDeck.slides[0]!.elements[1]!.frame);
+  });
+
+  it("preserves an existing transform when a frame-only change omits transform", () => {
+    const rotatedDeck: DeckDocumentV2 = structuredClone(deck);
+    rotatedDeck.slides[0]!.elements[0]!.transform = { rotation: 12 };
+
+    const result = applySceneCommand(rotatedDeck, {
+      type: "transform-elements",
+      slideId: "cover",
+      changes: [{ elementId: "title", frame: { x: 96, y: 64, width: 720, height: 140 } }]
+    });
+
+    expect(result.deck.slides[0]!.elements[0]!.transform).toEqual({ rotation: 12 });
+  });
+
+  it("replaces a complete scene element collection in one reversible transaction", () => {
+    const originalElements = structuredClone(deck.slides[0]!.elements);
+    const groupedElements = [
+      {
+        id: "content-group",
+        name: "Content group",
+        kind: "group" as const,
+        frame: { x: 60, y: 50, width: 1100, height: 500 },
+        zIndex: 0,
+        content: { children: ["title", "hero"] },
+        accessibility: { label: "Content group" }
+      },
+      { ...structuredClone(originalElements[0]!), parentId: "content-group", frame: { x: 12, y: 14, width: 720, height: 140 } },
+      { ...structuredClone(originalElements[1]!), parentId: "content-group", frame: { x: 760, y: 40, width: 320, height: 420 } }
+    ];
+
+    const result = applySceneCommand(deck, {
+      type: "replace-scene-elements",
+      slideId: "cover",
+      elements: groupedElements
+    });
+
+    expect(result.deck.revision).toBe(deck.revision + 1);
+    expect(result.deck.slides[0]!.elements).toEqual(groupedElements);
+    expect(result.inverse.type).toBe("replace-scene-elements");
+
+    const restored = applySceneCommand(result.deck, result.inverse);
+    expect(restored.deck.slides[0]!.elements).toEqual(originalElements);
+  });
+
+  it("rejects an invalid replacement without returning a partial deck", () => {
+    expect(() => applySceneCommand(deck, {
+      type: "replace-scene-elements",
+      slideId: "cover",
+      elements: [
+        { ...structuredClone(deck.slides[0]!.elements[0]!), parentId: "missing-parent" }
+      ]
+    })).toThrow(/không hợp lệ/i);
+
+    expect(deck.slides[0]!.elements).toHaveLength(2);
+  });
 });

@@ -22,7 +22,9 @@ function finiteNonNegative(value: number, label: string): void {
   if (!Number.isFinite(value) || value < 0) throw new RangeError(`${label} must be finite and non-negative`);
 }
 
-function validatePadding(padding: StackElement["content"]["padding"]): void {
+function validatePadding(
+  padding: StackElement["content"]["padding"] | GridElement["content"]["padding"]
+): void {
   const values = Array.isArray(padding) ? padding : [padding];
   values.forEach((value) => finiteNonNegative(value, "Layout padding"));
 }
@@ -44,7 +46,7 @@ function gridContent(element: GridElement, patch: GridPatch): GridElement["conte
   }
   finiteNonNegative(next.columnGap, "Grid column gap");
   finiteNonNegative(next.rowGap, "Grid row gap");
-  finiteNonNegative(next.padding, "Grid padding");
+  validatePadding(next.padding);
   return next;
 }
 

@@ -18,7 +18,7 @@ const grid: Extract<SceneElement, { kind: "grid" }> = {
   kind: "grid",
   frame: { x: 80, y: 60, width: 600, height: 240 },
   zIndex: 1,
-  content: { columns: 2, columnGap: 16, rowGap: 12, padding: 20 },
+  content: { columns: 2, columnGap: 16, rowGap: 12, padding: 20, align: "stretch" },
   accessibility: { label: "Grid" }
 };
 
@@ -57,12 +57,25 @@ describe("layout action commands", () => {
     });
   });
 
-  it("patches current grid fields without inventing unsupported alignment", () => {
-    expect(createLayoutContainerPatchCommand("cover", grid, { columns: 3, rowGap: 20 })).toEqual({
+  it("patches grid fields while preserving independent padding and alignment", () => {
+    expect(createLayoutContainerPatchCommand("cover", grid, {
+      columns: 3,
+      rowGap: 20,
+      padding: [12, 20, 28, 36],
+      align: "center"
+    })).toEqual({
       type: "patch-element",
       slideId: "cover",
       elementId: "grid",
-      patch: { content: { columns: 3, columnGap: 16, rowGap: 20, padding: 20 } }
+      patch: {
+        content: {
+          columns: 3,
+          columnGap: 16,
+          rowGap: 20,
+          padding: [12, 20, 28, 36],
+          align: "center"
+        }
+      }
     });
   });
 

@@ -1,61 +1,49 @@
-import type { CSSProperties } from "react";
-import type { BackgroundLayer, DeckAssetV2, SceneSlide } from "@deckory/schema";
+import type { ReactNode } from "react";
+import type { DeckAssetV2, SceneSlide } from "@deckory/schema";
+import { BackgroundRenderer } from "./background-renderer";
 import { ElementRenderer, type SceneRenderMode } from "./element-renderer";
+import type { SceneRendererExtensions } from "./renderer-extensions";
+import { buildSceneTree, type SceneTreeNode } from "./scene-tree";
 
-function backgroundStyle(layer: BackgroundLayer, assets: readonly DeckAssetV2[]): CSSProperties {
-  const common: CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    opacity: layer.opacity,
-    mixBlendMode: layer.blendMode,
-    pointerEvents: "none"
-  };
-  switch (layer.type) {
-    case "solid":
-    case "color-overlay":
-      return { ...common, background: layer.color ?? "transparent" };
-    case "linear-gradient":
-      return { ...common, background: `linear-gradient(${layer.angle ?? 135}deg, ${(layer.colors ?? ["transparent", "transparent"]).join(", ")})` };
-    case "radial-gradient":
-    case "glow":
-      return { ...common, background: `radial-gradient(circle at ${layer.position?.x ?? 50}% ${layer.position?.y ?? 50}%, ${(layer.colors ?? [layer.color ?? "transparent", "transparent"]).join(", ")})` };
-    case "image":
-    case "svg": {
-      const src = layer.assetId ? assets.find((asset) => asset.id === layer.assetId)?.src : undefined;
-      return { ...common, backgroundImage: src ? `url(${JSON.stringify(src)})` : undefined, backgroundSize: "cover", backgroundPosition: "center" };
-    }
-    case "grid":
-      return { ...common, backgroundImage: "linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px)", backgroundSize: `${layer.scale ?? 32}px ${layer.scale ?? 32}px` };
-    case "noise":
-      return { ...common, backgroundImage: `radial-gradient(circle, ${layer.color ?? "rgba(0,0,0,.08)"} 0 0.6px, transparent 0.8px)`, backgroundSize: `${layer.scale ?? 4}px ${layer.scale ?? 4}px` };
-    case "vignette":
-      return { ...common, background: `radial-gradient(circle, transparent 45%, ${layer.color ?? "rgba(0,0,0,.22)"})` };
-    case "conic-gradient":
-      return { ...common, background: `conic-gradient(from ${layer.angle ?? 0}deg, ${(layer.colors ?? ["transparent", "transparent"]).join(", ")})` };
-    default:
-      return { ...common, background: layer.color ?? "transparent", filter: layer.blur ? `blur(${layer.blur}px)` : undefined };
-  }
+function renderTreeNode(
+  node: SceneTreeNode,
+  assets: readonly DeckAssetV2[],
+  mode: SceneRenderMode,
+  extensions: SceneRendererExtensions | undefined
+): ReactNode {
+  const children = node.children.map((child) => renderTreeNode(child, assets, mode, extensions));
+  return (
+    <ElementRenderer
+      key={node.element.id}
+      element={node.element}
+      assets={assets}
+      mode={mode}
+      {...(extensions ? { extensions } : {})}
+    >
+      {children}
+    </ElementRenderer>
+  );
 }
 
 export function SceneRenderer({
   slide,
   assets = [],
-  mode
+  mode,
+  extensions
 }: {
   slide: SceneSlide;
   assets?: readonly DeckAssetV2[];
   mode: SceneRenderMode;
+  extensions?: SceneRendererExtensions;
 }) {
-  const ordered = slide.elements
-    .map((element, index) => ({ element, index }))
-    .sort((left, right) => left.element.zIndex - right.element.zIndex || left.index - right.index)
-    .map(({ element }) => element);
+  const tree = buildSceneTree(slide.elements);
 
   return (
     <article
       className="scene-slide"
       data-slide-id={slide.id}
       data-render-mode={mode}
+      data-hierarchy-diagnostic-count={tree.diagnostics.length || undefined}
       style={{
         width: 1280,
         height: 720,
@@ -65,12 +53,18 @@ export function SceneRenderer({
         background: "#ffffff"
       }}
     >
-      <div className="scene-background" aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: -1 }}>
-        {slide.background.layers.map((layer) => (
-          <div key={layer.id} data-background-layer-id={layer.id} data-background-layer-type={layer.type} style={backgroundStyle(layer, assets)} />
-        ))}
+      <div className="scene-background" aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+        <BackgroundRenderer stack={slide.background} assets={assets} />
       </div>
-      {ordered.map((element) => <ElementRenderer key={element.id} element={element} assets={assets} mode={mode} />)}
+      {tree.diagnostics.length > 0 ? (
+        <div
+          data-scene-error="hierarchy-invalid"
+          role="alert"
+          style={{ position: "absolute", inset: 0, zIndex: 1 }}
+        >
+          Scene hierarchy không hợp lệ: {tree.diagnostics.map((diagnostic) => diagnostic.message).join("; ")}
+        </div>
+      ) : tree.roots.map((node) => renderTreeNode(node, assets, mode, extensions))}
     </article>
   );
 }

@@ -1,14 +1,28 @@
-import { DeckDocumentV2Schema, type DeckDocumentV2, type Frame, type SceneElement, type SceneSlide } from "@deckory/schema";
+import {
+  DeckDocumentV2Schema,
+  type DeckDocumentV2,
+  type Frame,
+  type SceneElement,
+  type SceneSlide,
+  type Transform2D
+} from "@deckory/schema";
 
-export type ElementFrameChange = { elementId: string; frame: Frame };
+export type ElementGeometryChange = {
+  elementId: string;
+  frame: Frame;
+  /** Omitted preserves the current transform; present with undefined clears it. */
+  transform?: Transform2D | undefined;
+};
+export type ElementFrameChange = ElementGeometryChange;
 export type SceneElementPatch = Partial<Omit<SceneElement, "id" | "kind">>;
 export type SceneSlidePatch = Partial<Omit<SceneSlide, "id" | "elements">>;
 
 export type SceneCommand =
-  | { type: "transform-elements"; slideId: string; changes: ElementFrameChange[] }
+  | { type: "transform-elements"; slideId: string; changes: ElementGeometryChange[] }
   | { type: "insert-elements"; slideId: string; elements: SceneElement[]; positions?: number[] }
   | { type: "delete-elements"; slideId: string; elementIds: string[] }
   | { type: "reorder-elements"; slideId: string; orderedIds: string[] }
+  | { type: "replace-scene-elements"; slideId: string; elements: SceneElement[] }
   | { type: "patch-element"; slideId: string; elementId: string; patch: SceneElementPatch }
   | { type: "patch-slide"; slideId: string; patch: SceneSlidePatch };
 
@@ -57,12 +71,21 @@ export function applySceneCommand(deck: DeckDocumentV2, command: SceneCommand): 
   switch (command.type) {
     case "transform-elements": {
       ensureUnique(command.changes.map((change) => change.elementId), "Element ID");
-      const previous: ElementFrameChange[] = [];
+      const previous: ElementGeometryChange[] = [];
       for (const change of command.changes) {
         const targetIndex = elementIndex(slide, change.elementId);
         const target = slide.elements[targetIndex]!;
-        previous.push({ elementId: target.id, frame: clone(target.frame) });
-        slide.elements[targetIndex] = { ...target, frame: clone(change.frame) } as SceneElement;
+        const changesTransform = Object.prototype.hasOwnProperty.call(change, "transform");
+        previous.push({
+          elementId: target.id,
+          frame: clone(target.frame),
+          ...(changesTransform ? { transform: target.transform ? clone(target.transform) : undefined } : {})
+        });
+        slide.elements[targetIndex] = {
+          ...target,
+          frame: clone(change.frame),
+          ...(changesTransform ? { transform: change.transform ? clone(change.transform) : undefined } : {})
+        } as SceneElement;
       }
       inverse = { type: "transform-elements", slideId: command.slideId, changes: previous };
       break;
@@ -126,6 +149,13 @@ export function applySceneCommand(deck: DeckDocumentV2, command: SceneCommand): 
       const previous = slide.elements.map((element) => element.id);
       slide.elements = command.orderedIds.map((id) => clone(byId.get(id)!));
       inverse = { type: "reorder-elements", slideId: command.slideId, orderedIds: previous };
+      break;
+    }
+
+    case "replace-scene-elements": {
+      const previous = clone(slide.elements);
+      slide.elements = clone(command.elements);
+      inverse = { type: "replace-scene-elements", slideId: command.slideId, elements: previous };
       break;
     }
 

@@ -3,7 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./background-renderer": "./src/background-renderer.tsx",
+    "./image-renderer": "./src/image-renderer.tsx",
+    "./motion-compiler": "./src/motion-compiler.ts",
+    "./rich-text-renderer": "./src/rich-text-renderer.tsx",
+    "./shape-renderer": "./src/shape-renderer.tsx"
+  },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -11,6 +18,8 @@
   },
   "dependencies": {
     "@deckory/schema": "workspace:*",
+    "@deckory/scene": "workspace:*",
+    "@deckory/themes": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   }

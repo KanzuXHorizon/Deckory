@@ -64,4 +64,53 @@ describe("SceneRenderer", () => {
     expect(html.indexOf("First")).toBeLessThan(html.indexOf("Later"));
     expect(html.indexOf("Later")).toBeLessThan(html.indexOf("Same"));
   });
+
+  it("renders parent-local children inside their container node", () => {
+    const slide: SceneSlide = {
+      ...sceneSlide,
+      elements: [
+        {
+          id: "group",
+          name: "Group",
+          kind: "group",
+          frame: { x: 80, y: 60, width: 400, height: 300 },
+          transform: { rotation: 12, originX: 200, originY: 150 },
+          zIndex: 1,
+          content: { children: ["child"] },
+          accessibility: { label: "Group" }
+        },
+        {
+          id: "child",
+          name: "Child",
+          kind: "text",
+          parentId: "group",
+          frame: { x: 20, y: 30, width: 120, height: 80 },
+          zIndex: 2,
+          content: { text: "Nested child" },
+          accessibility: { label: "Nested child" }
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(<SceneRenderer slide={slide} assets={[]} mode="studio" />);
+    expect(html).toContain('data-element-id="group"');
+    expect(html).toContain('data-scene-child-count="1"');
+    expect(html).toContain('data-element-id="child"');
+    expect(html).toContain('data-parent-id="group"');
+    expect(html).toContain("--scene-x:80");
+    expect(html).toContain("--scene-x:20");
+    expect(html).toContain("rotate(12deg)");
+  });
+
+  it("exposes an explicit diagnostic instead of flattening an invalid hierarchy", () => {
+    const invalid = {
+      ...sceneSlide,
+      elements: [{ ...sceneSlide.elements[0]!, parentId: "missing-parent" }]
+    } as SceneSlide;
+
+    const html = renderToStaticMarkup(<SceneRenderer slide={invalid} assets={[]} mode="studio" />);
+    expect(html).toContain('data-scene-error="hierarchy-invalid"');
+    expect(html).toContain('data-hierarchy-diagnostic-count="1"');
+    expect(html).not.toContain('data-element-id="title"');
+  });
 });
