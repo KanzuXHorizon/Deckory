@@ -8,6 +8,7 @@ export type LayoutDiagnosticCode =
   | "auto-layout-does-not-fit"
   | "grid-does-not-fit"
   | "layout-conversion-does-not-fit"
+  | "distribution-does-not-fit"
   | "invalid-layout-input";
 
 export type LayoutDiagnostic = {
