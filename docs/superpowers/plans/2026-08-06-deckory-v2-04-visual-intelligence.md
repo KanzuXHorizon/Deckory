@@ -610,7 +610,293 @@ git commit -m "feat(studio): transform text into explainable visuals"
 
 ---
 
-### Task 8: Build and visually audit the V2 Visual Gallery
+### Task 8: Add deck-level storytelling, copy and composition intelligence
+
+**Files:**
+- Create: `packages/visuals/src/narrative/narrative-model.ts`
+- Create: `packages/visuals/src/narrative/narrative-model.test.ts`
+- Create: `packages/visuals/src/narrative/story-audit.ts`
+- Create: `packages/visuals/src/narrative/story-audit.test.ts`
+- Create: `packages/visuals/src/narrative/copy-transform.ts`
+- Create: `packages/visuals/src/narrative/copy-transform.test.ts`
+- Create: `packages/visuals/src/narrative/composition-fingerprint.ts`
+- Create: `packages/visuals/src/narrative/composition-fingerprint.test.ts`
+- Modify: `packages/visuals/src/index.ts`
+- Create: `apps/present/components/studio-v2/story-panel.tsx`
+- Create: `apps/present/components/studio-v2/story-panel.test.tsx`
+- Create: `apps/present/lib/story-commands.ts`
+- Create: `apps/present/lib/story-commands.test.ts`
+- Modify: `apps/present/components/studio-v2/studio-v2.tsx`
+- Modify: `apps/present/components/studio-command-palette.tsx`
+
+**Interfaces:**
+- Produces: `DeckNarrative`, `auditNarrative`, `rewriteConclusionHeading`, `splitDenseSlide`, `fingerprintSlideComposition`, `detectCompositionRepetition` and a deck-level Story panel.
+
+- [ ] **Step 1: Write failing narrative-model tests**
+
+```ts
+it("requires one primary outcome and thesis for a production narrative", () => {
+  expect(() => DeckNarrativeSchema.parse({
+    audience: { role: "graduation-committee" },
+    sections: []
+  })).toThrow(/thesis|outcome/i);
+});
+
+it("keeps appendix slides outside the main argument", () => {
+  const result = buildNarrativeIndex(deckWithAppendix);
+  expect(result.mainSlideIds).not.toContain("appendix-api");
+});
+```
+
+- [ ] **Step 2: Write failing story-audit tests**
+
+```ts
+it("detects a solution introduced before problem evidence", () => {
+  const result = auditNarrative(solutionFirstDeck);
+  expect(result.diagnostics).toContainEqual(expect.objectContaining({
+    code: "solution-before-evidence",
+    slideId: "solution"
+  }));
+});
+
+it("detects repeated topic headings without conclusions", () => {
+  const result = auditNarrative(topicHeadingDeck);
+  expect(result.diagnostics.filter((item) => item.code === "weak-conclusion-heading")).toHaveLength(3);
+});
+
+it("detects five consecutive slides with the same composition fingerprint", () => {
+  const result = detectCompositionRepetition(repetitiveDeck);
+  expect(result[0]).toMatchObject({ code: "composition-sequence-repeated", count: 5 });
+});
+```
+
+- [ ] **Step 3: Run narrative tests and confirm RED**
+
+Run:
+
+```bash
+pnpm --filter @deckory/visuals test -- src/narrative/narrative-model.test.ts src/narrative/story-audit.test.ts src/narrative/composition-fingerprint.test.ts
+```
+
+Expected: FAIL because the narrative modules do not exist.
+
+- [ ] **Step 4: Implement deterministic story analysis**
+
+Analyze:
+
+- thesis and audience outcome;
+- section roles and transitions;
+- slide purpose and conclusion;
+- question answered;
+- claim/evidence interpretation;
+- main-story versus appendix placement;
+- duplicate semantic content;
+- composition fingerprint sequence;
+- density rhythm;
+- opening and closing completeness.
+
+Composition fingerprints use layout mode, dominant element family, occupied regions, scale hierarchy and visual relationship. They must not treat two visually distinct freeform slides as identical merely because both contain text and an image.
+
+- [ ] **Step 5: Write failing constrained-copy tests**
+
+```ts
+it("turns a topic heading into a conclusion without changing the claim", () => {
+  expect(rewriteConclusionHeading({
+    heading: "Kết quả đánh giá",
+    evidenceText: "Điểm tăng từ 62 lên 84 sau ba vòng luyện tập."
+  })).toMatchObject({
+    text: "Ba vòng luyện tập nâng điểm đánh giá từ 62 lên 84.",
+    introducedClaims: []
+  });
+});
+
+it("refuses to invent a result when evidence is missing", () => {
+  const result = rewriteConclusionHeading({ heading: "Hiệu quả hệ thống", evidenceText: "" });
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.code).toBe("evidence-required");
+});
+```
+
+- [ ] **Step 6: Implement copy transforms with claim preservation**
+
+Supported transforms:
+
+- shorten;
+- conclusion heading;
+- simplify Vietnamese;
+- parallelize list items;
+- split dense paragraph;
+- remove technical filler;
+- create speaker-note draft from existing claims.
+
+Each result returns the original claims, resulting claims, removed phrases and warnings. Reject transformations that change numbers, certainty, limitation or evidence status.
+
+- [ ] **Step 7: Build the Story panel and command actions**
+
+The Story panel shows:
+
+- audience and desired decision;
+- thesis;
+- section map;
+- slide purpose and conclusion;
+- story diagnostics;
+- repeated composition sequences;
+- copy suggestions with before/after diff;
+- move to appendix;
+- split slide;
+- create transition slide;
+- accept/reject one suggestion at a time.
+
+No suggestion mutates the deck without an explicit command and undo entry.
+
+- [ ] **Step 8: Verify and commit**
+
+```bash
+pnpm --filter @deckory/visuals test -- src/narrative
+pnpm --filter @deckory/present test -- components/studio-v2/story-panel.test.tsx lib/story-commands.test.ts
+pnpm --filter @deckory/visuals typecheck
+pnpm --filter @deckory/present typecheck
+git add packages/visuals/src/narrative packages/visuals/src/index.ts apps/present/components/studio-v2/story-panel.tsx apps/present/components/studio-v2/story-panel.test.tsx apps/present/lib/story-commands.ts apps/present/lib/story-commands.test.ts apps/present/components/studio-v2/studio-v2.tsx apps/present/components/studio-command-palette.tsx
+git commit -m "feat(story): audit narrative and conclusion copy"
+```
+
+---
+
+### Task 9: Add evidence, data-source and chart-data management
+
+**Files:**
+- Create: `packages/schema/src/v2-evidence.ts`
+- Create: `packages/schema/src/v2-evidence.test.ts`
+- Modify: `packages/schema/src/v2.ts`
+- Create: `packages/scene/src/data-sources.ts`
+- Create: `packages/scene/src/data-sources.test.ts`
+- Create: `packages/scene/src/data-transform.ts`
+- Create: `packages/scene/src/data-transform.test.ts`
+- Modify: `packages/scene/src/index.ts`
+- Create: `apps/present/components/studio-v2/data/source-manager.tsx`
+- Create: `apps/present/components/studio-v2/data/source-manager.test.tsx`
+- Create: `apps/present/components/studio-v2/data/chart-data-editor.tsx`
+- Create: `apps/present/components/studio-v2/data/chart-data-editor.test.tsx`
+- Create: `apps/present/components/studio-v2/data/claim-evidence-panel.tsx`
+- Create: `apps/present/components/studio-v2/data/claim-evidence-panel.test.tsx`
+- Modify: `apps/present/components/studio-v2/inspector/field-registry.ts`
+- Modify: `packages/audit/src/index.ts`
+- Modify: `packages/audit/src/index.test.ts`
+
+**Interfaces:**
+- Produces: `DeckDataSource`, `ClaimRecord`, `EvidenceRecord`, `Dataset`, `DataTransform`, `resolveDataset`, `traceSourceDependents` and Studio source/data editors.
+
+- [ ] **Step 1: Write failing evidence-schema tests**
+
+```ts
+it("rejects a claim that references missing evidence", () => {
+  expect(() => DeckDocumentV2Schema.parse(deckWithMissingEvidence)).toThrow(/evidence/i);
+});
+
+it("requires illustrative data to remain labelled", () => {
+  expect(() => EvidenceRecordSchema.parse({
+    id: "fixture-score",
+    sourceId: "fixture",
+    label: "Điểm chất lượng",
+    status: "illustrative"
+  })).toThrow(/illustrative label/i);
+});
+```
+
+- [ ] **Step 2: Write failing dataset and transform tests**
+
+```ts
+it("resolves one local dataset for multiple charts without duplicating rows", () => {
+  const resolved = resolveDataset(deck, "quality-scores");
+  expect(resolved.rows).toHaveLength(4);
+  expect(deck.slides.filter((slide) => JSON.stringify(slide).includes("quality-scores"))).toHaveLength(2);
+});
+
+it("records an inspectable aggregate transform", () => {
+  const result = applyDataTransform(dataset, {
+    id: "average-by-round",
+    type: "group-aggregate",
+    groupBy: ["round"],
+    measures: [{ field: "score", operation: "mean", output: "averageScore" }]
+  });
+  expect(result.lineage.transformId).toBe("average-by-round");
+});
+
+it("lists every dependent claim and visual before source deletion", () => {
+  expect(traceSourceDependents(deck, "interview-evaluation")).toEqual(expect.arrayContaining([
+    expect.objectContaining({ kind: "claim", id: "claim-score-improvement" }),
+    expect.objectContaining({ kind: "chart", slideId: "results" })
+  ]));
+});
+```
+
+- [ ] **Step 3: Run evidence/data tests and confirm RED**
+
+```bash
+pnpm --filter @deckory/schema test -- src/v2-evidence.test.ts
+pnpm --filter @deckory/scene test -- src/data-sources.test.ts src/data-transform.test.ts
+```
+
+Expected: FAIL because evidence and dataset contracts do not exist.
+
+- [ ] **Step 4: Implement source, evidence and transformation contracts**
+
+Support local/manual, CSV, JSON, table, document, code, image and URL-reference metadata sources. URL references are never fetched by Presenter. Transform operations are versioned and initially limited to select, filter, sort, derive, group-aggregate and pivot. Every output includes lineage to source IDs and transform IDs.
+
+- [ ] **Step 5: Build the Source Manager**
+
+Required behavior:
+
+- add and rename source;
+- select a local asset;
+- set source date and evidence status;
+- view dependent claims and visuals;
+- mark stale, verified, unverified or illustrative;
+- block destructive deletion until dependents are reviewed;
+- expose privacy/copyright note fields;
+- no network fetch action in the offline V2 release.
+
+- [ ] **Step 6: Build chart data and claim-evidence editors**
+
+Chart data editor supports:
+
+- bind to dataset;
+- choose category, value and series fields;
+- edit explicit manual rows;
+- preview number format and missing values;
+- inspect transformations;
+- set unit, period and sample;
+- label fixture data.
+
+Claim-evidence panel links slide or element claims to one or more evidence records and reports unsupported or stale material claims.
+
+- [ ] **Step 7: Add strict audit rules**
+
+Audit detects:
+
+- material unsupported claim;
+- stale source;
+- chart/table without source binding or explicit manual status;
+- undeclared transformation;
+- illustrative values without visible label;
+- deleted/missing source reference;
+- source date or period required by the selected visual but absent.
+
+- [ ] **Step 8: Verify and commit**
+
+```bash
+pnpm --filter @deckory/schema test -- src/v2-evidence.test.ts
+pnpm --filter @deckory/scene test -- src/data-sources.test.ts src/data-transform.test.ts
+pnpm --filter @deckory/present test -- components/studio-v2/data
+pnpm --filter @deckory/audit test
+pnpm typecheck
+git add packages/schema/src/v2-evidence.ts packages/schema/src/v2-evidence.test.ts packages/schema/src/v2.ts packages/scene/src/data-sources.ts packages/scene/src/data-sources.test.ts packages/scene/src/data-transform.ts packages/scene/src/data-transform.test.ts packages/scene/src/index.ts apps/present/components/studio-v2/data apps/present/components/studio-v2/inspector/field-registry.ts packages/audit/src/index.ts packages/audit/src/index.test.ts
+git commit -m "feat(evidence): manage sources, claims and chart data"
+```
+
+---
+
+### Task 10: Build and visually audit the V2 Visual Gallery
 
 **Files:**
 - Create: `decks/visual-lab-v2/package.json`
@@ -704,7 +990,7 @@ git commit -m "feat(visuals): prove the V2 visual grammar"
 
 ## Plan Self-Review
 
-- Spec coverage: intent classification, recommendation, editorial charts, advanced charts, measured diagrams, the complete semantic catalog, Studio transformation and gallery evidence are covered.
+- Spec coverage: intent classification, recommendation, editorial charts, advanced charts, measured diagrams, the complete semantic catalog, text-to-visual transformation, deck-level storytelling, copy constraints, composition diversity, evidence/data lineage and gallery evidence are covered.
 - Placeholder scan: required component and chart families are explicitly named and covered by inventory tests.
 - Type consistency: public documents use `ChartSpec` and `DiagramSpec`; ECharts and ELK remain internal adapters.
 - Exit condition: Plan 05 starts only when every public visual is represented by a complete editable fixture and long Vietnamese labels no longer clip or collide.

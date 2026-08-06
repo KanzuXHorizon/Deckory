@@ -687,6 +687,118 @@ export type VisualRecommendation = {
 
 Recommendations must explain why a visual fits and when not to use it. They may never fabricate missing numeric values.
 
+### 9.4 Narrative and copy intelligence
+
+Visual quality cannot compensate for a weak story. Deckory must model the deck-level argument separately from slide-level layout.
+
+```ts
+export type DeckNarrative = {
+  audience: AudienceProfile;
+  decisionOrOutcome: string;
+  timeBudgetMinutes?: number;
+  thesis: string;
+  sections: NarrativeSection[];
+  unresolvedQuestions: string[];
+};
+
+export type NarrativeSection = {
+  id: StableId;
+  role: "opening" | "context" | "tension" | "evidence" | "solution" | "proof" | "decision" | "closing" | "appendix";
+  objective: string;
+  slideIds: StableId[];
+};
+```
+
+Every non-appendix slide declares:
+
+- one primary purpose;
+- one audience-facing conclusion;
+- its relationship to the previous and next slide;
+- evidence status;
+- optional speaker intent;
+- optional question the slide answers.
+
+Narrative intelligence must detect:
+
+- missing thesis;
+- weak or repeated conclusions;
+- context without tension;
+- solution before problem evidence;
+- evidence without interpretation;
+- duplicate slides;
+- abrupt section transitions;
+- closing without decision or action;
+- appendix content inside the main story;
+- excessive equal-card or identical-composition sequences.
+
+Copy assistance is constrained rewriting, not factual generation. It may:
+
+- shorten headings;
+- convert topic headings into conclusion headings;
+- remove technical or agent-facing filler;
+- simplify Vietnamese copy;
+- improve parallel structure;
+- split overlong text;
+- propose speaker notes.
+
+It may not:
+
+- add unsupported claims;
+- alter numeric meaning;
+- remove uncertainty or limitation language;
+- change evidence status;
+- invent user, market or performance outcomes.
+
+### 9.5 Evidence and data-source model
+
+Evidence must be traceable beyond a visual footer.
+
+```ts
+export type DeckDataSource = {
+  id: StableId;
+  kind: "manual" | "csv" | "json" | "table" | "document" | "code" | "image" | "url-reference";
+  label: string;
+  localAssetId?: StableId;
+  importedAt?: string;
+  sourceDate?: string;
+  status: "verified" | "unverified" | "illustrative" | "stale";
+  notes?: string;
+};
+
+export type ClaimRecord = {
+  id: StableId;
+  text: string;
+  slideId: StableId;
+  elementId?: StableId;
+  evidenceIds: StableId[];
+  status: "supported" | "partially-supported" | "unsupported" | "illustrative";
+};
+
+export type EvidenceRecord = {
+  id: StableId;
+  sourceId: StableId;
+  label: string;
+  locator?: string;
+  excerpt?: string;
+  unit?: string;
+  period?: string;
+  sample?: string;
+  confidence?: "high" | "medium" | "low";
+};
+```
+
+Required behavior:
+
+- one source may feed multiple visuals without duplicating raw data;
+- charts and tables bind to typed datasets or explicit manual values;
+- data transformations are declared and inspectable;
+- every factual claim can be linked to evidence;
+- illustrative values remain visually labelled in Studio, Presenter and export;
+- stale or unresolved sources block production readiness where the claim is material;
+- remote URL references are metadata only and are never fetched during offline presentation;
+- source excerpts respect privacy and copyright constraints;
+- deleting a source reports every dependent claim and visual before confirmation.
+
 ## 10. Required component catalog
 
 The V2 release cannot claim broad visual coverage without complete examples, Inspector support, accessible summaries and thumbnail QA for every shipped component.
