@@ -129,11 +129,31 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/sdk:
+    dependencies:
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../schema
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/templates:
     dependencies:
       '@deckory/schema':
         specifier: workspace:*
         version: link:../schema
+
+  packages/themes: {}
+
+  packages/visuals:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
 packages:
 
