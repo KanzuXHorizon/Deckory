@@ -13,6 +13,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@deckory/visuals": "workspace:*",
     "zod": "4.4.3"
   }
 }

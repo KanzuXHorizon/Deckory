@@ -6,6 +6,7 @@ import type {
   SceneElement,
   Transform2D
 } from "@deckory/schema/v2";
+import type { ChartSpec, DiagramSpec } from "@deckory/visuals";
 import { defineWebBlockManifest, type WebBlockManifest } from "./web-block";
 import {
   normalizeSceneChildren,
@@ -269,14 +270,14 @@ export const Connector = createScenePrimitive<ConnectorProps>("Connector", (prop
 export type SvgProps = CommonElementProps & ({ assetId: string; markup?: never } | { assetId?: never; markup: string });
 export const Svg = createScenePrimitive<SvgProps>("Svg", (props) => createElement("svg", props, "assetId" in props && props.assetId ? { assetId: props.assetId } : { markup: props.markup }, [], props.accessibleSummary));
 
-export interface ChartProps extends CommonElementProps { spec: Record<string, unknown>; }
-export const Chart = createScenePrimitive<ChartProps>("Chart", (props) => createElement("chart", props, { spec: props.spec }, [], props.accessibleSummary));
+export interface ChartProps extends CommonElementProps { chart: ChartSpec; }
+export const Chart = createScenePrimitive<ChartProps>("Chart", (props) => createElement("chart", props, { chart: props.chart }, [], props.accessibleSummary ?? props.chart.accessibleSummary));
 
 export interface TableProps extends CommonElementProps { columns: readonly string[]; rows: readonly (readonly unknown[])[]; }
 export const Table = createScenePrimitive<TableProps>("Table", (props) => createElement("table", props, { columns: [...props.columns], rows: props.rows.map((row) => [...row]) }, [], props.accessibleSummary));
 
-export interface DiagramProps extends CommonElementProps { spec: Record<string, unknown>; }
-export const Diagram = createScenePrimitive<DiagramProps>("Diagram", (props) => createElement("diagram", props, { spec: props.spec }, [], props.accessibleSummary));
+export interface DiagramProps extends CommonElementProps { diagram: DiagramSpec; }
+export const Diagram = createScenePrimitive<DiagramProps>("Diagram", (props) => createElement("diagram", props, { diagram: props.diagram }, [], props.accessibleSummary ?? props.diagram.accessibleSummary));
 
 export interface ComponentProps extends CommonElementProps {
   componentId: string;

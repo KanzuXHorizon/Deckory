@@ -20,6 +20,7 @@
     "@deckory/schema": "workspace:*",
     "@deckory/scene": "workspace:*",
     "@deckory/themes": "workspace:*",
+    "@deckory/visuals": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   }

@@ -1,7 +1,9 @@
 import { Children, type CSSProperties, type ReactNode } from "react";
 import type { DeckAssetV2, SceneElement } from "@deckory/schema";
 import { normalizeRichText, type RichTextDocumentInput } from "@deckory/scene/rich-text";
+import { ChartRenderer } from "./chart-renderer";
 import { TrustedComponentHost } from "./component-host";
+import { DiagramRenderer } from "./diagram-renderer";
 import { ImageRenderer, type ImageRenderSpec } from "./image-renderer";
 import type { CompilerMotionState } from "./motion-compiler";
 import type { SceneRendererExtensions } from "./renderer-extensions";
@@ -173,7 +175,7 @@ function elementContent(
       return src ? <img src={src} alt={element.accessibility.label ?? ""} draggable={false} /> : <span>{element.accessibility.label ?? element.name}</span>;
     }
     case "chart":
-      return <div className="scene-chart-fallback">{element.accessibility.description ?? element.accessibility.label ?? element.name}</div>;
+      return <ChartRenderer spec={element.content.chart} width={element.frame.width} height={element.frame.height} mode={mode} />;
     case "table":
       return (
         <table>
@@ -182,7 +184,7 @@ function elementContent(
         </table>
       );
     case "diagram":
-      return <div className="scene-diagram-fallback">{element.accessibility.description ?? element.accessibility.label ?? element.name}</div>;
+      return <DiagramRenderer spec={element.content.diagram} width={element.frame.width} height={element.frame.height} />;
     case "media": {
       const src = assetSource(assets, element.content.assetId);
       return src ? <img src={src} alt={element.accessibility.label ?? ""} draggable={false} /> : <span data-scene-error="asset-missing">Thiếu asset: {element.content.assetId}</span>;

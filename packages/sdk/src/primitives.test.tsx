@@ -1,6 +1,7 @@
 /** @jsxImportSource @deckory/sdk */
 
 import { describe, expect, it } from "vitest";
+import type { ChartSpec, DiagramSpec } from "@deckory/visuals";
 import { defineSceneSlide } from "./define-scene";
 import { jsx } from "./jsx-runtime";
 import {
@@ -25,6 +26,41 @@ import {
 } from "./primitives";
 
 const frame = { x: 0, y: 0, width: 100, height: 80 } as const;
+const chart: ChartSpec = {
+  question: "Tiêu chí nào dẫn đầu?",
+  title: "Điểm chất lượng",
+  accessibleSummary: "Layout đạt 88 điểm.",
+  variant: "horizontal-bar",
+  data: [{ id: "layout", category: "Layout", value: 88 }],
+  encoding: { categoryField: "category", valueField: "value", zeroBaseline: true },
+  unit: "điểm",
+  numberFormat: { style: "decimal", maximumFractionDigits: 0 },
+  labels: { mode: "direct", showValues: true, collisionPolicy: "diagnose" },
+  highlights: [{ datumId: "layout", level: "primary" }],
+  annotations: [],
+  referenceLines: [],
+  evidence: { status: "illustrative", sourceIds: [], label: "Dữ liệu minh hoạ" },
+  missingValuePolicy: "gap",
+  animation: { mode: "zero-to-value", durationMs: 500 }
+};
+const diagram: DiagramSpec = {
+  question: "Dữ liệu đi đâu?",
+  title: "Luồng dữ liệu",
+  accessibleSummary: "Ứng dụng gửi dữ liệu đến API.",
+  intent: "architecture",
+  layout: "tree",
+  direction: "left-to-right",
+  nodes: [
+    { id: "app", label: "Ứng dụng", kind: "service", ports: [{ id: "out", direction: "out", side: "right" }] },
+    { id: "api", label: "API", kind: "service", ports: [{ id: "in", direction: "in", side: "left" }] }
+  ],
+  edges: [{ id: "app-api", source: { nodeId: "app", portId: "out" }, target: { nodeId: "api", portId: "in" }, kind: "request" }],
+  generatedLayout: null,
+  manualOverrides: [],
+  accessibleTraversalOrder: ["app", "api"],
+  edgeRouting: "orthogonal",
+  evidence: { status: "illustrative", sourceIds: [], label: "Sơ đồ minh hoạ" }
+};
 
 describe("approved Scene JSX primitives", () => {
   it("compiles the complete approved primitive catalog through the V2 schema", () => {
@@ -47,9 +83,9 @@ describe("approved Scene JSX primitives", () => {
         <Line id="line" frame={frame} x2={100} y2={80} accessibleSummary="Line" />
         <Connector id="connector" frame={frame} from={{ elementId: "text" }} to={{ elementId: "image" }} accessibleSummary="Connector" />
         <Svg id="svg" frame={frame} markup="<svg viewBox='0 0 10 10'></svg>" accessibleSummary="SVG" />
-        <Chart id="chart" frame={frame} spec={{ type: "bar" }} accessibleSummary="Chart" />
+        <Chart id="chart" frame={frame} chart={chart} />
         <Table id="table" frame={frame} columns={["A"]} rows={[[1]]} accessibleSummary="Table" />
-        <Diagram id="diagram" frame={frame} spec={{ type: "flow" }} accessibleSummary="Diagram" />
+        <Diagram id="diagram" frame={frame} diagram={diagram} />
         <Component
           id="component"
           frame={frame}

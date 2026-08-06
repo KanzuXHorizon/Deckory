@@ -259,6 +259,56 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
   canvas: { width: 1280, height: 720, unit: "px" },
   theme: { id: "deckory-editorial", tokens: {} },
   assets: [],
+  visualIntelligence: {
+    narrative: {
+      audience: { role: "Đội ngũ xây dựng Deckory", knowledgeLevel: "expert", needs: ["Contract rõ", "Bằng chứng chạy thật"] },
+      decisionOrOutcome: "Chấp thuận Scene V2 làm nền tảng cho Studio và visual intelligence.",
+      timeBudgetMinutes: 4,
+      thesis: "Một document có type, evidence và renderer dùng chung tạo ra slide vừa tuỳ biến vừa kiểm chứng được.",
+      sections: [{
+        id: "foundation-proof",
+        role: "proof",
+        objective: "Chứng minh scene, chart, diagram và evidence dùng chung một contract.",
+        slideIds: ["cover", "visual-proof"]
+      }],
+      unresolvedQuestions: []
+    },
+    evidence: {
+      sources: [{ id: "scene-fixture-source", kind: "manual", label: "Deckory V2 local integration fixture", status: "verified" }],
+      evidence: [{ id: "quality-score-evidence", sourceId: "scene-fixture-source", label: "Kết quả fixture visual renderer", unit: "điểm / 100" }],
+      claims: [{
+        id: "visual-hierarchy-claim",
+        text: "Visual hierarchy dẫn đầu fixture với 95 điểm.",
+        slideId: "visual-proof",
+        elementId: "quality-chart",
+        evidenceIds: ["quality-score-evidence"],
+        status: "supported"
+      }],
+      datasets: [{
+        id: "quality-score-data",
+        label: "Điểm chất lượng fixture",
+        sourceIds: ["scene-fixture-source"],
+        status: "verified",
+        columns: [
+          { key: "category", label: "Tiêu chí", type: "string" },
+          { key: "value", label: "Điểm", type: "number" }
+        ],
+        rows: [
+          { category: "Layout", value: 88 },
+          { category: "Visual hierarchy", value: 95 },
+          { category: "Accessibility", value: 91 }
+        ]
+      }],
+      visualBindings: [{
+        id: "quality-chart-binding",
+        kind: "chart",
+        slideId: "visual-proof",
+        elementId: "quality-chart",
+        datasetId: "quality-score-data",
+        claimIds: ["visual-hierarchy-claim"]
+      }]
+    }
+  },
   slides: [{
     id: "cover",
     name: "Scene Foundation",
@@ -315,6 +365,171 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
         zIndex: 4,
         content: { source: "Deckory V2 Scene Foundation fixture", page: "01" },
         accessibility: { label: "Nguồn: Deckory V2 Scene Foundation fixture", readingOrder: 4 }
+      }
+    ]
+  }, {
+    id: "visual-proof",
+    name: "Visual Intelligence Proof",
+    purpose: "evidence-and-architecture",
+    conclusion: "Typed chart, diagram và evidence cùng đi qua shared renderer.",
+    background: {
+      layers: [
+        { id: "visual-paper", type: "solid", color: "#f7f7f4", opacity: 1 },
+        { id: "visual-grid", type: "grid", color: "#d9ddd8", opacity: 0.22, data: { size: 32, lineWidth: 1 } }
+      ]
+    },
+    evidence: { source: "Deckory V2 local integration fixture", status: "verified", sourceIds: ["scene-fixture-source"] },
+    elements: [
+      {
+        id: "visual-title",
+        name: "Visual title",
+        kind: "text",
+        frame: { x: 68, y: 48, width: 1120, height: 72 },
+        zIndex: 3,
+        content: { text: "Typed visuals giữ cả kết luận, dữ liệu và quan hệ." },
+        style: { color: "#17191c", fontSize: 38, fontWeight: 760, lineHeight: 1.08 },
+        accessibility: { label: "Typed visuals giữ cả kết luận, dữ liệu và quan hệ.", readingOrder: 1 }
+      },
+      {
+        id: "quality-chart",
+        name: "Quality chart",
+        kind: "chart",
+        frame: { x: 68, y: 148, width: 548, height: 460 },
+        zIndex: 2,
+        content: {
+          chart: {
+            question: "Tiêu chí nào đang dẫn đầu?",
+            title: "Điểm chất lượng fixture",
+            accessibleSummary: "Visual hierarchy dẫn đầu với 95 điểm, tiếp theo là accessibility 91 và layout 88.",
+            variant: "horizontal-bar",
+            data: [
+              { id: "layout", category: "Layout", value: 88 },
+              { id: "visual-hierarchy", category: "Visual hierarchy", value: 95 },
+              { id: "accessibility", category: "Accessibility", value: 91 }
+            ],
+            encoding: { categoryField: "category", valueField: "value", zeroBaseline: true },
+            unit: "điểm / 100",
+            numberFormat: { style: "decimal", maximumFractionDigits: 0 },
+            labels: { mode: "direct", showValues: true, collisionPolicy: "diagnose" },
+            highlights: [{ datumId: "visual-hierarchy", level: "primary", label: "Dẫn đầu" }],
+            annotations: [],
+            referenceLines: [],
+            evidence: { status: "verified", sourceIds: ["scene-fixture-source"], period: "Integration fixture" },
+            missingValuePolicy: "gap",
+            animation: { mode: "zero-to-value", durationMs: 620 }
+          }
+        },
+        style: { color: "#243b73" },
+        accessibility: { label: "Visual hierarchy dẫn đầu với 95 điểm.", readingOrder: 2 }
+      },
+      {
+        id: "architecture-diagram",
+        name: "Architecture diagram",
+        kind: "diagram",
+        frame: { x: 656, y: 148, width: 556, height: 460 },
+        zIndex: 2,
+        content: {
+          diagram: {
+            question: "Scene V2 đi qua các bề mặt như thế nào?",
+            title: "Một contract, nhiều bề mặt",
+            accessibleSummary: "DeckDocument V2 được validation rồi dùng chung cho Studio, Presenter và Export.",
+            intent: "architecture",
+            layout: "tree",
+            direction: "left-to-right",
+            nodes: [
+              {
+                id: "document",
+                label: "DeckDocument V2",
+                kind: "entity",
+                ports: [{ id: "out", direction: "out", side: "right" }]
+              },
+              {
+                id: "validation",
+                label: "Validation",
+                kind: "service",
+                ports: [
+                  { id: "in", direction: "in", side: "left" },
+                  { id: "out", direction: "out", side: "right" }
+                ]
+              },
+              {
+                id: "studio",
+                label: "Studio",
+                kind: "service",
+                ports: [{ id: "in", direction: "in", side: "left" }]
+              },
+              {
+                id: "presenter",
+                label: "Presenter",
+                kind: "service",
+                ports: [{ id: "in", direction: "in", side: "left" }]
+              },
+              {
+                id: "export",
+                label: "Export",
+                kind: "service",
+                ports: [{ id: "in", direction: "in", side: "left" }]
+              }
+            ],
+            edges: [
+              {
+                id: "document-validation",
+                source: { nodeId: "document", portId: "out" },
+                target: { nodeId: "validation", portId: "in" },
+                kind: "data-flow"
+              },
+              {
+                id: "validation-studio",
+                source: { nodeId: "validation", portId: "out" },
+                target: { nodeId: "studio", portId: "in" },
+                kind: "dependency"
+              },
+              {
+                id: "validation-presenter",
+                source: { nodeId: "validation", portId: "out" },
+                target: { nodeId: "presenter", portId: "in" },
+                kind: "dependency"
+              },
+              {
+                id: "validation-export",
+                source: { nodeId: "validation", portId: "out" },
+                target: { nodeId: "export", portId: "in" },
+                kind: "dependency"
+              }
+            ],
+            generatedLayout: {
+              strategy: "tree",
+              nodes: [
+                { nodeId: "document", x: 20, y: 190, width: 138, height: 68 },
+                { nodeId: "validation", x: 205, y: 190, width: 130, height: 68 },
+                { nodeId: "studio", x: 385, y: 82, width: 128, height: 62 },
+                { nodeId: "presenter", x: 385, y: 190, width: 128, height: 62 },
+                { nodeId: "export", x: 385, y: 298, width: 128, height: 62 }
+              ],
+              edges: [
+                { edgeId: "document-validation", points: [{ x: 158, y: 224 }, { x: 205, y: 224 }] },
+                { edgeId: "validation-studio", points: [{ x: 335, y: 224 }, { x: 360, y: 224 }, { x: 360, y: 113 }, { x: 385, y: 113 }] },
+                { edgeId: "validation-presenter", points: [{ x: 335, y: 224 }, { x: 385, y: 221 }] },
+                { edgeId: "validation-export", points: [{ x: 335, y: 224 }, { x: 360, y: 224 }, { x: 360, y: 329 }, { x: 385, y: 329 }] }
+              ]
+            },
+            manualOverrides: [],
+            accessibleTraversalOrder: ["document", "validation", "studio", "presenter", "export"],
+            edgeRouting: "orthogonal",
+            evidence: { status: "verified", sourceIds: ["scene-fixture-source"] }
+          }
+        },
+        style: { color: "#136f63" },
+        accessibility: { label: "DeckDocument V2 được validation rồi dùng chung cho Studio, Presenter và Export.", readingOrder: 3 }
+      },
+      {
+        id: "visual-footer",
+        name: "Visual evidence footer",
+        kind: "evidence-footer",
+        frame: { x: 68, y: 664, width: 1144, height: 28 },
+        zIndex: 4,
+        content: { source: "Deckory V2 local integration fixture", page: "02" },
+        accessibility: { label: "Nguồn: Deckory V2 local integration fixture", readingOrder: 4 }
       }
     ]
   }]

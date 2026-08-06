@@ -1,3 +1,10 @@
+import {
+  ChartSpecSchema,
+  DeckNarrativeSchema,
+  DiagramSpecSchema,
+  EvidenceDomainSchema,
+  validateEvidenceDomain
+} from "@deckory/visuals";
 import { z } from "zod";
 
 export const StableIdSchema = z.string().regex(
@@ -213,9 +220,9 @@ const svgContent = z.object({ assetId: StableIdSchema.optional(), markup: z.stri
   (value) => Number(value.assetId !== undefined) + Number(value.markup !== undefined) === 1,
   "Expected exactly one of assetId or markup"
 );
-const chartContent = z.object({ spec: z.record(z.string(), z.unknown()) }).strict();
+const chartContent = z.object({ chart: ChartSpecSchema }).strict();
 const tableContent = z.object({ columns: z.array(z.string()), rows: z.array(z.array(z.unknown())) }).strict();
-const diagramContent = z.object({ spec: z.record(z.string(), z.unknown()) }).strict();
+const diagramContent = z.object({ diagram: DiagramSpecSchema }).strict();
 const mediaContent = z.object({ assetId: StableIdSchema, mediaType: nonEmptyText }).strict();
 const componentContent = z.object({ componentId: StableIdSchema, version: nonEmptyText, props: z.record(z.string(), z.unknown()) }).strict();
 const webBlockContent = z.object({ manifest: z.record(z.string(), z.unknown()), sourceId: StableIdSchema.optional() }).strict();
@@ -369,6 +376,11 @@ export const ComponentPackageReferenceSchema = z.object({
   integrity: z.string().trim().min(1).optional()
 }).strict();
 
+export const VisualIntelligenceDocumentV2Schema = z.object({
+  narrative: DeckNarrativeSchema.optional(),
+  evidence: EvidenceDomainSchema.optional()
+}).strict();
+
 export const DeckDocumentV2Schema = z.object({
   schemaVersion: z.literal(2),
   id: StableIdSchema,
@@ -381,6 +393,7 @@ export const DeckDocumentV2Schema = z.object({
   dataSources: z.array(DeckDataSourceSchema).max(1_024).optional(),
   masters: z.array(SlideMasterV2Schema).max(128).optional(),
   componentPackages: z.array(ComponentPackageReferenceSchema).max(128).optional(),
+  visualIntelligence: VisualIntelligenceDocumentV2Schema.optional(),
   slides: z.array(SceneSlideSchema).min(1).max(1_000)
 }).strict().superRefine((deck, context) => {
   const unique = (values: readonly { id: string }[], path: string, label: string) => {
@@ -396,6 +409,66 @@ export const DeckDocumentV2Schema = z.object({
   unique(deck.assets, "assets", "asset");
   unique(deck.dataSources ?? [], "dataSources", "data source");
   unique(deck.masters ?? [], "masters", "master");
+
+  const slideById = new Map(deck.slides.map((slide) => [slide.id, slide]));
+  const narrative = deck.visualIntelligence?.narrative;
+  narrative?.sections.forEach((section, sectionIndex) => {
+    section.slideIds.forEach((slideId, slideIndex) => {
+      if (!slideById.has(slideId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["visualIntelligence", "narrative", "sections", sectionIndex, "slideIds", slideIndex],
+          message: `Narrative section references missing slide: ${slideId}`
+        });
+      }
+    });
+  });
+
+  const evidenceDomain = deck.visualIntelligence?.evidence;
+  if (evidenceDomain) {
+    const evidenceValidation = validateEvidenceDomain(evidenceDomain);
+    evidenceValidation.diagnostics.forEach((diagnostic) => {
+      context.addIssue({
+        code: "custom",
+        path: ["visualIntelligence", "evidence"],
+        message: `${diagnostic.code}: ${diagnostic.message}`
+      });
+    });
+
+    evidenceDomain.claims.forEach((claim, claimIndex) => {
+      const slide = slideById.get(claim.slideId);
+      if (!slide) {
+        context.addIssue({
+          code: "custom",
+          path: ["visualIntelligence", "evidence", "claims", claimIndex, "slideId"],
+          message: `Claim references missing slide: ${claim.slideId}`
+        });
+      } else if (claim.elementId && !slide.elements.some((element) => element.id === claim.elementId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["visualIntelligence", "evidence", "claims", claimIndex, "elementId"],
+          message: `Claim references missing element: ${claim.slideId}.${claim.elementId}`
+        });
+      }
+    });
+
+    evidenceDomain.visualBindings.forEach((binding, bindingIndex) => {
+      const slide = slideById.get(binding.slideId);
+      if (!slide) {
+        context.addIssue({
+          code: "custom",
+          path: ["visualIntelligence", "evidence", "visualBindings", bindingIndex, "slideId"],
+          message: `Visual binding references missing slide: ${binding.slideId}`
+        });
+      } else if (binding.elementId && !slide.elements.some((element) => element.id === binding.elementId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["visualIntelligence", "evidence", "visualBindings", bindingIndex, "elementId"],
+          message: `Visual binding references missing element: ${binding.slideId}.${binding.elementId}`
+        });
+      }
+    });
+  }
 });
 
 export type CanvasSpec = z.infer<typeof CanvasSpecSchema>;
