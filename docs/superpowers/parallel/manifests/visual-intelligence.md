@@ -12,6 +12,9 @@ BASE_COMMIT=4425113417a1a064695525baef1af822b4be430b
 BASE_BRANCH=feat/deckory-v2-scene-foundation
 TRACK_BRANCH=feat/v2-visual-intelligence-core
 WORKTREE=C:\Users\KanzuWakazaki\.devspace\profiles\Deckory\session-1\worktrees\Deckory-b1874421
+FINAL_REVIEW_BASE=2f27b76d2aec6a172d0d8efe9a92e88246809adb
+FINAL_REVIEW_BRANCH=feat/v2-visual-intelligence-final
+FINAL_REVIEW_WORKTREE=C:\Users\KanzuWakazaki\.devspace\profiles\Deckory\session-1\worktrees\Deckory-6f845517
 ORIGINAL_DIRTY_CHECKOUT=F:\Deckory
 ```
 
@@ -38,8 +41,10 @@ Implementation and request commits, in order:
 13. `09da854787503173b9aaa8aaacd6a991a7ae621b` — `fix(diagrams): validate complete graph layouts`
 14. `838cdbbd6a100baadd57b2f994a3882bc4cf8533` — `fix(visuals): harden adapter and fixture boundaries`
 15. `1feb709906820bd18340bc5e2ad1ebb9545b64c6` — `fix(story): make narrative contracts strict`
+16. `2f27b76d2aec6a172d0d8efe9a92e88246809adb` — `docs(visuals): finalize reviewed track manifest`
+17. `8a28195ba0ad01b44413132170b8f89d2051127e` — `fix(visuals): consolidate final intelligence hardening`
 
-The final commit containing this refreshed manifest is reported by the session result because a Git commit cannot embed its own SHA without changing that SHA.
+The final commit containing this consolidated manifest is reported by the session result because a Git commit cannot embed its own SHA without changing that SHA.
 
 ## Owned files changed
 
@@ -370,6 +375,7 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 **Constants/functions**
 
 - `requiredDiagramVisualIds`
+- `requiredSemanticVisualIds`
 - `visualCoverageCatalog`
 - `visualFixtureInventory`
 - `validateVisualCoverageInventory`
@@ -381,6 +387,7 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 - `VisualCoverageEntry`
 - `VisualFixtureRecord`
 - `RequiredDiagramVisualId`
+- `RequiredSemanticVisualId`
 - `VisualCoverageDiagnostic`
 
 ## Behavior and coverage inventory
@@ -388,9 +395,10 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 ### Intent and recommendations
 
 - 27 deterministic intent values.
-- Explicit extraction of claims, ordered steps, sides, entities and numeric claims.
+- Explicit extraction of claims, ordered steps, sides, entities and locale-aware numeric claims.
+- Numeric roles distinguish value, date, identifier and ordinal semantics; only value claims satisfy chart evidence.
 - Deterministic ranking with reasons, alternatives, input status, evidence requirements and warnings.
-- Numeric chart candidates are excluded when no numeric claim exists.
+- Numeric chart candidates are excluded when no chart-eligible value exists.
 - No external model or network dependency in the deterministic core.
 
 ### Narrative/copy/composition
@@ -399,7 +407,7 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 - Main-story/appendix indexing and duplicate assignment checks.
 - Diagnostics for weak thesis, solution-before-evidence, context without tension, evidence without interpretation, abrupt transitions, duplicate slides, weak conclusion headings, weak closing, appendix leakage and missing/unassigned slides.
 - Constrained copy operations: conclusion heading, shorten, professional Vietnamese simplification, list parallelization, dense-copy split, technical-filler removal and speaker-note drafting.
-- Claim-preservation reports track numbers, direction, certainty and limitations; unsafe changes are refused.
+- Claim-preservation reports track numeric meaning, direction, polarity, temporal scope, certainty and limitations; locale-format-only changes remain equivalent while real value changes are refused.
 - Composition fingerprints include layout mode, dominant visual family, relationship, occupied regions, scale hierarchy and quantized freeform geometry.
 
 ### Evidence and datasets
@@ -448,6 +456,7 @@ Everything below is exported through `packages/visuals/src/index.ts`.
   - choropleth;
   - proportional-symbol map.
 - Direct-label policy, primary-highlight limit, annotations, reference lines, unit/number format, missing-value policy, evidence and local geography asset contracts.
+- Impossible ranges and negative weighted flows are rejected; line/area gaps stay disconnected and label policy is respected.
 - SVG-only ECharts request/result boundary; no raw ECharts option in public exports.
 
 ### Diagrams
@@ -466,8 +475,9 @@ Everything below is exported through `packages/visuals/src/index.ts`.
 
 - 15 recommendation catalog entries with complete use/avoid, input, evidence, density, accessibility, renderer and export metadata.
 - All 27 public visual intents have at least one deterministic recommendation candidate.
-- 68 chart/diagram coverage entries: 30 chart variants plus 38 diagram families.
-- 73 stable fixture records after including recommendation-only composition/editorial fixtures.
+- 46 required semantic editorial/composition entries from the Plan 04 component inventory.
+- 114 coverage entries: 30 chart variants, 38 diagram families and 46 semantic components.
+- 118 stable fixture records after including recommendation-only editorial/composition fixtures.
 - Every fixture is explicitly illustrative and requires visible evidence labeling.
 - Every fixture records unit coverage and `required-after-integration` browser review status.
 
@@ -498,7 +508,19 @@ Focused GREEN progression:
 - truthful chart geometry: 100 cumulative tests;
 - complete diagram graph validation: 105 cumulative tests;
 - adapter and fixture-boundary validation: 107 cumulative tests;
-- strict narrative contracts: 108 cumulative tests.
+- strict narrative contracts: 108 cumulative tests;
+- consolidated final review: 117 cumulative tests.
+
+Final consolidation RED was observed on top of the 108-test reviewed branch:
+
+| Review boundary | Observed RED |
+|---|---|
+| Semantic catalog coverage | Required semantic inventory export was absent |
+| Locale numeric intent | Vietnamese grouping was split; stage ordinals counted as chart values |
+| Chart validation | Invalid box ranges and negative Sankey flows parsed successfully |
+| Editorial geometry | Line gaps were bridged and grouped/stacked labels ignored `mode: none` |
+| Dataset boundary | Mixed-type pivot input reached the stronger existing `invalid-dataset` refusal; duplicate aggregate outputs remained covered |
+| Claim preservation | Equivalent locale-formatted values were reported as changed claims |
 
 Systematic fixes were made only after root causes were reproduced:
 
@@ -514,7 +536,11 @@ Systematic fixes were made only after root causes were reproduced:
 - strict dataset row/column validation and collision-free transform lineage;
 - truthful zero-baseline chart geometry, bullet target domains and series-safe slope geometry;
 - complete traversal/generated-layout contracts, graph-cycle refusal and typed-port routing;
-- ELK request bounds/measurement validation and orphan-fixture diagnostics.
+- ELK request bounds/measurement validation and orphan-fixture diagnostics;
+- locale-sensitive grouping/decimal parsing and ordinal classification;
+- missing-value segment continuity and direct-label policy propagation;
+- canonical numeric-meaning comparison without weakening polarity, certainty, limitation or temporal-scope checks;
+- concurrent-review reconciliation by consolidating from `2f27b76d2aec6a172d0d8efe9a92e88246809adb` instead of overwriting either review branch.
 
 ## Deterministic repeat evidence
 
@@ -562,7 +588,7 @@ pnpm --filter @deckory/visuals lint
 Results:
 
 - 18 test files passed;
-- 108 tests passed;
+- 117 tests passed;
 - 0 failed;
 - package typecheck passed;
 - package lint script passed.
@@ -578,7 +604,7 @@ pnpm build
 
 Results:
 
-- 344 tests passed across workspace packages, app, deck and script suites;
+- 353 tests passed across workspace packages, app, deck and script suites;
 - 0 failed;
 - all available workspace typechecks passed;
 - all available workspace lint scripts passed;
@@ -587,10 +613,11 @@ Results:
 ### Diff/ownership checks
 
 ```text
+git diff --check 2f27b76d2aec6a172d0d8efe9a92e88246809adb..HEAD
 git diff --check 4425113417a1a064695525baef1af822b4be430b..HEAD
 ```
 
-Passed before manifest creation. The changed-path inventory contains only `packages/visuals/**` and allowed `docs/superpowers/parallel/{requests,manifests}/**` paths. `pnpm-lock.yaml` was restored after pnpm generated a local importer and is not part of this track.
+Both consolidation-delta and full-track checks passed before manifest creation. The changed-path inventory contains only `packages/visuals/**` and allowed `docs/superpowers/parallel/{requests,manifests}/**` paths. `pnpm-lock.yaml` was restored after pnpm generated a local importer and is not part of this track.
 
 ## Dependency requests
 
