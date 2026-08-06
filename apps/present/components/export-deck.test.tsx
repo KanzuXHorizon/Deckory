@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { DeckDocument } from "@deckory/schema";
+import { sceneFoundationDeck } from "../lib/deck-catalog";
 import { ExportDeck } from "./export-deck";
 
 const deck: DeckDocument = {
@@ -41,6 +42,16 @@ const deck: DeckDocument = {
 };
 
 describe("ExportDeck", () => {
+  it("renders V2 scenes through the same export boundary", () => {
+    const html = renderToStaticMarkup(<ExportDeck deck={sceneFoundationDeck} />);
+
+    expect(html).toContain('data-export-deck-id="scene-foundation"');
+    expect(html).toContain('data-export-slide-id="cover"');
+    expect(html).toContain('class="scene-slide"');
+    expect(html).toContain('data-element-id="title"');
+    expect(html).toContain("Một scene graph dùng chung cho mọi bề mặt.");
+  });
+
   it("renders every slide at a stable export boundary without speaker notes", () => {
     const html = renderToStaticMarkup(<ExportDeck deck={deck} />);
 

@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Copy, FileDown, Images, Presentation, Printer } from "lucide-react";
-import type { DeckDocument } from "@deckory/schema";
+import type { DeckDocument, DeckDocumentV2, SceneSlide, Slide } from "@deckory/schema";
 import { deckThemeClassName } from "../lib/deck-theme";
+import { isDeckDocumentV2 } from "../lib/deck-version";
 import { createDeckExportCommand, type DeckExportCliFormat } from "../lib/export-command";
 import { DeckoryBrand } from "./brand-mark";
 import { SlideFrame } from "./slide-frame";
 
-export function ExportDeck({ deck }: { deck: DeckDocument }) {
-  const themeClassName = deckThemeClassName(deck);
+export function ExportDeck({ deck }: { deck: DeckDocument | DeckDocumentV2 }) {
+  const v2 = isDeckDocumentV2(deck);
+  const themeClassName = v2 ? "deck-theme--editorial-light" : deckThemeClassName(deck);
   const [copyState, setCopyState] = useState<{ format: DeckExportCliFormat; status: "copied" | "error" } | null>(null);
   const resetTimerRef = useRef<number | null>(null);
 
@@ -101,14 +103,25 @@ export function ExportDeck({ deck }: { deck: DeckDocument }) {
             aria-label={`Trang chiếu ${index + 1} trên ${deck.slides.length}: ${slide.id}`}
             key={slide.id}
           >
-            <SlideFrame
-              slide={slide}
-              deckId={deck.id}
-              assets={deck.assets}
-              sequenceStep={Number.MAX_SAFE_INTEGER}
-              reducedMotion
-              motionDisabled
-            />
+            {v2 ? (
+              <SlideFrame
+                slide={slide as SceneSlide}
+                deckId={deck.id}
+                assets={deck.assets}
+                sequenceStep={Number.MAX_SAFE_INTEGER}
+                reducedMotion
+                motionDisabled
+              />
+            ) : (
+              <SlideFrame
+                slide={slide as Slide}
+                deckId={deck.id}
+                assets={deck.assets}
+                sequenceStep={Number.MAX_SAFE_INTEGER}
+                reducedMotion
+                motionDisabled
+              />
+            )}
           </section>
         ))}
       </div>

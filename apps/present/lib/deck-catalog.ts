@@ -2,7 +2,8 @@ import { deckoryStory } from "@deckory/deckory-story";
 import { myInterviewDefense } from "@deckory/myinterview-defense";
 import { templateGalleryDeck } from "@deckory/template-gallery";
 import { scoreDeckQuality, type DeckQualityScorecard } from "@deckory/audit";
-import { defineDeck, SUPPORTED_COMPONENT_TYPES, type DeckDocument, type Slide } from "@deckory/schema";
+import { defineDeck, SUPPORTED_COMPONENT_TYPES, type DeckDocument, type DeckDocumentV2, type Slide } from "@deckory/schema";
+import type { AnyDeckDocument } from "./deck-version";
 
 const visualLab = defineDeck({
   id: "visual-lab",
@@ -249,10 +250,85 @@ export const deckCatalog: DeckCatalogItem[] = [
   }
 ];
 
+export const sceneFoundationDeck: DeckDocumentV2 = {
+  schemaVersion: 2,
+  id: "scene-foundation",
+  revision: 1,
+  title: "Deckory V2 Scene Foundation",
+  locale: "vi-VN",
+  canvas: { width: 1280, height: 720, unit: "px" },
+  theme: { id: "deckory-editorial", tokens: {} },
+  assets: [],
+  slides: [{
+    id: "cover",
+    name: "Scene Foundation",
+    purpose: "technical-proof",
+    conclusion: "Một scene graph dùng chung cho mọi bề mặt.",
+    background: { layers: [{ id: "paper", type: "solid", color: "#f7f7f4", opacity: 1 }] },
+    evidence: { source: "Deckory V2 Scene Foundation fixture", status: "illustrative" },
+    elements: [
+      {
+        id: "eyebrow",
+        name: "Eyebrow",
+        kind: "text",
+        frame: { x: 76, y: 72, width: 600, height: 36 },
+        zIndex: 1,
+        content: { text: "DECKORY V2 · SCENE FOUNDATION" },
+        style: { color: "#4f46e5", fontSize: 18, fontWeight: 700, letterSpacing: 1.4 },
+        accessibility: { label: "Deckory V2 Scene Foundation", readingOrder: 1 }
+      },
+      {
+        id: "title",
+        name: "Title",
+        kind: "text",
+        frame: { x: 76, y: 132, width: 850, height: 180 },
+        zIndex: 2,
+        content: { text: "Một scene graph dùng chung cho mọi bề mặt." },
+        style: { color: "#17191c", fontSize: 62, fontWeight: 750, lineHeight: 1.05 },
+        accessibility: { label: "Một scene graph dùng chung cho mọi bề mặt.", readingOrder: 2 }
+      },
+      {
+        id: "proof",
+        name: "Proof",
+        kind: "shape",
+        frame: { x: 76, y: 388, width: 1128, height: 176 },
+        zIndex: 1,
+        content: { shape: "rectangle" },
+        style: { fill: "#ffffff", stroke: "#d8dad6", strokeWidth: 1, borderRadius: 20 },
+        accessibility: { decorative: true }
+      },
+      {
+        id: "summary",
+        name: "Summary",
+        kind: "text",
+        frame: { x: 112, y: 426, width: 1048, height: 96 },
+        zIndex: 3,
+        content: { text: "V1 vẫn hoạt động. V2 có tọa độ rõ ràng, validation, migration và renderer dùng chung cho Preview, Presenter, Studio và Export." },
+        style: { color: "#454a51", fontSize: 28, fontWeight: 550, lineHeight: 1.35 },
+        accessibility: { label: "V1 vẫn hoạt động. V2 có tọa độ rõ ràng, validation, migration và renderer dùng chung.", readingOrder: 3 }
+      },
+      {
+        id: "footer",
+        name: "Evidence footer",
+        kind: "evidence-footer",
+        frame: { x: 76, y: 664, width: 1128, height: 28 },
+        zIndex: 4,
+        content: { source: "Deckory V2 Scene Foundation fixture", page: "01" },
+        accessibility: { label: "Nguồn: Deckory V2 Scene Foundation fixture", readingOrder: 4 }
+      }
+    ]
+  }]
+};
+
 export const defaultDeck = deckCatalog[0]!.deck;
 
 export function resolveDeck(deckId?: string | null): DeckDocument {
   return deckCatalog.find((item) => item.deck.id === deckId)?.deck ?? defaultDeck;
+}
+
+export function resolveAnyDeck(deckId?: string | null): AnyDeckDocument {
+  if (deckId === sceneFoundationDeck.id) return sceneFoundationDeck;
+  return resolveDeck(deckId);
 }
 
 export function resolveCatalogItem(deckId?: string | null): DeckCatalogItem {

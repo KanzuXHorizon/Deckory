@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { BackgroundLayer, DeckAssetV2, SceneSlide } from "@deckory/schema";
-import { ElementRenderer, type SceneRenderMode } from "./element-renderer.js";
+import { ElementRenderer, type SceneRenderMode } from "./element-renderer";
 
 function backgroundStyle(layer: BackgroundLayer, assets: readonly DeckAssetV2[]): CSSProperties {
   const common: CSSProperties = {

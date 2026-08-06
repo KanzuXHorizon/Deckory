@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { SceneSlide } from "@deckory/schema";
-import { SceneRenderer } from "./scene-renderer.js";
+import { SceneRenderer } from "./scene-renderer";
 
 const sceneSlide: SceneSlide = {
   id: "cover",

@@ -6,7 +6,7 @@ import {
   type Slide,
   type SlideComponent
 } from "@deckory/schema";
-import { assignV1LayoutFrames } from "./v1-layout-frames.js";
+import { assignV1LayoutFrames } from "./v1-layout-frames";
 
 export type DeckMigrationDiagnostic = {
   code: "migration-review-required" | "migration-invalid-result";

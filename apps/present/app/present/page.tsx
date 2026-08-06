@@ -1,5 +1,7 @@
 import { Presenter } from "../../components/presenter";
-import { resolveDeck } from "../../lib/deck-catalog";
+import { SceneDeckSurface } from "../../components/scene-deck-surface";
+import { resolveAnyDeck } from "../../lib/deck-catalog";
+import { isDeckDocumentV2 } from "../../lib/deck-version";
 
 export default async function PresentPage({
   searchParams
@@ -7,8 +9,10 @@ export default async function PresentPage({
   searchParams: Promise<{ deck?: string; view?: string | string[] }>;
 }) {
   const params = await searchParams;
-  const deck = resolveDeck(params.deck);
+  const deck = resolveAnyDeck(params.deck);
   const view = params.view === "audience" ? "audience" : "presenter";
+
+  if (isDeckDocumentV2(deck)) return <SceneDeckSurface deck={deck} surface="presenter" />;
 
   return (
     <Presenter

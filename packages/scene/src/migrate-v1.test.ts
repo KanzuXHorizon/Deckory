@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeckDocument } from "@deckory/schema";
-import { migrateDeckV1ToV2 } from "./migrate-v1.js";
+import { migrateDeckV1ToV2 } from "./migrate-v1";
 
 const v1Deck: DeckDocument = {
   id: "migration-fixture",

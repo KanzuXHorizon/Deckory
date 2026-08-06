@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeckDocumentV2 } from "@deckory/schema";
-import { applySceneCommand } from "./commands.js";
+import { applySceneCommand } from "./commands";
 
 const deck: DeckDocumentV2 = {
   schemaVersion: 2,

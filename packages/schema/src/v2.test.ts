@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DeckDocumentV2Schema } from "./v2.js";
+import { DeckDocumentV2Schema } from "./v2";
 
 const validDeck = {
   schemaVersion: 2,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resizeFrame, rotateTransform, translateFrame } from "./geometry.js";
+import { resizeFrame, rotateTransform, translateFrame } from "./geometry";
 
 describe("scene geometry", () => {
   it("translates a frame without mutating the input", () => {
