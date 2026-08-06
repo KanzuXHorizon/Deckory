@@ -57,8 +57,14 @@ describe("gesture transaction adapter", () => {
       b: { ...frames.b, x: 150 }
     });
 
-    expect(result.commands[0]?.changes[0]?.transform).toEqual({ rotation: 12 });
+    expect(result.commands[0]?.changes[0]).not.toHaveProperty("transform");
     expect(result.commands[0]?.changes[1]).not.toHaveProperty("transform");
+    expect(result.transforms).toEqual({ a: { rotation: 12 }, b: undefined });
+  });
+
+  it("rejects non-positive scale before command dispatch", () => {
+    const transaction = beginGestureTransaction("cover", frames);
+    expect(() => commitGestureTransaction(transaction, frames, { a: { scaleX: 0 } })).toThrow(/positive|dương/i);
   });
 
   it("cancels without producing a history command", () => {

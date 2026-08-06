@@ -122,14 +122,15 @@ export function commitGestureTransaction(
     if (includeTransforms) normalizedTransforms[elementId] = transform;
 
     const change: StudioTransformChange = { elementId, frame };
-    if (transform !== undefined) change.transform = transform;
+    if (hasFinalTransform && transform !== undefined) change.transform = transform;
     return change;
   });
 
-  const changed = changes.some(({ elementId, frame, transform }) => {
+  const changed = transaction.elementOrder.some((elementId) => {
     const originalFrame = transaction.originalFrames[elementId]!;
     const originalTransform = normalizeTransform(transaction.originalTransforms?.[elementId]);
-    return !sameFrame(frame, originalFrame) || !sameTransform(transform, originalTransform);
+    return !sameFrame(normalizedFrames[elementId]!, originalFrame)
+      || !sameTransform(normalizedTransforms[elementId], originalTransform);
   });
   const result: GestureCommitResult = {
     frames: normalizedFrames,
