@@ -1,0 +1,50 @@
+.root {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.guide {
+  position: absolute;
+  background: color-mix(in srgb, #5147e8 88%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #5147e8 18%, transparent);
+}
+
+.guide[data-guide-axis="x"] {
+  top: 0;
+  bottom: 0;
+  left: var(--guide-position);
+  width: 1px;
+}
+
+.guide[data-guide-axis="y"] {
+  right: 0;
+  left: 0;
+  top: var(--guide-position);
+  height: 1px;
+}
+
+.guide[data-guide-kind="text-baseline"] {
+  background: #0f8b8d;
+}
+
+.measurement {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #15171a;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgb(21 23 26 / 18%);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.measurement span:first-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
