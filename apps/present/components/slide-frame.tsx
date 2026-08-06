@@ -12,7 +12,8 @@ import {
   UsersRound
 } from "lucide-react";
 import { motion, type MotionStyle } from "motion/react";
-import { resolveDeckAsset, type DeckAsset, type Slide, type SlideComponent } from "@deckory/schema";
+import { SceneRenderer } from "@deckory/renderer";
+import { resolveDeckAsset, type DeckAsset, type DeckAssetV2, type SceneSlide, type Slide, type SlideComponent } from "@deckory/schema";
 import {
   decodeWeightSimulatorInteraction,
   encodeWeightSimulatorInteraction,
@@ -42,7 +43,33 @@ type CriterionGridProps = ComponentOf<"criterion-grid">["props"];
 type MediaShowcaseProps = ComponentOf<"media-showcase">["props"];
 type EvidenceProps = ComponentOf<"evidence-footer">["props"];
 
-export function SlideFrame({
+type SlideFrameCommonProps = {
+  sequenceStep: number;
+  reducedMotion: boolean;
+  deckId?: string;
+  motionDisabled?: boolean;
+  interactionState?: Record<string, string>;
+  onInteractionChange?: (componentId: string, selectedId: string) => void;
+};
+
+type SlideFrameProps = SlideFrameCommonProps & (
+  | { slide: Slide; assets?: readonly DeckAsset[] | undefined }
+  | { slide: SceneSlide; assets?: readonly DeckAssetV2[] | undefined }
+);
+
+export function SlideFrame(props: SlideFrameProps) {
+  if ("elements" in props.slide) {
+    const mode = props.motionDisabled ? "thumbnail" : "final";
+    const assets = props.assets as readonly DeckAssetV2[] | undefined;
+    return assets
+      ? <SceneRenderer slide={props.slide} assets={assets} mode={mode} />
+      : <SceneRenderer slide={props.slide} mode={mode} />;
+  }
+  const legacyProps = props as SlideFrameCommonProps & { slide: Slide; assets?: readonly DeckAsset[] | undefined };
+  return <LegacySlideFrame {...legacyProps} />;
+}
+
+function LegacySlideFrame({
   slide,
   sequenceStep,
   reducedMotion,
@@ -51,16 +78,7 @@ export function SlideFrame({
   motionDisabled = false,
   interactionState,
   onInteractionChange
-}: {
-  slide: Slide;
-  sequenceStep: number;
-  reducedMotion: boolean;
-  deckId?: string;
-  assets?: readonly DeckAsset[] | undefined;
-  motionDisabled?: boolean;
-  interactionState?: Record<string, string>;
-  onInteractionChange?: (componentId: string, selectedId: string) => void;
-}) {
+}: SlideFrameCommonProps & { slide: Slide; assets?: readonly DeckAsset[] | undefined }) {
   const variant = slide.variant ?? "default";
 
   return (

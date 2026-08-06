@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { Slide } from "@deckory/schema";
+import type { SceneSlide, Slide } from "@deckory/schema";
 import { encodeWeightSimulatorInteraction, getComponentInteractionKey } from "./interaction-state";
 import { SlideFrame } from "./slide-frame";
 
@@ -43,6 +43,31 @@ const dataSlide: Slide = {
 };
 
 describe("SlideFrame", () => {
+  it("routes V2 scene slides through the shared renderer", () => {
+    const sceneSlide: SceneSlide = {
+      id: "scene-cover",
+      name: "Scene cover",
+      background: { layers: [] },
+      elements: [{
+        id: "scene-title",
+        name: "Scene title",
+        kind: "text",
+        frame: { x: 72, y: 64, width: 720, height: 140 },
+        zIndex: 1,
+        content: { text: "Deckory Scene V2" },
+        accessibility: { label: "Deckory Scene V2" }
+      }]
+    };
+
+    const html = renderToStaticMarkup(
+      <SlideFrame slide={sceneSlide} sequenceStep={0} reducedMotion={false} />
+    );
+
+    expect(html).toContain('class="scene-slide"');
+    expect(html).toContain('data-element-id="scene-title"');
+    expect(html).toContain("Deckory Scene V2");
+  });
+
   it("renders semantic component slots and an accessible chart summary", () => {
     const html = renderToStaticMarkup(
       <SlideFrame slide={dataSlide} deckId="deckory-story" sequenceStep={0} reducedMotion={false} />

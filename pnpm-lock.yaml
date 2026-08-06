@@ -41,6 +41,9 @@ importers:
       '@deckory/myinterview-defense':
         specifier: workspace:*
         version: link:../../decks/myinterview-defense
+      '@deckory/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
       '@deckory/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -101,6 +104,18 @@ importers:
       '@deckory/schema':
         specifier: workspace:*
         version: link:../schema
+
+  packages/renderer:
+    dependencies:
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../schema
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
 
   packages/scene:
     dependencies:
