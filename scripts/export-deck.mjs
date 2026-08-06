@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { dirname, extname, join, resolve } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import { assertPngDimensions, createSlideImageClip } from "./export-image-contract.mjs";
 import { writeImageDeckPptx } from "./pptx-image-deck.mjs";
@@ -18,17 +20,23 @@ const runId = `${Date.now().toString(36)}-${process.pid}`;
 const distDir = `.next-export-${runId}`;
 const distPath = resolve(repositoryRoot, "apps", "present", distDir);
 const requestedOutputPath = resolve(repositoryRoot, options.output);
-const explicitOutputFile = ["pdf", "pptx"].includes(options.format) && extname(options.output).toLowerCase() === `.${options.format}`
+const explicitOutputFile = ["pdf", "pptx", "html", "svg"].includes(options.format) && extname(options.output).toLowerCase() === `.${options.format}`
   ? requestedOutputPath
   : undefined;
 const outputRoot = explicitOutputFile ? dirname(explicitOutputFile) : requestedOutputPath;
+
+mkdirSync(outputRoot, { recursive: true });
+if (options.format === "html" || options.format === "svg") {
+  await exportStaticV2();
+  process.exit(0);
+}
+
 const port = await findAvailablePort();
 const environment = {
   ...process.env,
   DECKORY_NEXT_DIST_DIR: distDir
 };
 
-mkdirSync(outputRoot, { recursive: true });
 console.log(`[deckory:export] deck=${options.deck} format=${options.format} port=${port} dist=${distDir}`);
 
 let server;
@@ -157,6 +165,92 @@ try {
   rmSync(distPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
 }
 
+async function exportStaticV2() {
+  await import("./register-typescript-loader.mjs");
+  const [{ resolveAnyDeck }, { isDeckDocumentV2 }, renderer, staticExport] = await Promise.all([
+    import("../apps/present/lib/deck-catalog.ts"),
+    import("../apps/present/lib/deck-version.ts"),
+    import("../packages/renderer/src/index.ts"),
+    import("../packages/renderer/src/export/index.ts")
+  ]);
+  const deck = resolveAnyDeck(options.deck);
+  if (!isDeckDocumentV2(deck)) {
+    throw new Error(`Format ${options.format} yêu cầu DeckDocument V2; deck “${options.deck}” vẫn là V1.`);
+  }
+
+  const registry = { resolveComponent: () => undefined };
+  const readLocalAsset = (asset) => readRepositoryAsset(asset);
+  const capabilityReport = renderer.resolveDeckExportReport(deck, registry);
+  const files = [];
+
+  if (options.format === "html") {
+    const html = await staticExport.exportDeckToStandaloneHtml(deck, { registry, readLocalAsset });
+    const htmlPath = explicitOutputFile ?? join(outputRoot, `${safeFileName(deck.id)}.html`);
+    mkdirSync(dirname(htmlPath), { recursive: true });
+    writeFileSync(htmlPath, html, "utf8");
+    files.push(relativeOutputPath(htmlPath));
+  } else {
+    if (explicitOutputFile && deck.slides.length !== 1) {
+      throw new Error(`--output=.svg chỉ hợp lệ khi deck có đúng một slide; ${deck.id} có ${deck.slides.length} slide.`);
+    }
+    const svgDirectory = explicitOutputFile
+      ? dirname(explicitOutputFile)
+      : join(outputRoot, `${safeFileName(deck.id)}-svg`);
+    mkdirSync(svgDirectory, { recursive: true });
+    for (let index = 0; index < deck.slides.length; index += 1) {
+      const slide = deck.slides[index];
+      const svg = await staticExport.exportSlideToSvg(slide, {
+        assets: deck.assets,
+        registry,
+        deckTitle: deck.title,
+        readLocalAsset
+      });
+      const svgPath = explicitOutputFile ?? join(
+        svgDirectory,
+        `${String(index + 1).padStart(2, "0")}-${safeFileName(slide.id)}.svg`
+      );
+      writeFileSync(svgPath, svg, "utf8");
+      files.push(relativeOutputPath(svgPath));
+    }
+  }
+
+  const manifest = {
+    version: 2,
+    deckId: deck.id,
+    documentRevision: deck.revision,
+    format: options.format,
+    slideCount: deck.slides.length,
+    generatedAt: new Date().toISOString(),
+    renderer: "Deckory V2 deterministic static export",
+    canvas: { width: 1280, height: 720, aspectRatio: "16:9" },
+    files,
+    capabilityReport
+  };
+  const manifestPath = join(outputRoot, `${safeFileName(deck.id)}-${options.format}-export.json`);
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+  console.log(`[deckory:export] deck=${deck.id} format=${options.format} slides=${deck.slides.length}`);
+  files.forEach((file) => console.log(`- ${file}`));
+  console.log(`- ${relativeOutputPath(manifestPath)}`);
+}
+
+async function readRepositoryAsset(asset) {
+  const source = asset.src.trim();
+  let filepath;
+  if (source.startsWith("/")) {
+    filepath = resolve(repositoryRoot, "apps", "present", "public", `.${source}`);
+  } else if (/^file:/i.test(source)) {
+    filepath = fileURLToPath(source);
+  } else {
+    filepath = resolve(repositoryRoot, source);
+  }
+  const relativePath = relative(repositoryRoot, filepath);
+  if (!relativePath || relativePath.startsWith("..") || isAbsolute(relativePath)) {
+    throw new Error(`Asset ${asset.id} vượt khỏi repository root: ${source}.`);
+  }
+  return readFile(filepath);
+}
+
 async function captureSlideImage(page, slide, screenshotOptions) {
   await slide.scrollIntoViewIfNeeded();
   const clip = createSlideImageClip(await slide.boundingBox());
@@ -177,13 +271,13 @@ function parseArguments(args) {
   };
 
   const format = option("format") ?? "pdf";
-  if (!["pdf", "png", "jpg", "jpeg", "pptx", "all"].includes(format)) {
-    throw new Error(`Format “${format}” không hợp lệ. Chọn pdf, png, jpg, pptx hoặc all.`);
+  if (!["pdf", "png", "jpg", "jpeg", "pptx", "html", "svg", "all"].includes(format)) {
+    throw new Error(`Format “${format}” không hợp lệ. Chọn html, svg, pdf, png, jpg, pptx hoặc all.`);
   }
   const output = option("output") ?? "output/exports";
   const outputExtension = extname(output).toLowerCase();
-  if (outputExtension && ![".pdf", ".pptx"].includes(outputExtension)) {
-    throw new Error("--output phải là thư mục, hoặc tệp .pdf/.pptx phù hợp với format.");
+  if (outputExtension && ![".pdf", ".pptx", ".html", ".svg"].includes(outputExtension)) {
+    throw new Error("--output phải là thư mục, hoặc tệp .html/.svg/.pdf/.pptx phù hợp với format.");
   }
   if (outputExtension && outputExtension !== `.${format}`) {
     throw new Error(`Đường dẫn ${outputExtension} chỉ dùng được với --format=${outputExtension.slice(1)}.`);
@@ -201,6 +295,8 @@ function printHelp() {
   console.log(`Deckory deck export
 
 Usage:
+  pnpm export:deck -- --deck=scene-foundation --format=html
+  pnpm export:deck -- --deck=scene-foundation --format=svg --output=output/exports
   pnpm export:deck -- --deck=deckory-story --format=pdf
   pnpm export:deck -- --deck=template-gallery --format=png --output=output/exports
   pnpm export:deck -- --deck=visual-lab --format=jpg
@@ -209,8 +305,8 @@ Usage:
 
 Options:
   --deck      ID của deck đã đăng ký trong Deckory catalog.
-  --format    pdf, png, jpg, pptx hoặc all. Mặc định: pdf.
-  --output    Thư mục output hoặc đường dẫn .pdf khi format=pdf.
+  --format    html, svg, pdf, png, jpg, pptx hoặc all. Mặc định: pdf.
+  --output    Thư mục output hoặc đường dẫn .html/.svg/.pdf/.pptx phù hợp format.
   --help      Hiển thị hướng dẫn.`);
 }
 

@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./background-renderer": "./src/background-renderer.tsx",
+    "./export": "./src/export/index.ts",
     "./image-renderer": "./src/image-renderer.tsx",
     "./motion-compiler": "./src/motion-compiler.ts",
     "./rich-text-renderer": "./src/rich-text-renderer.tsx",

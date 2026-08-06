@@ -110,7 +110,7 @@ git commit -m "feat(export): disclose element export capabilities"
 **Interfaces:**
 - Produces: `exportDeckToStandaloneHtml`, `exportSlideToSvg`, `embedExportAssets`.
 
-- [ ] **Step 1: Write failing standalone HTML tests**
+- [x] **Step 1: Write failing standalone HTML tests**
 
 ```ts
 it("contains no remote asset references", async () => {
@@ -126,7 +126,7 @@ it("does not include Studio source code or editor dependencies", async () => {
 });
 ```
 
-- [ ] **Step 2: Write failing SVG tests**
+- [x] **Step 2: Write failing SVG tests**
 
 ```ts
 it("serializes native text and shapes with the 1280 by 720 viewBox", async () => {
@@ -141,13 +141,13 @@ it("uses the declared fallback for unsupported custom content", async () => {
 });
 ```
 
-- [ ] **Step 3: Run tests and confirm RED**
+- [x] **Step 3: Run tests and confirm RED**
 
 Run: `pnpm --filter @deckory/renderer test -- src/export`
 
 Expected: FAIL because exporters do not exist.
 
-- [ ] **Step 4: Implement asset embedding and export modes**
+- [x] **Step 4: Implement asset embedding and export modes**
 
 - embed local images and fonts;
 - freeze motion at final state;
@@ -157,7 +157,7 @@ Expected: FAIL because exporters do not exist.
 - preserve capability warnings in the export report, not the visual artifact;
 - avoid browser-dependent random IDs.
 
-- [ ] **Step 5: Extend the CLI**
+- [x] **Step 5: Extend the CLI**
 
 Supported commands:
 
@@ -168,7 +168,7 @@ pnpm export:deck -- --deck=<id> --format=svg
 
 Output contains artifact path plus a JSON capability report.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 ```bash
 pnpm --filter @deckory/renderer test -- src/export

@@ -89,6 +89,7 @@ export function SceneRenderer({
       className="scene-slide"
       data-slide-id={slide.id}
       data-render-mode={mode}
+      data-motion-mode={mode}
       data-hierarchy-diagnostic-count={tree.diagnostics.length || undefined}
       data-motion-diagnostic-count={mode === "studio" && timeline.diagnostics.length ? timeline.diagnostics.length : undefined}
       style={{
