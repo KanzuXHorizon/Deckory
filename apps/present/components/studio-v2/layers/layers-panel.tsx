@@ -3,6 +3,7 @@
 import type { MouseEvent } from "react";
 import type { SceneElement } from "@deckory/schema/v2";
 import { buildLayersTree, filterLayersTree, type LayerNode, type LayerPatch } from "./layers-model";
+import styles from "./layers-panel.module.css";
 
 export type LayersPanelProps = {
   elements: readonly SceneElement[];
@@ -42,18 +43,18 @@ function LayerTreeItem({
       data-layer-kind={node.element.kind}
       data-primary={primaryId === node.id ? "true" : "false"}
     >
-      <div className="studio-v2-layer-row">
+      <div className={styles.row}>
         <button
           type="button"
-          className="studio-v2-layer-select"
+          className={styles.select}
           tabIndex={primaryId === node.id ? 0 : -1}
           onClick={handleSelect}
           aria-label={`Chọn ${node.element.name}`}
         >
-          <span aria-hidden="true" className="studio-v2-layer-kind">{node.element.kind}</span>
+          <span aria-hidden="true" className={styles.kind}>{node.element.kind}</span>
           <span>{node.element.name}</span>
         </button>
-        <span className="studio-v2-layer-state" aria-live="polite">
+        <span className={styles.state} aria-live="polite">
           {node.element.locked ? <span>Đang khóa</span> : null}
           {node.element.hidden ? <span>Đang ẩn</span> : null}
         </span>
@@ -77,7 +78,7 @@ function LayerTreeItem({
         </button>
       </div>
       {hasChildren ? (
-        <ul role="group">
+        <ul role="group" className={styles.group}>
           {node.children.map((child) => (
             <LayerTreeItem
               key={child.id}
@@ -108,7 +109,7 @@ export function LayersPanel({
   const selected = new Set(selectedIds);
 
   return (
-    <section className="studio-v2-layers-panel" aria-labelledby="studio-v2-layers-title">
+    <section className={styles.root} aria-labelledby="studio-v2-layers-title">
       <header>
         <div>
           <h2 id="studio-v2-layers-title">Layers</h2>
@@ -126,7 +127,7 @@ export function LayersPanel({
         </label>
       </header>
       {tree.length > 0 ? (
-        <ul role="tree" aria-label="Cấu trúc thành phần của slide">
+        <ul role="tree" className={styles.tree} aria-label="Cấu trúc thành phần của slide">
           {tree.map((node) => (
             <LayerTreeItem
               key={node.id}
@@ -140,7 +141,7 @@ export function LayersPanel({
           ))}
         </ul>
       ) : (
-        <div className="studio-v2-layers-empty" role="status">
+        <div className={styles.empty} role="status">
           <strong>Không tìm thấy layer phù hợp</strong>
           <p>Xóa từ khóa hoặc kiểm tra tên thành phần.</p>
         </div>

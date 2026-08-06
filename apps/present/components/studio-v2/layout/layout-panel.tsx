@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./layout-panel.module.css";
+
 export type StudioLayoutMode = "freeform" | "constraint" | "stack" | "grid";
 export type StudioSizingMode = "fixed" | "hug" | "fill";
 
@@ -82,14 +84,14 @@ export function LayoutPanel({ value, diagnostic, onChange, onDetach }: LayoutPan
   };
 
   return (
-    <section className="studio-v2-layout-panel" aria-labelledby="studio-v2-layout-title">
+    <section className={styles.root} aria-labelledby="studio-v2-layout-title">
       <header>
         <h2 id="studio-v2-layout-title">Layout</h2>
         <p>Điều khiển cấu trúc mà không chỉnh JSON thô.</p>
       </header>
 
       {diagnostic ? (
-        <div role="alert" className="studio-v2-layout-diagnostic" data-diagnostic-code={diagnostic.code}>
+        <div role="alert" className={styles.diagnostic} data-diagnostic-code={diagnostic.code}>
           <strong>Không thể áp dụng bố cục hiện tại</strong>
           <p>{diagnostic.message}</p>
           {diagnostic.recommendation ? <p>Khuyến nghị: {diagnostic.recommendation}</p> : null}

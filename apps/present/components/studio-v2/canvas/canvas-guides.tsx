@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import styles from "./canvas-guides.module.css";
 
 export type CanvasGuideMatch = {
   axis: "x" | "y";
@@ -25,11 +26,11 @@ export function CanvasGuides({
   measurements: readonly CanvasSpacingMeasurement[];
 }) {
   return (
-    <div className="studio-v2-canvas-guides" aria-hidden="true" data-editor-overlay="guides">
+    <div className={styles.root} aria-hidden="true" data-editor-overlay="guides">
       {matches.map((match) => (
         <div
           key={`${match.axis}-${match.guideId}-${match.target}`}
-          className="studio-v2-canvas-guide"
+          className={styles.guide}
           data-guide-axis={match.axis}
           data-guide-kind={match.kind}
           data-guide-target={match.target}
@@ -39,7 +40,7 @@ export function CanvasGuides({
       {measurements.map((measurement) => (
         <div
           key={`${measurement.axis}-${measurement.elementIds.join("-")}`}
-          className="studio-v2-spacing-measurement"
+          className={styles.measurement}
           data-spacing-axis={measurement.axis}
           title={`Khoảng cách đều giữa ${measurement.elementIds.length} thành phần`}
         >
