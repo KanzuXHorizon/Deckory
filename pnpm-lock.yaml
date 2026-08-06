@@ -102,6 +102,12 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/scene:
+    dependencies:
+      '@deckory/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/schema:
     dependencies:
       zod:
