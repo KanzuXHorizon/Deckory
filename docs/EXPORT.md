@@ -112,13 +112,30 @@ PNG được kiểm tra đúng kích thước 1280 × 720 sau khi chụp.
 
 PDF dùng Chromium print engine với background, tagged PDF và CSS page size 16:9. Fidelity vẫn cần visual comparison khi thay font, chart hoặc print CSS.
 
-### PPTX hiện tại
+### PPTX image-only compatibility
 
 ```text
 <output>/<deck-id>.pptx
 ```
 
-Browser PPTX hiện tại là **image-only deck**. Nó không được mô tả như editable. Native-editable PPTX chỉ được công bố theo adapter capability report sau khi proof exporter tương ứng vượt verification.
+`pnpm export:deck -- --format=pptx` vẫn là compatibility path: một ảnh 1280 × 720 trên mỗi slide. Nó không được mô tả như editable.
+
+### Native-editable PPTX V2 proof
+
+```bash
+pnpm export:pptx-v2 -- --deck=pptx-v2-proof --output=output/exports/pptx-v2-proof.pptx
+```
+
+Native V2 writer dùng typed `PptxExportPlan` và chỉ chuyển đổi logical pixels sang EMU trong OOXML adapter. Proof hiện hỗ trợ:
+
+- text;
+- rectangle, ellipse, triangle và diamond;
+- line và connector;
+- local image;
+- group;
+- Web Block hoặc custom content có fallback PNG/SVG được khai báo.
+
+Writer dừng khi plan còn phần tử `unsupported`; không âm thầm bỏ element. Media relationship luôn nội bộ và chỉ được tạo cho native image hoặc fallback đã khai báo. Chart, diagram, rich text, table và custom component chưa có adapter native phải dùng fallback đã công bố hoặc khiến export fail-closed.
 
 ## Tham số CLI
 

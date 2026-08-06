@@ -263,7 +263,7 @@ git commit -m "feat(export): render V2 PNG and PDF faithfully"
 - Produces: `PptxExportAdapter`, `PptxElementResult`, `exportDeckToPptxPlan`.
 - Initial native proof: text, rectangle, ellipse, line, connector, image and group.
 
-- [ ] **Step 1: Write failing adapter-plan tests**
+- [x] **Step 1: Write failing adapter-plan tests**
 
 ```ts
 it("maps native scene primitives to editable PPTX operations", () => {
@@ -284,21 +284,21 @@ it("keeps unsupported content as an explicit fallback operation", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests and confirm RED**
+- [x] **Step 2: Run tests and confirm RED**
 
 Run: `pnpm --filter @deckory/renderer test -- src/export/pptx-adapter.test.ts`
 
 Expected: FAIL because the adapter boundary does not exist.
 
-- [ ] **Step 3: Implement the adapter plan without coupling schema to one PPTX library**
+- [x] **Step 3: Implement the adapter plan without coupling schema to one PPTX library**
 
 The plan contains logical-pixel geometry, text runs, fills, strokes, assets and fallback references. Conversion to EMU happens only inside the script adapter.
 
-- [ ] **Step 4: Implement the basic native proof exporter**
+- [x] **Step 4: Implement the basic native proof exporter**
 
 Use the repository-approved local PPTX dependency or existing script capability. If no dependency can preserve the tested native operations, stop and report the exact blocker rather than producing a misleading image-only file.
 
-- [ ] **Step 5: Verify the generated package structure**
+- [x] **Step 5: Verify the generated package structure**
 
 Tests open the PPTX ZIP and assert:
 
@@ -308,7 +308,7 @@ Tests open the PPTX ZIP and assert:
 - fallback media exists only for declared fallback elements;
 - no remote relationships.
 
-- [ ] **Step 6: Commit the adapter proof**
+- [x] **Step 6: Commit the adapter proof**
 
 ```bash
 git add packages/renderer/src/export/pptx-types.ts packages/renderer/src/export/pptx-adapter.ts packages/renderer/src/export/pptx-adapter.test.ts scripts/export-pptx-v2.mjs scripts/export-pptx-v2.test.mjs package.json docs/EXPORT.md pnpm-lock.yaml

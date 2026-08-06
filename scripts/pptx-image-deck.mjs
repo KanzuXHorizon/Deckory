@@ -7,13 +7,29 @@ const SLIDE_HEIGHT = Math.round(7.5 * EMU_PER_INCH);
 export function writeImageDeckPptx({ outputPath, title, imagePaths }) {
   if (imagePaths.length === 0) throw new Error("PPTX cần ít nhất một ảnh slide.");
 
+  const slides = imagePaths.map((imagePath, index) => {
+    const slideNumber = index + 1;
+    return {
+      xml: slideXml(slideNumber),
+      relationshipsXml: slideRelationshipsXml(slideNumber)
+    };
+  });
+  const media = new Map(imagePaths.map((imagePath, index) => [
+    `image${index + 1}.png`,
+    readFileSync(imagePath)
+  ]));
+  writeFileSync(outputPath, createPptxPackage({ title, slides, media }));
+}
+
+export function createPptxPackage({ title, slides, media = new Map(), createdAt = new Date().toISOString() }) {
+  if (slides.length === 0) throw new Error("PPTX cần ít nhất một slide.");
   const files = new Map();
-  files.set("[Content_Types].xml", contentTypesXml(imagePaths.length));
+  files.set("[Content_Types].xml", contentTypesXml(slides.length, [...media.keys()]));
   files.set("_rels/.rels", packageRelationshipsXml());
-  files.set("docProps/app.xml", appPropertiesXml(imagePaths.length));
-  files.set("docProps/core.xml", corePropertiesXml(title));
-  files.set("ppt/presentation.xml", presentationXml(imagePaths.length));
-  files.set("ppt/_rels/presentation.xml.rels", presentationRelationshipsXml(imagePaths.length));
+  files.set("docProps/app.xml", appPropertiesXml(slides.length));
+  files.set("docProps/core.xml", corePropertiesXml(title, createdAt));
+  files.set("ppt/presentation.xml", presentationXml(slides.length));
+  files.set("ppt/_rels/presentation.xml.rels", presentationRelationshipsXml(slides.length));
   files.set("ppt/slideMasters/slideMaster1.xml", slideMasterXml());
   files.set("ppt/slideMasters/_rels/slideMaster1.xml.rels", slideMasterRelationshipsXml());
   files.set("ppt/slideLayouts/slideLayout1.xml", slideLayoutXml());
@@ -23,14 +39,13 @@ export function writeImageDeckPptx({ outputPath, title, imagePaths }) {
   files.set("ppt/viewProps.xml", viewPropertiesXml());
   files.set("ppt/tableStyles.xml", tableStylesXml());
 
-  imagePaths.forEach((imagePath, index) => {
+  slides.forEach((slide, index) => {
     const slideNumber = index + 1;
-    files.set(`ppt/slides/slide${slideNumber}.xml`, slideXml(slideNumber));
-    files.set(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, slideRelationshipsXml(slideNumber));
-    files.set(`ppt/media/image${slideNumber}.png`, readFileSync(imagePath));
+    files.set(`ppt/slides/slide${slideNumber}.xml`, slide.xml);
+    files.set(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, slide.relationshipsXml);
   });
-
-  writeFileSync(outputPath, createZip(files));
+  for (const [name, data] of media) files.set(`ppt/media/${name}`, data);
+  return createZip(files);
 }
 
 function createZip(files) {
@@ -108,13 +123,27 @@ function crc32(buffer) {
 const xml = (body) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${body}`;
 const escapeXml = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
-function contentTypesXml(count) {
-  return xml(`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${Array.from({ length: count }, (_, index) => `<Override PartName="/ppt/slides/slide${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join("")}</Types>`);
+function contentTypesXml(count, mediaNames = []) {
+  const mediaDefaults = [...new Set(mediaNames
+    .map((name) => name.split(".").pop()?.toLowerCase())
+    .filter(Boolean))]
+    .map((extension) => {
+      const contentType = extension === "png"
+        ? "image/png"
+        : extension === "jpg" || extension === "jpeg"
+          ? "image/jpeg"
+          : extension === "svg"
+            ? "image/svg+xml"
+            : "application/octet-stream";
+      return `<Default Extension="${escapeXml(extension)}" ContentType="${contentType}"/>`;
+    })
+    .join("");
+  return xml(`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${mediaDefaults}<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${Array.from({ length: count }, (_, index) => `<Override PartName="/ppt/slides/slide${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join("")}</Types>`);
 }
 
 const packageRelationshipsXml = () => xml(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`);
 const appPropertiesXml = (count) => xml(`<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>Deckory</Application><PresentationFormat>Widescreen</PresentationFormat><Slides>${count}</Slides><Notes>0</Notes><HiddenSlides>0</HiddenSlides><MMClips>0</MMClips><ScaleCrop>false</ScaleCrop><Company>Deckory</Company><AppVersion>1.0</AppVersion></Properties>`);
-const corePropertiesXml = (title) => xml(`<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${escapeXml(title)}</dc:title><dc:creator>Deckory</dc:creator><cp:lastModifiedBy>Deckory</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:modified></cp:coreProperties>`);
+const corePropertiesXml = (title, timestamp = new Date().toISOString()) => xml(`<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${escapeXml(title)}</dc:title><dc:creator>Deckory</dc:creator><cp:lastModifiedBy>Deckory</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${timestamp}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${timestamp}</dcterms:modified></cp:coreProperties>`);
 function presentationXml(count) { return xml(`<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${Array.from({ length: count }, (_, index) => `<p:sldId id="${256 + index}" r:id="rId${index + 2}"/>`).join("")}</p:sldIdLst><p:sldSz cx="${SLIDE_WIDTH}" cy="${SLIDE_HEIGHT}" type="screen16x9"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`); }
 function presentationRelationshipsXml(count) { return xml(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>${Array.from({ length: count }, (_, index) => `<Relationship Id="rId${index + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${index + 1}.xml"/>`).join("")}<Relationship Id="rId${count + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps" Target="presProps.xml"/><Relationship Id="rId${count + 3}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps" Target="viewProps.xml"/><Relationship Id="rId${count + 4}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/></Relationships>`); }
 const slideMasterXml = () => xml(`<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld><p:clrMap accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" bg1="lt1" bg2="lt2" folHlink="folHlink" hlink="hlink" tx1="dk1" tx2="dk2"/><p:sldLayoutIdLst><p:sldLayoutId id="1" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>`);

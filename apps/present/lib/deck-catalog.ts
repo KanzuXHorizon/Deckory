@@ -587,6 +587,163 @@ export const sceneFoundationDeck: DeckDocumentV2 = {
   }]
 };
 
+export const pptxV2ProofDeck: DeckDocumentV2 = {
+  schemaVersion: 2,
+  id: "pptx-v2-proof",
+  revision: 1,
+  title: "Deckory Editable PPTX Proof",
+  locale: "vi-VN",
+  canvas: { width: 1280, height: 720, unit: "px" },
+  theme: { id: "deckory-editorial", tokens: {} },
+  assets: [
+    {
+      id: "pptx-proof-image",
+      type: "image",
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZpKQAAAAASUVORK5CYII=",
+      mediaType: "image/png",
+      width: 1,
+      height: 1,
+      source: { label: "Local native image fixture" }
+    },
+    {
+      id: "pptx-radar-fallback",
+      type: "image",
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZpKQAAAAASUVORK5CYII=",
+      mediaType: "image/png",
+      width: 1,
+      height: 1,
+      source: { label: "Local Web Block fallback fixture" }
+    }
+  ],
+  slides: [{
+    id: "editable-proof",
+    name: "Editable PPTX Proof",
+    purpose: "editable-pptx-proof",
+    conclusion: "Text, shapes, connectors, images and groups remain editable; custom content stays an explicit fallback.",
+    notes: "Đây là fixture kỹ thuật nội bộ. Chứng minh native DrawingML bằng text, shape, connector, image và group; sau đó chỉ ra Web Block được đóng gói đúng một fallback local. Không dùng fixture này như claim về fidelity của chart hoặc diagram.",
+    background: { layers: [{ id: "paper", type: "solid", color: "#f7f7f4", opacity: 1 }] },
+    evidence: { source: "Deckory local PPTX fixture", status: "illustrative" },
+    elements: [
+      {
+        id: "proof-group",
+        name: "Proof group",
+        kind: "group",
+        frame: { x: 56, y: 48, width: 900, height: 560 },
+        zIndex: 1,
+        content: { children: ["proof-title", "proof-panel", "proof-line", "proof-image"] },
+        accessibility: { label: "Nhóm primitive PPTX native", readingOrder: 1 }
+      },
+      {
+        id: "proof-title",
+        name: "Proof title",
+        kind: "text",
+        parentId: "proof-group",
+        frame: { x: 36, y: 28, width: 760, height: 96 },
+        zIndex: 3,
+        content: { text: "Deckory giữ primitive PPTX có thể chỉnh sửa." },
+        style: { color: "#17191c", fontSize: 40, fontWeight: 760, lineHeight: 1.08 },
+        accessibility: { label: "Deckory giữ primitive PPTX có thể chỉnh sửa.", readingOrder: 2 }
+      },
+      {
+        id: "proof-panel",
+        name: "Proof panel",
+        kind: "shape",
+        parentId: "proof-group",
+        frame: { x: 36, y: 154, width: 410, height: 250 },
+        zIndex: 1,
+        content: { shape: "rectangle" },
+        style: { fill: "#ffffff", stroke: "#d8dad6", strokeWidth: 1, borderRadius: 18 },
+        accessibility: { decorative: true }
+      },
+      {
+        id: "proof-ellipse",
+        name: "Proof ellipse",
+        kind: "shape",
+        frame: { x: 530, y: 250, width: 150, height: 110 },
+        zIndex: 2,
+        content: { shape: "ellipse" },
+        style: { fill: "#5147e8", stroke: "#332bb0", strokeWidth: 1 },
+        accessibility: { label: "Ellipse native", readingOrder: 3 }
+      },
+      {
+        id: "proof-image",
+        name: "Proof image",
+        kind: "image",
+        parentId: "proof-group",
+        frame: { x: 500, y: 154, width: 280, height: 180 },
+        zIndex: 2,
+        content: { assetId: "pptx-proof-image", alt: "Native image fixture" },
+        style: { objectFit: "contain" },
+        accessibility: { label: "Native image fixture", readingOrder: 4 }
+      },
+      {
+        id: "proof-line",
+        name: "Proof line",
+        kind: "line",
+        parentId: "proof-group",
+        frame: { x: 80, y: 470, width: 360, height: 2 },
+        zIndex: 4,
+        content: { x2: 360, y2: 0, markerEnd: "arrow" },
+        style: { stroke: "#5147e8", strokeWidth: 2 },
+        accessibility: { decorative: true }
+      },
+      {
+        id: "connector-from",
+        name: "Connector from",
+        kind: "shape",
+        frame: { x: 720, y: 410, width: 120, height: 72 },
+        zIndex: 2,
+        content: { shape: "rectangle" },
+        style: { fill: "#ffffff", stroke: "#0f8b8d", strokeWidth: 2 },
+        accessibility: { label: "Connector source", readingOrder: 5 }
+      },
+      {
+        id: "connector-to",
+        name: "Connector to",
+        kind: "shape",
+        frame: { x: 920, y: 500, width: 120, height: 72 },
+        zIndex: 2,
+        content: { shape: "diamond" },
+        style: { fill: "#ffffff", stroke: "#0f8b8d", strokeWidth: 2 },
+        accessibility: { label: "Connector target", readingOrder: 6 }
+      },
+      {
+        id: "proof-connector",
+        name: "Proof connector",
+        kind: "connector",
+        frame: { x: 0, y: 0, width: 1, height: 1 },
+        zIndex: 3,
+        content: { from: { elementId: "connector-from" }, to: { elementId: "connector-to" }, routing: "straight" },
+        style: { stroke: "#0f8b8d", strokeWidth: 2 },
+        accessibility: { decorative: true }
+      },
+      {
+        id: "pptx-custom-radar",
+        name: "Custom radar fallback",
+        kind: "web-block",
+        frame: { x: 1030, y: 120, width: 190, height: 190 },
+        zIndex: 5,
+        content: {
+          sourceId: "pptx-custom-radar-source",
+          manifest: {
+            id: "pptx-custom-radar",
+            version: "1.0.0",
+            entry: "index.html",
+            framework: "html",
+            accessibleSummary: "Custom radar dùng fallback PNG local.",
+            staticFallback: { type: "png", assetId: "pptx-radar-fallback" },
+            allowedImports: [],
+            payloadBytes: 64,
+            localAssetBytes: 0
+          }
+        },
+        accessibility: { label: "Custom radar dùng fallback PNG local.", readingOrder: 7 },
+        exportPolicy: { html: "fallback", svg: "fallback", png: "fallback", pdf: "fallback", pptx: "fallback", fallbackAssetId: "pptx-radar-fallback" }
+      }
+    ]
+  }]
+};
+
 export const exportV2ProofDeck: DeckDocumentV2 = {
   schemaVersion: 2,
   id: "export-v2-proof",
@@ -681,6 +838,7 @@ export function resolveDeck(deckId?: string | null): DeckDocument {
 
 export function resolveAnyDeck(deckId?: string | null): AnyDeckDocument {
   if (deckId === sceneFoundationDeck.id) return sceneFoundationDeck;
+  if (deckId === pptxV2ProofDeck.id) return pptxV2ProofDeck;
   if (deckId === exportV2ProofDeck.id) return exportV2ProofDeck;
   return resolveDeck(deckId);
 }
