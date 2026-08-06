@@ -89,6 +89,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `pnpm test` | Run workspace test suites. |
 | `pnpm audit:decks -- --strict` | Audit every registered deck and fail on warnings or errors. |
 | `pnpm assets:check` | Verify local asset files, media types and manifest references. |
+| `pnpm css:check` | Verify one global CSS entry, no orphan app stylesheet and no deck-ID visual overrides. |
 | `pnpm performance:check` | Verify production route bundle budgets and first-load denylist after `pnpm build`. |
 | `pnpm export:deck -- --deck=<id> --format=pdf` | Export a registered deck through the production browser renderer. |
 | `pnpm test:e2e` | Build an isolated production artifact and run Chromium presentation flows. |
@@ -174,7 +175,7 @@ Deckory is an actively developed early-stage project. The current repository inc
 
 - typed V1 documents plus the coordinate-based `DeckDocumentV2` scene model;
 - Hub, Scene V2 Studio, multi-slide Preview and Presenter surfaces using the shared renderer;
-- four migrated V2 reference decks, including the 23-slide MyInterview defense deck with local assets;
+- one canonical native Scene V2 MyInterview defense deck with 23 slides and local assets, plus three migrated V2 reference decks;
 - native editorial charts plus lazy-loaded ECharts SVG for reviewed advanced chart variants;
 - semantic tables, code, metrics, comparisons, processes, diagrams, evidence lineage and accessible summaries;
 - keyboard navigation, overview, fullscreen and private presenter notes with audience-mode privacy;

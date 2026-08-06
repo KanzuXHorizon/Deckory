@@ -8,6 +8,20 @@
 
 **Tech Stack:** TypeScript 5.9, React 19, Next.js 16, Deckory Scene V2, Zod schemas, Vitest, Playwright, pnpm 11.7.
 
+## Completion Record
+
+**Status:** Tasks 1–5 completed on `main`. The procedural checkboxes below are retained as the original execution trace; this record is authoritative for completion.
+
+Verified implementation:
+
+- one public MyInterview ID and one native Scene V2 package;
+- no `myinterview-defense-v2` runtime package or alias;
+- no MyInterview/defense stylesheet and no global deck-ID selector;
+- one root CSS entry with deterministic cascade and a CI-enforced contract;
+- 23 professionalized slides, five member profiles and ten local assets;
+- strict audit, asset audit, production build, bundle budgets, mobile checks, visual-quality inspection and full Chromium release journey;
+- full `pnpm quality:gate` passed before final commit and must be rerun on the committed revision before push.
+
 ## Global Constraints
 
 - Keep exactly one public MyInterview deck ID: `myinterview-defense`.

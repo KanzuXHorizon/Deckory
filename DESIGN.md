@@ -59,4 +59,6 @@ Presenter keeps a scaled 16:9 canvas. Hub collapses from library grid to a singl
 - Fixture data must be labelled as illustrative.
 - Speaker notes must never exist in audience-mode DOM or export output.
 - Heavy chart/editor runtimes must stay outside Hub, Preview and Presenter first-load budgets.
+- Global CSS enters through `app/globals.css` exactly once; component-specific styling uses CSS Modules.
+- Deck-specific visual direction belongs in typed Scene V2 data and theme tokens, never global selectors keyed by deck ID.
 - Thumbnail, reduced-motion and export modes must show the same complete final meaning as the authored motion state.

@@ -40,7 +40,7 @@ Tên sản phẩm là Deckory. Ngôn ngữ giao diện chính là tiếng Việt
 
 ## Evidence on Hand
 
-- Deck tham chiếu V1/V2: `decks/deckory-story/`, `decks/deckory-story-v2/`, `decks/myinterview-defense-v2/`.
+- Deck tham chiếu: `decks/deckory-story/`, `decks/deckory-story-v2/` và canonical Scene V2 deck `decks/myinterview-defense/`.
 - Schema và validation: `packages/schema/src/index.ts`, `packages/schema/src/v2.ts`.
 - Shared renderer và multi-slide surface: `packages/renderer/`, `apps/present/components/scene-deck-surface.tsx`.
 - Export/capability contract: `docs/EXPORT.md`, `packages/renderer/src/export-capabilities.ts`.

@@ -6,46 +6,51 @@ const runId = process.env.DECKORY_E2E_RUN_ID ?? "manual";
 const screenshotRoot = join(process.cwd(), "output", "playwright", "screenshots", runId);
 mkdirSync(screenshotRoot, { recursive: true });
 
-test.describe("Deckory V2 reference deck migrations", () => {
+test.describe("MyInterview canonical Scene V2 document", () => {
   test.describe.configure({ timeout: 90_000 });
 
-  test("keeps MyInterview V2 visible and usable across all production surfaces", async ({ page }) => {
+  test("uses one deck ID across Hub, Preview, Presenter, Studio and Export", async ({ page }) => {
     const runtime = watchRuntimeErrors(page);
 
     await page.goto("/");
-    const hubCard = page.locator('[data-v2-deck-id="myinterview-defense-v2"]');
+    const hubCard = page.locator('[data-v2-deck-id="myinterview-defense"]');
     await expect(hubCard).toBeVisible();
     await expect(hubCard).toContainText("MyInterview");
-    await expect(hubCard).toContainText("23 SLIDE");
-    await expect(hubCard).toContainText("runtime pending");
-    await expect(hubCard.getByRole("link", { name: "Studio" })).toHaveAttribute("href", "/studio?deck=myinterview-defense-v2");
+    await expect(hubCard).toContainText(/23 slide/i);
+    await expect(page.locator('[data-v2-deck-id="myinterview-defense-v2"]')).toHaveCount(0);
+    await expect(hubCard.getByRole("link", { name: "Studio" })).toHaveAttribute("href", "/studio?deck=myinterview-defense");
     await expectNoHorizontalOverflow(page);
-    await page.screenshot({ path: join(screenshotRoot, "hub-v2-migrations.png"), fullPage: true, animations: "disabled" });
+    await page.screenshot({ path: join(screenshotRoot, "hub-myinterview-canonical-v2.png"), fullPage: true, animations: "disabled" });
 
-    await page.goto("/preview?deck=myinterview-defense-v2&slide=cover");
+    await page.goto("/preview?deck=myinterview-defense&slide=cover");
     await expect(page.locator('[data-scene-v2-surface="preview"]')).toBeVisible();
     await expect(page.locator('.scene-slide[data-slide-id="cover"]')).toBeVisible();
-    await expect(page.getByText(/MyInterview/i).first()).toBeVisible();
-    await page.screenshot({ path: join(screenshotRoot, "myinterview-v2-preview-cover.png"), animations: "disabled" });
+    await expect(page.getByText("MyInterview", { exact: true })).toBeVisible();
 
-    await page.goto("/present?deck=myinterview-defense-v2&slide=cover");
+    await page.goto("/present?deck=myinterview-defense&slide=cover");
     await expect(page.locator('[data-scene-v2-surface="presenter"]')).toBeVisible();
     await expect(page.locator('.scene-slide[data-slide-id="cover"]')).toBeVisible();
-    await expect(page.locator(".speaker-note-copy")).toHaveCount(0);
+    await expect(page.getByText("Ghi chú người thuyết trình")).toHaveCount(0);
 
-    await page.goto("/studio?deck=myinterview-defense-v2&slide=cover");
+    await page.goto("/studio?deck=myinterview-defense&slide=cover");
     await expect(page.locator('[data-scene-v2-surface="studio"]')).toBeVisible();
     await expect(page.locator('[data-v2-quality-summary="true"]')).toBeVisible();
     await expect(page.locator('[data-export-capability-panel="true"]')).toBeVisible();
-    await expect(page.getByText(/23/).first()).toBeVisible();
 
-    await page.goto("/export?deck=myinterview-defense-v2");
-    await expect(page.locator('[data-export-deck-id="myinterview-defense-v2"]')).toBeVisible();
+    await page.goto("/export?deck=myinterview-defense");
+    await expect(page.locator('[data-export-deck-id="myinterview-defense"]')).toBeVisible();
     await expect(page.locator(".export-page")).toHaveCount(23);
     await expect(page.locator('.scene-slide[data-render-mode="export"]')).toHaveCount(23);
     await expect(page.locator('[data-export-capability-report="true"]')).toBeVisible();
 
     runtime.assertClean();
+  });
+
+  test("rejects the removed V2 alias instead of silently opening another deck", async ({ page }) => {
+    await page.goto("/export?deck=myinterview-defense-v2");
+    await expect(page.locator('[data-export-ready="true"]')).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /could not be found/i })).toBeVisible();
   });
 });
 

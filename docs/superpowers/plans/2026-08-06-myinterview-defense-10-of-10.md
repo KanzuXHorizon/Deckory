@@ -1,5 +1,7 @@
 # MyInterview Defense 10/10 Implementation Plan
 
+> **Superseded 2026-08-07:** Do not execute this plan. The scoped V1 stylesheet and V1 `DeckDocument` architecture were removed by [`2026-08-07-myinterview-single-v2-visual-system.md`](./2026-08-07-myinterview-single-v2-visual-system.md). This file is retained only as historical implementation context.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Produce one tracked, evidence-grounded, visually polished MyInterview graduation-defense deck that is reproducible from a clean Deckory checkout and passes schema, asset, unit, browser, export, and production-build gates.

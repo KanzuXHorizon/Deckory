@@ -400,6 +400,8 @@ git commit -m "feat(audit): score V2 across twenty quality dimensions"
 
 ### Task 6: Migrate templates and reference decks in controlled batches
 
+> **MyInterview path superseded 2026-08-07:** `decks/myinterview-defense-v2/` was intentionally removed after the canonical `decks/myinterview-defense/` package was rewritten as native Scene V2. Do not recreate the `-v2` package or dual catalog entry.
+
 **Files:**
 - Modify/Create within: `packages/templates/src/v2/`
 - Create: `packages/templates/src/v2/instantiate.ts`

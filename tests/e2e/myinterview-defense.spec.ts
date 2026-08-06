@@ -1,129 +1,135 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const runId = process.env.DECKORY_E2E_RUN_ID ?? "manual";
 const screenshotRoot = join(process.cwd(), "output", "playwright", "screenshots", runId);
 mkdirSync(screenshotRoot, { recursive: true });
 
-test.describe("MyInterview defense deck", () => {
-  test("deep-links to the verified architecture and keeps institutional evidence visible", async ({ page }) => {
+test.describe("MyInterview canonical Scene V2 defense deck", () => {
+  test("shows one canonical card and no legacy deck-specific runtime path", async ({ page }) => {
+    await page.goto("/");
+    await waitForFonts(page);
+
+    const canonical = page.locator('[data-v2-deck-id="myinterview-defense"]');
+    await expect(canonical).toBeVisible();
+    await expect(canonical).toContainText("MyInterview");
+    await expect(canonical).toContainText("Canonical V2");
+    await expect(page.locator('[data-v2-deck-id="myinterview-defense-v2"]')).toHaveCount(0);
+    await expect(page.locator('.deck-card[data-deck-id="myinterview-defense"]')).toHaveCount(0);
+    const legacyStyles = await page.evaluate(() => [...document.styleSheets].flatMap((sheet) => sheet.href?.includes("myinterview-defense.css") ? [sheet.href] : []));
+    expect(legacyStyles).toEqual([]);
+  });
+
+  test("renders architecture and local people assets through native Scene V2 elements", async ({ page }) => {
     await page.goto("/present?deck=myinterview-defense&slide=architecture");
     await waitForFonts(page);
 
-    const slide = page.locator('.presenter-stage-canvas .slide[data-slide-id="architecture"]');
-    await expect(slide).toBeVisible();
-    await page.keyboard.press("ArrowRight");
-    await expect(slide.getByText("Next.js 16.2.11")).toBeVisible();
-    await expect(slide.getByText("React 19.2.7")).toBeVisible();
-    await expect(slide.getByText("TypeScript 6.0.3")).toBeVisible();
-    await expect(slide.getByText("FastAPI 0.139.0")).toBeVisible();
+    const architecture = sceneSlide(page, "architecture");
+    await expect(architecture).toBeVisible();
+    await expect(architecture.locator('[data-element-id="layer-1-item-1"]')).toContainText("Next.js 16.2.11");
+    await expect(architecture.locator('[data-element-id="layer-2-item-1"]')).toContainText("FastAPI 0.139.0");
+    await expect(architecture.locator('[data-element-id="evidence-footer"]')).toContainText("FPT Polytechnic Đồng Nai");
+    await expect(page.locator('.slide[data-deck-id="myinterview-defense"]')).toHaveCount(0);
+    await assertInsideCanvas(architecture);
+    await page.screenshot({ path: join(screenshotRoot, "myinterview-v2-architecture.png"), animations: "disabled" });
 
-    const logo = slide.getByRole("img", { name: "FPT Polytechnic Đồng Nai – Cơ sở 2" });
-    await expect(logo).toBeVisible();
-    await expect(logo).toHaveAttribute("src", "/brand/fpt-polytechnic.svg");
-
-    await page.screenshot({ path: join(screenshotRoot, "myinterview-architecture.png"), animations: "disabled" });
-  });
-
-  test("renders verified member and product visuals from local assets", async ({ page }) => {
     await page.goto("/present?deck=myinterview-defense&slide=member-hao");
     await waitForFonts(page);
-    await page.keyboard.press("ArrowRight");
-
-    const memberSlide = page.locator('.presenter-stage-canvas .slide[data-slide-id="member-hao"]');
-    const memberPhoto = memberSlide.getByRole("img", { name: "Ảnh thành viên Nguyễn Thái Hảo" });
-    await expect(memberPhoto).toBeVisible();
-    await expect(memberPhoto).toHaveAttribute("src", "/myinterview/team/hao.svg");
-
-    await page.goto("/present?deck=myinterview-defense&slide=solution");
-    await waitForFonts(page);
-    await page.keyboard.press("ArrowRight");
-    const solution = page.locator('.presenter-stage-canvas .slide[data-slide-id="solution"]');
-    await expect(solution.locator(".media-card")).toHaveCount(2);
-    await expect(solution.getByRole("img", { name: "Màn hình thiết lập phiên phỏng vấn MyInterview" })).toHaveAttribute("src", "/myinterview/product/setup.svg");
-    await expect(solution.getByRole("img", { name: "Màn hình phản hồi và đánh giá MyInterview" })).toHaveAttribute("src", "/myinterview/product/feedback.svg");
-
-    await page.screenshot({ path: join(screenshotRoot, "myinterview-product-evidence.png"), animations: "disabled" });
+    const profile = sceneSlide(page, "member-hao");
+    const portrait = profile.locator('[data-element-id="portrait"] img');
+    await expect(portrait).toBeVisible();
+    await expect(portrait).toHaveAttribute("src", "/myinterview/team/hao.svg");
+    await expect(profile.locator('[data-element-id="profile-role"]')).toContainText("Trưởng nhóm");
+    await assertInsideCanvas(profile);
   });
 
-  test("renders six explainable scoring criteria without overlap in presenter and preview", async ({ page, context }) => {
+  test("keeps solution and six scoring criteria readable without overlap", async ({ page, context }) => {
+    await page.goto("/present?deck=myinterview-defense&slide=solution");
+    await waitForFonts(page);
+    const solution = sceneSlide(page, "solution");
+    await expect(solution.locator('[data-element-id="media-1-image"] img')).toHaveAttribute("src", "/myinterview/product/setup.svg");
+    await expect(solution.locator('[data-element-id="media-2-image"] img')).toHaveAttribute("src", "/myinterview/product/feedback.svg");
+    await expect(solution.locator('[data-element-id="media-2-surface"]')).toBeVisible();
+    await assertInsideCanvas(solution);
+
     const preview = await context.newPage();
     await page.goto("/present?deck=myinterview-defense&slide=ai-scoring");
     await preview.goto("/preview?deck=myinterview-defense&slide=ai-scoring");
     await Promise.all([waitForFonts(page), waitForFonts(preview)]);
-
-    const presenterSlide = page.locator('.presenter-stage-canvas .slide[data-slide-id="ai-scoring"]');
-    const previewSlide = preview.locator('.audience-stage .slide[data-slide-id="ai-scoring"]');
-    await expect(presenterSlide).toBeVisible();
-    await expect(previewSlide).toBeVisible();
-    await page.keyboard.press("ArrowRight");
-
-    const criteria = presenterSlide.locator(".criterion-card");
-    await expect(criteria).toHaveCount(6);
-    await expect(presenterSlide.getByText("Chiều sâu kỹ thuật")).toBeVisible();
-    await expect(presenterSlide.getByText("Khoảng thiếu bằng chứng")).toBeVisible();
-    await expect(preview.locator(".presenter-shell")).toHaveCount(0);
-
-    const slideBox = await presenterSlide.evaluate((node) => {
-      const box = node.getBoundingClientRect();
-      return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
-    });
-    const boxes = await criteria.evaluateAll((nodes) => nodes.map((node) => {
-      const box = node.getBoundingClientRect();
-      return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
-    }));
-    for (const box of boxes) {
-      expect(box.left).toBeGreaterThanOrEqual(slideBox.left - 1);
-      expect(box.top).toBeGreaterThanOrEqual(slideBox.top - 1);
-      expect(box.right).toBeLessThanOrEqual(slideBox.right + 1);
-      expect(box.bottom).toBeLessThanOrEqual(slideBox.bottom + 1);
-    }
-    for (let left = 0; left < boxes.length; left += 1) {
-      for (let right = left + 1; right < boxes.length; right += 1) {
-        const a = boxes[left]!;
-        const b = boxes[right]!;
-        const overlap = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
-          * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-        expect(overlap).toBe(0);
-      }
-    }
-
-    await page.screenshot({ path: join(screenshotRoot, "myinterview-scoring-criteria.png"), animations: "disabled" });
-    await preview.screenshot({ path: join(screenshotRoot, "myinterview-preview-scoring.png"), animations: "disabled" });
+    const scoring = sceneSlide(page, "ai-scoring");
+    await expect(scoring.locator('[data-element-id$="-label"]')).toHaveCount(6);
+    await expect(scoring.locator('[data-element-id="criterion-4-label"]')).toContainText("Chiều sâu kỹ thuật");
+    await expect(scoring.locator('[data-element-id="criterion-5-output"]')).toContainText("Khoảng thiếu bằng chứng");
+    await assertNonOverlapping(scoring.locator('[data-element-id^="criterion-"][data-element-id$="-surface"]:not([data-element-id*="output"])'));
+    await expect(preview.locator('[data-scene-v2-surface="preview"]')).toBeVisible();
+    await page.screenshot({ path: join(screenshotRoot, "myinterview-v2-scoring.png"), animations: "disabled" });
   });
 
-  test("keeps responsible-AI boundaries and a three-step offline demo fallback", async ({ page }) => {
+  test("keeps responsible-AI boundaries and the three-step demo visible in final state", async ({ page }) => {
     await page.goto("/present?deck=myinterview-defense&slide=data-responsible-ai");
     await waitForFonts(page);
-    await page.keyboard.press("ArrowRight");
-    const responsible = page.locator('.presenter-stage-canvas .slide[data-slide-id="data-responsible-ai"]');
+    const responsible = sceneSlide(page, "data-responsible-ai");
     await expect(responsible.getByText("Không tự động đỗ hoặc trượt")).toBeVisible();
     await expect(responsible.getByText("Không xếp hạng ứng viên")).toBeVisible();
     await expect(responsible.getByText("Không phân tích khuôn mặt hoặc cảm xúc")).toBeVisible();
 
     await page.goto("/present?deck=myinterview-defense&slide=demo");
     await waitForFonts(page);
-    await page.keyboard.press("ArrowRight");
-    const demo = page.locator('.presenter-stage-canvas .slide[data-slide-id="demo"]');
-    await expect(demo.locator(".media-card")).toHaveCount(3);
-    await expect(demo.getByRole("img", { name: "Phiên phỏng vấn văn bản MyInterview" })).toHaveAttribute("src", "/myinterview/product/interview.svg");
+    const demo = sceneSlide(page, "demo");
+    await expect(demo.locator('[data-element-id^="media-"][data-element-id$="-image"] img')).toHaveCount(3);
+    await expect(demo.locator('[data-element-id="media-2-image"] img')).toHaveAttribute("src", "/myinterview/product/interview.svg");
     await expect(demo.getByText("Khóa bối cảnh", { exact: true })).toBeVisible();
     await expect(demo.getByText("Trả lời theo lượt", { exact: true })).toBeVisible();
     await expect(demo.getByText("Biến đánh giá thành hành động", { exact: true })).toBeVisible();
-
-    await page.screenshot({ path: join(screenshotRoot, "myinterview-demo-fallback.png"), animations: "disabled" });
+    await assertInsideCanvas(demo);
+    await page.screenshot({ path: join(screenshotRoot, "myinterview-v2-demo.png"), animations: "disabled" });
   });
 
-  test("shows MyInterview as the first ready deck in the hub", async ({ page }) => {
-    await page.goto("/");
-    await waitForFonts(page);
-    const firstDeck = page.locator(".deck-card[data-deck-id]").first();
-    await expect(firstDeck).toHaveAttribute("data-deck-id", "myinterview-defense");
-    await expect(firstDeck.getByText("MyInterview — AI Technical Interviewer")).toBeVisible();
-    await expect(firstDeck.getByText("Summer 2026")).toBeVisible();
+  test("keeps private notes out of audience and export DOM", async ({ page }) => {
+    await page.goto("/present?deck=myinterview-defense&slide=cover&view=audience");
+    await expect(page.getByText(/Nguyễn Thái Hảo mở đầu/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Mở ghi chú người thuyết trình" })).toHaveCount(0);
+
+    await page.goto("/export?deck=myinterview-defense");
+    await expect(page.locator('[data-export-deck-id="myinterview-defense"]')).toBeVisible();
+    await expect(page.locator(".export-page")).toHaveCount(23);
+    await expect(page.getByText(/Nguyễn Thái Hảo mở đầu/)).toHaveCount(0);
+    await expect(page.locator('.scene-slide[data-render-mode="export"]')).toHaveCount(23);
   });
 });
+
+function sceneSlide(page: Page, slideId: string): Locator {
+  return page.locator(`.scene-slide[data-slide-id="${slideId}"]`);
+}
+
+async function assertInsideCanvas(slide: Locator): Promise<void> {
+  const result = await slide.evaluate((node) => {
+    const canvas = node.getBoundingClientRect();
+    return [...node.querySelectorAll<HTMLElement>('.scene-element:not([style*="display: none"])')].flatMap((element) => {
+      const box = element.getBoundingClientRect();
+      const outside = box.left < canvas.left - 1 || box.top < canvas.top - 1 || box.right > canvas.right + 1 || box.bottom > canvas.bottom + 1;
+      return outside ? [element.dataset.elementId ?? element.className] : [];
+    });
+  });
+  expect(result).toEqual([]);
+}
+
+async function assertNonOverlapping(elements: Locator): Promise<void> {
+  const boxes = await elements.evaluateAll((nodes) => nodes.map((node) => {
+    const box = node.getBoundingClientRect();
+    return { id: (node as HTMLElement).dataset.elementId, left: box.left, top: box.top, right: box.right, bottom: box.bottom };
+  }));
+  for (let left = 0; left < boxes.length; left += 1) {
+    for (let right = left + 1; right < boxes.length; right += 1) {
+      const a = boxes[left]!;
+      const b = boxes[right]!;
+      const width = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      expect(width > 2 && height > 2, `${a.id} overlaps ${b.id}`).toBe(false);
+    }
+  }
+}
 
 async function waitForFonts(page: Page) {
   await page.waitForLoadState("networkidle");

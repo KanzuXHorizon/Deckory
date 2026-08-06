@@ -4,8 +4,8 @@ Deckory V2 is publishable only from a clean revision that passes the complete lo
 
 ## Verified product contract
 
-- Hub exposes the four migrated V2 reference decks while retaining V1 sources.
-- MyInterview V2 preserves 23 intended slides, five team members and local FPT/MyInterview assets.
+- Hub exposes one canonical native Scene V2 MyInterview deck plus three migrated V2 reference decks.
+- MyInterview uses the single public ID `myinterview-defense`, preserves 23 intended slides, five team members and local FPT/MyInterview assets, and has no V1 runtime or deck-specific CSS path.
 - Studio V2 edits the shared scene document through command history with undo/redo and export capability disclosure.
 - Preview and Presenter render every slide from the same `DeckDocumentV2` source.
 - Presenter supports keyboard navigation, overview, fullscreen and presenter-only notes.
@@ -43,9 +43,10 @@ pnpm quality:gate
 3. workspace and script tests;
 4. strict V1/V2 deck audit;
 5. local asset verification;
-6. production Next.js build;
-7. route bundle budget and denylist verification;
-8. complete Chromium E2E suite.
+6. global CSS import/orphan/deck-selector contract verification;
+7. production Next.js build;
+8. route bundle budget and denylist verification;
+9. complete Chromium E2E suite.
 
 A release must stop on the first non-zero command. Previous green runs from another revision are not evidence.
 
@@ -53,7 +54,7 @@ A release must stop on the first non-zero command. Previous green runs from anot
 
 The final E2E run must cover and retain screenshots for:
 
-- Hub and V2 migration cards;
+- Hub and canonical Scene V2 deck cards;
 - Studio V2 canvas, Layers, Inspector, quality and export capability panels;
 - Preview and Presenter multi-slide navigation;
 - Presenter overview and notes privacy;

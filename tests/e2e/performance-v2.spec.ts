@@ -6,7 +6,7 @@ test.describe("Deckory V2 performance budgets", () => {
 
   test("keeps slide switching and overview responsive on the 23-slide defense deck", async ({ page }, testInfo) => {
     const runtime = watchRuntimeErrors(page);
-    await page.goto("/present?deck=myinterview-defense-v2&view=presenter");
+    await page.goto("/present?deck=myinterview-defense&view=presenter");
     await page.waitForLoadState("networkidle");
     await page.evaluate(() => document.fonts.ready);
 
