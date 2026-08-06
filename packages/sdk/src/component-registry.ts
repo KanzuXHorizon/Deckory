@@ -1,0 +1,343 @@
+import type { ReactNode } from "react";
+import { z } from "zod";
+import type { InspectorSchema } from "./inspector-schema";
+import { createInspectorSchema } from "./inspector-schema";
+import type { ExportCapability } from "./primitives";
+
+const stableIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const semanticVersionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+const allowedExportCapabilities = new Set<ExportCapability>(["html", "svg", "png", "pdf", "pptx"]);
+const approvedComponentDefinitions = new WeakSet<object>();
+const unsafeDataKeys = new Set(["__proto__", "prototype", "constructor"]);
+const MAX_COMPONENT_PROP_DEPTH = 64;
+const MAX_COMPONENT_PROP_NODES = 100_000;
+
+type StrictObjectSchema = z.ZodObject<any>;
+
+export interface DeckComponentRenderContext<Props> {
+  props: Props;
+  mode: "final" | "thumbnail" | "studio" | "export";
+}
+
+export interface DeckComponentMigrationContext {
+  fromVersion: string;
+  toVersion: string;
+  props: unknown;
+}
+
+export interface DeckComponentDefinition<
+  Props = unknown,
+  Schema extends StrictObjectSchema = StrictObjectSchema
+> {
+  readonly id: string;
+  readonly version: string;
+  readonly displayName: string;
+  readonly purpose?: string;
+  readonly propsSchema: Schema;
+  readonly defaultFrame: Readonly<{ width: number; height: number }>;
+  readonly inspector: InspectorSchema;
+  readonly renderer: (context: DeckComponentRenderContext<Props>) => ReactNode;
+  readonly accessibleSummary: (props: Props) => string;
+  readonly exportCapabilities: readonly ExportCapability[];
+  readonly migrateProps?: (context: DeckComponentMigrationContext) => unknown | undefined;
+}
+
+export interface RegisterDeckComponentInput<Schema extends StrictObjectSchema> {
+  id: string;
+  version: string;
+  displayName?: string;
+  purpose?: string;
+  propsSchema: Schema;
+  defaultFrame: Readonly<{ width: number; height: number }>;
+  inspector: InspectorSchema;
+  renderer: (context: DeckComponentRenderContext<z.output<Schema>>) => ReactNode;
+  accessibleSummary: (props: z.output<Schema>) => string;
+  exportCapabilities: readonly ExportCapability[];
+  migrateProps?: (context: DeckComponentMigrationContext) => unknown | undefined;
+}
+
+interface ParsedSemanticVersion {
+  core: readonly [number, number, number];
+  prerelease: readonly string[];
+}
+
+function parseVersion(version: string): ParsedSemanticVersion {
+  const match = semanticVersionPattern.exec(version);
+  if (!match) throw new TypeError(`Phiên bản component "${version}" không phải semantic version hợp lệ.`);
+  const prerelease = match[4] ? match[4].split(".") : [];
+  if (prerelease.some((identifier) => /^\d+$/.test(identifier) && identifier.length > 1 && identifier.startsWith("0"))) {
+    throw new TypeError(`Phiên bản component "${version}" không phải semantic version hợp lệ.`);
+  }
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease
+  };
+}
+
+function comparePrereleaseIdentifier(left: string, right: string): number {
+  const leftNumeric = /^\d+$/.test(left);
+  const rightNumeric = /^\d+$/.test(right);
+  if (leftNumeric && rightNumeric) return Number(left) - Number(right);
+  if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
+  return left.localeCompare(right);
+}
+
+function compareVersions(left: string, right: string): number {
+  const a = parseVersion(left);
+  const b = parseVersion(right);
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (a.core[index] ?? 0) - (b.core[index] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  if (a.prerelease.length === 0 || b.prerelease.length === 0) {
+    if (a.prerelease.length === b.prerelease.length) return 0;
+    return a.prerelease.length === 0 ? 1 : -1;
+  }
+  const length = Math.max(a.prerelease.length, b.prerelease.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftIdentifier = a.prerelease[index];
+    const rightIdentifier = b.prerelease[index];
+    if (leftIdentifier === undefined || rightIdentifier === undefined) {
+      return leftIdentifier === undefined ? -1 : 1;
+    }
+    const difference = comparePrereleaseIdentifier(leftIdentifier, rightIdentifier);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function majorVersion(version: string): number {
+  return parseVersion(version).core[0];
+}
+
+function isStrictObjectSchema(schema: StrictObjectSchema): boolean {
+  const definition = (schema as unknown as {
+    _def?: {
+      unknownKeys?: unknown;
+      catchall?: { type?: unknown; _def?: { typeName?: unknown } };
+    };
+  })._def;
+  return definition?.unknownKeys === "strict" ||
+    definition?.catchall?.type === "never" ||
+    definition?.catchall?._def?.typeName === "ZodNever";
+}
+
+function assertDefinitionMetadata(definition: {
+  id: string;
+  version: string;
+  propsSchema: StrictObjectSchema;
+  defaultFrame: Readonly<{ width: number; height: number }>;
+  renderer: unknown;
+  accessibleSummary: unknown;
+  exportCapabilities: readonly ExportCapability[];
+}): void {
+  if (!stableIdPattern.test(definition.id)) {
+    throw new TypeError(`Component id "${definition.id}" phải là stable kebab-case ID.`);
+  }
+  parseVersion(definition.version);
+  if (!isStrictObjectSchema(definition.propsSchema)) {
+    throw new TypeError(`Component ${definition.id}@${definition.version} phải dùng propsSchema strict.`);
+  }
+  if (!Number.isFinite(definition.defaultFrame.width) || definition.defaultFrame.width <= 0 ||
+      !Number.isFinite(definition.defaultFrame.height) || definition.defaultFrame.height <= 0) {
+    throw new TypeError(`Component ${definition.id}@${definition.version} có defaultFrame không hợp lệ.`);
+  }
+  if (typeof definition.renderer !== "function") {
+    throw new TypeError(`Component ${definition.id}@${definition.version} thiếu renderer tin cậy.`);
+  }
+  if (typeof definition.accessibleSummary !== "function") {
+    throw new TypeError(`Component ${definition.id}@${definition.version} thiếu accessibleSummary.`);
+  }
+  for (const capability of definition.exportCapabilities) {
+    if (!allowedExportCapabilities.has(capability)) {
+      throw new TypeError(`Export capability không được hỗ trợ: ${String(capability)}.`);
+    }
+  }
+}
+
+function isPlainObject(value: object): boolean {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function assertSerializableComponentProps(
+  value: unknown,
+  path = "props",
+  seen = new Set<object>(),
+  depth = 0,
+  budget = { nodes: 0 }
+): void {
+  if (depth > MAX_COMPONENT_PROP_DEPTH) throw new TypeError(`Component props tại ${path} vượt giới hạn độ sâu.`);
+  budget.nodes += 1;
+  if (budget.nodes > MAX_COMPONENT_PROP_NODES) throw new TypeError("Component props vượt giới hạn số node.");
+  if (value === undefined) throw new TypeError(`Component props tại ${path} chứa undefined và không thể tuần tự.`);
+  if (value === null) return;
+  const valueType = typeof value;
+  if (valueType === "function" || valueType === "symbol" || valueType === "bigint") {
+    throw new TypeError(`Component props tại ${path} chứa ${valueType} và không thể tuần tự.`);
+  }
+  if (valueType === "number" && !Number.isFinite(value as number)) {
+    throw new TypeError(`Component props tại ${path} chứa số không hữu hạn.`);
+  }
+  if (valueType !== "object") return;
+  const objectValue = value as object;
+  if (seen.has(objectValue)) throw new TypeError(`Component props tại ${path} chứa tham chiếu vòng.`);
+  seen.add(objectValue);
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertSerializableComponentProps(item, `${path}[${index}]`, seen, depth + 1, budget));
+  } else {
+    if (!isPlainObject(objectValue)) throw new TypeError(`Component props tại ${path} phải là dữ liệu thuần có thể tuần tự.`);
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      if (unsafeDataKeys.has(key)) throw new TypeError(`Component props tại ${path} chứa key không an toàn: ${key}.`);
+      assertSerializableComponentProps(child, `${path}.${key}`, seen, depth + 1, budget);
+    }
+  }
+  seen.delete(objectValue);
+}
+
+function parseSerializableProps<Props>(definition: DeckComponentDefinition<Props>, props: unknown): Props {
+  const parsed = definition.propsSchema.parse(props) as Props;
+  assertSerializableComponentProps(parsed);
+  return parsed;
+}
+
+export function registerDeckComponent<Schema extends StrictObjectSchema>(
+  definition: RegisterDeckComponentInput<Schema>
+): DeckComponentDefinition<z.output<Schema>, Schema> {
+  assertDefinitionMetadata(definition);
+  const normalized: DeckComponentDefinition<z.output<Schema>, Schema> = {
+    id: definition.id,
+    version: definition.version,
+    displayName: definition.displayName?.trim() || definition.id,
+    ...(definition.purpose ? { purpose: definition.purpose.trim() } : {}),
+    propsSchema: definition.propsSchema,
+    defaultFrame: Object.freeze({ ...definition.defaultFrame }),
+    inspector: createInspectorSchema(definition.inspector),
+    renderer: definition.renderer,
+    accessibleSummary: definition.accessibleSummary,
+    exportCapabilities: Object.freeze([...new Set(definition.exportCapabilities)]),
+    ...(definition.migrateProps ? { migrateProps: definition.migrateProps } : {})
+  };
+  const frozen = Object.freeze(normalized);
+  approvedComponentDefinitions.add(frozen);
+  return frozen;
+}
+
+export type ResolvedComponentInstance<Props = unknown> =
+  | {
+      status: "ready";
+      componentId: string;
+      requestedVersion: string;
+      resolvedVersion: string;
+      migrated: boolean;
+      definition: DeckComponentDefinition<Props, any>;
+      props: Props;
+    }
+  | {
+      status: "missing";
+      componentId: string;
+      requestedVersion: string;
+      accessibleSummary: string;
+    };
+
+export class ComponentRegistry {
+  readonly #definitions = new Map<string, DeckComponentDefinition<any, any>>();
+  #sealed = false;
+
+  constructor(definitions: readonly DeckComponentDefinition<any, any>[] = []) {
+    definitions.forEach((definition) => this.register(definition));
+  }
+
+  register<Props, Schema extends StrictObjectSchema>(definition: DeckComponentDefinition<Props, Schema>): this {
+    if (this.#sealed) throw new Error("ComponentRegistry đã khóa cho Presenter và không nhận đăng ký mới.");
+    assertDefinitionMetadata(definition);
+    createInspectorSchema(definition.inspector);
+    if (!approvedComponentDefinitions.has(definition as object)) {
+      throw new TypeError(`Component ${definition.id}@${definition.version} phải được tạo bằng registerDeckComponent.`);
+    }
+    const key = `${definition.id}@${definition.version}`;
+    if (this.#definitions.has(key)) throw new Error(`Component ${key} đã đăng ký.`);
+    this.#definitions.set(key, definition);
+    return this;
+  }
+
+  seal(): void {
+    this.#sealed = true;
+  }
+
+  get sealed(): boolean {
+    return this.#sealed;
+  }
+
+  resolve<Props = unknown>(id: string, version: string): DeckComponentDefinition<Props, any> | undefined {
+    return this.#definitions.get(`${id}@${version}`) as DeckComponentDefinition<Props, any> | undefined;
+  }
+
+  parseProps<Props = unknown>(id: string, version: string, props: unknown): Props {
+    const definition = this.resolve<Props>(id, version);
+    if (!definition) throw new Error(`Không tìm thấy component ${id}@${version}.`);
+    return parseSerializableProps(definition, props);
+  }
+
+  resolveInstance(id: string, requestedVersion: string, props: unknown): ResolvedComponentInstance<any> {
+    const exact = this.resolve<any>(id, requestedVersion);
+    if (exact) {
+      return {
+        status: "ready",
+        componentId: id,
+        requestedVersion,
+        resolvedVersion: requestedVersion,
+        migrated: false,
+        definition: exact,
+        props: parseSerializableProps(exact, props)
+      };
+    }
+
+    const requestedMajor = majorVersion(requestedVersion);
+    const candidates = [...this.#definitions.values()]
+      .filter((definition) =>
+        definition.id === id &&
+        majorVersion(definition.version) === requestedMajor &&
+        compareVersions(definition.version, requestedVersion) > 0 &&
+        definition.migrateProps
+      )
+      .sort((left, right) => compareVersions(right.version, left.version));
+
+    for (const definition of candidates) {
+      const migrated = definition.migrateProps?.({
+        fromVersion: requestedVersion,
+        toVersion: definition.version,
+        props
+      });
+      if (migrated === undefined) continue;
+      return {
+        status: "ready",
+        componentId: id,
+        requestedVersion,
+        resolvedVersion: definition.version,
+        migrated: true,
+        definition,
+        props: parseSerializableProps(definition, migrated)
+      };
+    }
+
+    return {
+      status: "missing",
+      componentId: id,
+      requestedVersion,
+      accessibleSummary: `Không thể tải component ${id} phiên bản ${requestedVersion}.`
+    };
+  }
+
+  list(): readonly DeckComponentDefinition<any, any>[] {
+    return Object.freeze([...this.#definitions.values()]);
+  }
+}
+
+export function resolveDeckComponent<Props = unknown>(
+  registry: ComponentRegistry,
+  id: string,
+  version: string
+): DeckComponentDefinition<Props, any> | undefined {
+  return registry.resolve<Props>(id, version);
+}
