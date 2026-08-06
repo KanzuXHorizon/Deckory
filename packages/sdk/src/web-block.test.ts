@@ -90,6 +90,31 @@ describe("Web Block source and manifest contracts", () => {
     expect(packageImport).toMatchObject({ ok: false, diagnostics: [expect.objectContaining({ code: "import-not-allowed" })] });
   });
 
+  it("applies semantic Inspector validation and framework entry contracts", () => {
+    expect(() => defineWebBlockManifest({
+      ...validManifest,
+      inspector: [
+        { id: "unsafe", type: "text", label: "Unsafe", path: ["__proto__", "polluted"] }
+      ]
+    })).toThrow(/không an toàn/i);
+
+    const wrongEntry = validateWebBlockSource({
+      entry: "index.html",
+      files: { "index.html": "<main>React mismatch</main>" }
+    }, { ...validManifest, entry: "index.html" });
+    expect(wrongEntry.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "framework-entry-mismatch" })
+    ]));
+
+    const unsafeCharacters = validateWebBlockSource({
+      entry: "index.tsx",
+      files: { "folder/file?.tsx": "export {};", "index.tsx": "export {};" }
+    }, validManifest);
+    expect(unsafeCharacters.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "unsafe-path", file: "folder/file?.tsx" })
+    ]));
+  });
+
   it("rejects path traversal, missing entries and executable constructors", () => {
     expect(validateWebBlockSource({
       entry: "../index.tsx",

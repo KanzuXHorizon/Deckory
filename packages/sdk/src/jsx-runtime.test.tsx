@@ -75,6 +75,19 @@ describe("Scene JSX runtime", () => {
     })).toThrow(/primitive|scene node.*không hợp lệ/i);
   });
 
+  it("rejects functions that spoof the public primitive marker", () => {
+    const forgedPrimitive = Object.assign(
+      () => ({
+        nodeType: "element" as const,
+        element: { id: "forged", kind: "text" },
+        children: []
+      }),
+      { __deckoryScenePrimitive: true as const, primitiveName: "Forged" }
+    );
+
+    expect(() => jsx(forgedPrimitive, {})).toThrow(/không phải primitive Scene JSX đã được phê duyệt/i);
+  });
+
   it("rejects executable handlers and function-valued props", () => {
     expect(() => jsx(Text, {
       id: "unsafe",

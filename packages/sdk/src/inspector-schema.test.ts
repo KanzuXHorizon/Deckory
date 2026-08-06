@@ -154,8 +154,9 @@ describe("Inspector metadata contracts", () => {
     ])).not.toThrow();
   });
 
-  it("rejects prototype-pollution update paths", () => {
+  it("rejects prototype-pollution and unbounded array-index paths", () => {
     expect(() => getInspectorValue(props, ["__proto__", "polluted"])).toThrow(/không an toàn/i);
     expect(() => patchComponentProps(definition, props, ["constructor", "prototype"], true)).toThrow(/không an toàn/i);
+    expect(() => patchComponentProps(definition, props, ["items", 1_000_000_000, "label"], "Unsafe")).toThrow(/index|giới hạn/i);
   });
 });

@@ -4,6 +4,7 @@ import type {
 } from "./jsx-runtime";
 
 const approvedSceneNodes = new WeakSet<object>();
+const approvedScenePrimitives = new WeakSet<Function>();
 
 export function freezeSceneValue<T>(value: T, seen = new Set<object>()): T {
   if (value === null || typeof value !== "object") return value;
@@ -25,6 +26,10 @@ export function isApprovedSceneNode(value: unknown): value is SceneNodeDescripti
   return typeof value === "object" && value !== null && approvedSceneNodes.has(value);
 }
 
+export function isApprovedScenePrimitive(value: unknown): value is ScenePrimitive<any> {
+  return typeof value === "function" && approvedScenePrimitives.has(value);
+}
+
 export function createScenePrimitive<Props>(
   primitiveName: string,
   factory: (props: Props) => SceneNodeDescription
@@ -37,5 +42,6 @@ export function createScenePrimitive<Props>(
     __deckoryScenePrimitive: { value: true, enumerable: false },
     primitiveName: { value: primitiveName, enumerable: false }
   });
+  approvedScenePrimitives.add(primitive);
   return Object.freeze(primitive);
 }

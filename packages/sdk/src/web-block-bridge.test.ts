@@ -78,10 +78,26 @@ describe("versioned Web Block bridge", () => {
     })).toThrow(/giới hạn|bytes/i);
   });
 
-  it("bounds resize requests and export payloads", () => {
+  it("bounds resize requests and accepts only inert static SVG", () => {
     expect(() => createWebBlockMessage("resize-request", "custom-radar", { width: 10000, height: 200 })).toThrow();
     expect(createWebBlockMessage("export-svg", "custom-radar", {
-      svg: "<svg viewBox='0 0 10 10'></svg>"
+      svg: "<svg viewBox='0 0 10 10'><path d='M0 0h10v10z'/></svg>"
     }).type).toBe("export-svg");
+    expect(() => createWebBlockMessage("export-svg", "custom-radar", {
+      svg: "<svg><script>alert(1)</script></svg>"
+    })).toThrow(/SVG|active|không an toàn/i);
+    expect(() => createWebBlockMessage("export-svg", "custom-radar", {
+      svg: "<svg><a href='https://example.com'>x</a></svg>"
+    })).toThrow(/SVG|href|không an toàn/i);
+  });
+
+  it("rejects unsafe object keys and unbounded Inspector indexes", () => {
+    expect(() => createWebBlockMessage("interaction-state", "custom-radar", {
+      state: JSON.parse('{"__proto__":{"polluted":true}}')
+    })).toThrow(/__proto__|không an toàn/i);
+    expect(() => createWebBlockMessage("inspector-patch", "custom-radar", {
+      path: ["items", 1_000_000_000, "label"],
+      value: "Unsafe"
+    })).toThrow(/index|giới hạn|too big|10000/i);
   });
 });

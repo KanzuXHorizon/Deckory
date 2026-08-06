@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_INSPECTOR_ARRAY_INDEX } from "./inspector-schema";
 
 export const WEB_BLOCK_PROTOCOL_VERSION = "1.0" as const;
 export const MAX_WEB_BLOCK_MESSAGE_BYTES = 256 * 1024;
@@ -9,7 +10,7 @@ const unsafePathSegments = new Set(["__proto__", "prototype", "constructor"]);
 const stableId = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const inspectorPathSegment = z.union([
   z.string().trim().min(1).refine((segment) => !unsafePathSegments.has(segment), "Inspector path chứa segment không an toàn"),
-  z.number().int().nonnegative()
+  z.number().int().nonnegative().max(MAX_INSPECTOR_ARRAY_INDEX)
 ]);
 const common = {
   protocolVersion: z.literal(WEB_BLOCK_PROTOCOL_VERSION),
@@ -49,10 +50,24 @@ const inspectorPatchMessage = z.object({
     value: z.unknown()
   }).strict()
 }).strict();
+function isSafeStaticSvg(svg: string): boolean {
+  const normalized = svg.trim();
+  if (!/^<svg(?:\s|>)/i.test(normalized) || !/<\/svg>$/i.test(normalized)) return false;
+  if (/<!DOCTYPE|<!ENTITY|<\/?(?:script|foreignObject|iframe|object|embed|audio|video|use|image|link|meta)\b/i.test(normalized)) return false;
+  if (/\son[a-z0-9_-]+\s*=/i.test(normalized)) return false;
+  if (/\b(?:href|xlink:href)\s*=/i.test(normalized)) return false;
+  if (/javascript:|data:text\/html|@import/i.test(normalized)) return false;
+  if (/url\(\s*(?!["']?#[-A-Za-z0-9_:.]+["']?\s*\))/i.test(normalized)) return false;
+  return true;
+}
+
 const exportSvgMessage = z.object({
   ...common,
   type: z.literal("export-svg"),
-  payload: z.object({ svg: z.string().trim().min(1).max(2 * 1024 * 1024) }).strict()
+  payload: z.object({
+    svg: z.string().trim().min(1).max(2 * 1024 * 1024)
+      .refine(isSafeStaticSvg, "SVG export chứa active content hoặc external reference không an toàn")
+  }).strict()
 }).strict();
 
 export const WebBlockMessageSchema = z.discriminatedUnion("type", [
@@ -125,6 +140,7 @@ function assertSerializable(
   } else {
     if (!isPlainObject(objectValue)) throw new TypeError(`Bridge payload tại ${path} phải là dữ liệu thuần có thể tuần tự.`);
     for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      if (unsafePathSegments.has(key)) throw new TypeError(`Bridge payload tại ${path} chứa key không an toàn: ${key}.`);
       assertSerializable(child, `${path}.${key}`, seen, depth + 1, budget);
     }
   }

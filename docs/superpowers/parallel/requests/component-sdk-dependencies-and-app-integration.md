@@ -93,10 +93,14 @@ Coordinator-owned files and work:
 - add component catalog cards and capability disclosures;
 - implement the advanced Web Block source editor;
 - implement the compiler worker and source diagnostics;
-- map manifest fallback asset IDs to local asset URLs;
+- map manifest fallback asset IDs only to local, blob or reviewed image-data URLs; never pass remote fallback URLs to the host;
 - inject component/Web Block resolvers through the renderer extension contract;
+- reject compiled bundles whose bridge protocol is not exactly `1.0`;
+- preserve the deny-all iframe Permissions Policy emitted by `createWebBlockSandboxPolicy`;
 - expose no source code or Studio diagnostics in Presenter;
-- use mandatory static fallback for PNG, PDF, PPTX and other non-interactive export paths unless a reviewed native export exists.
+- sanitize and revalidate every `export-svg` bridge result before persistence or DOM insertion;
+- use mandatory static fallback for PNG, PDF, PPTX and other non-interactive export paths unless a reviewed native export exists;
+- isolate trusted-component SSR/static export per element or use a reviewed export fallback, because React error boundaries do not catch descendant server-render failures.
 
 ## 5. Shared exports
 

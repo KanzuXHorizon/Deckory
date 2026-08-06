@@ -87,8 +87,8 @@ EvidenceFooter
 Runtime guarantees covered by tests:
 
 - intrinsic HTML strings such as `div` and `script` are rejected;
-- arbitrary capitalized functions are rejected unless marked as an approved scene primitive;
-- forged scene-node objects are rejected through internal provenance tracking; the primitive factory is not exposed by package entrypoints;
+- arbitrary capitalized functions are rejected unless they have internal approved-primitive provenance;
+- forged primitive marker properties and forged scene-node objects are rejected through separate internal WeakSet provenance tracking; the primitive factory is not exposed by package entrypoints;
 - props beginning with `on`, including `onClick`, are rejected;
 - function, symbol, bigint, non-finite number, circular and non-plain-object values are rejected;
 - text is accepted only by text-capable primitives;
@@ -152,9 +152,11 @@ Resolution rules covered by tests:
 - instance props are parsed before rendering;
 - exact version resolution wins;
 - no implicit major-version upgrade occurs;
-- a known older version may migrate only through the target definition's explicit `migrateProps`;
+- a known older version may migrate only forward through the target definition's explicit `migrateProps`; downgrade migration is rejected;
+- SemVer identifiers are validated, including prerelease leading-zero and empty-identifier rules;
 - stable SemVer releases outrank prereleases during migration resolution;
-- every registry insertion revalidates metadata, strict schema and Inspector contracts and requires a frozen `registerDeckComponent` result;
+- every registry insertion revalidates metadata, strict schema and Inspector contracts and requires internal provenance from `registerDeckComponent`; freezing a handcrafted object is insufficient;
+- parsed and migrated props must remain finite, plain, cycle-free, executable-free serializable data without prototype-pollution keys;
 - registry sealing prevents registration after Presenter startup.
 
 ### Inspector metadata domain
@@ -215,7 +217,7 @@ Validation covered by tests:
 - duplicate field IDs fail;
 - duplicate effective update paths fail while relative child paths remain scoped under their object group or list;
 - contradictory number/list ranges and duplicate option or data-table column values fail;
-- `__proto__`, `prototype` and `constructor` paths fail;
+- `__proto__`, `prototype`, `constructor` and array indexes above `10_000` fail before mutation or schema parsing;
 - nested reads do not execute code;
 - patches are immutable and limited to paths declared by the Inspector schema, including indexed list-item paths;
 - every patch is validated against the complete strict component props schema before acceptance.
@@ -269,8 +271,9 @@ Denied source capabilities covered by tests:
 
 - remote `http`, `https`, `data`, `blob`, `file`, protocol-relative and `node:` imports;
 - package imports outside the reviewed manifest allowlist;
-- unsafe paths and local imports that escape the virtual source root;
-- missing entry files;
+- unsafe paths, unsafe filename characters and local imports that escape the virtual source root;
+- missing entry files and framework/entry-extension mismatches;
+- optional Web Block Inspector metadata is normalized through the same semantic validation as trusted components;
 - unsupported file extensions;
 - source larger than 1 MB or larger than the manifest-declared `payloadBytes`;
 - declared local assets larger than 4 MB;
@@ -313,12 +316,12 @@ Bridge validation covered by tests:
 - unsupported protocol versions fail;
 - malformed block IDs fail;
 - non-serializable, excessively deep, excessively large or over-node-budget payloads fail;
-- unsafe Inspector patch paths fail;
+- unsafe object keys, unsafe Inspector patch paths and indexes above `10_000` fail;
 - iframe source mismatch fails;
 - any origin other than opaque sandbox origin `null` fails;
 - unexpected block IDs fail;
 - resize requests are bounded;
-- exported SVG payload size is bounded.
+- exported SVG payload size is bounded and active elements, event handlers, external references, dangerous URLs and unsafe `url(...)` references are rejected.
 
 ### Trusted component renderer host
 
@@ -354,7 +357,7 @@ Host behavior covered by tests:
 - props validate before renderer execution;
 - accessible summary exists outside component output;
 - missing definition, invalid props, renderer failure and unsupported export are element-scoped fallbacks;
-- one custom component failure cannot blank the slide;
+- client-side descendant render failures are contained by the component-scoped React error boundary;
 - error boundaries remount when validated component props change;
 - export mode fails closed when the export target is omitted or unsupported.
 
@@ -363,16 +366,23 @@ Host behavior covered by tests:
 Public contract:
 
 ```ts
+export const WEB_BLOCK_HOST_PROTOCOL_VERSION = "1.0";
 export const WEB_BLOCK_RENDER_TIMEOUT_MS = 1500;
 
 export function createWebBlockSandboxPolicy(): {
   sandbox: "allow-scripts";
   csp: string;
+  permissions: string;
 };
 
 export function createWebBlockSrcDoc(
   bundle: CompiledWebBlockBundle,
   manifest: WebBlockHostManifest
+): string;
+
+export function createWebBlockLifecycleKey(
+  element: WebBlockHostElement,
+  bundle: CompiledWebBlockBundle
 ): string;
 
 export function parseWebBlockHostMessage(
@@ -414,9 +424,9 @@ child-src 'none'
 worker-src 'none'
 base-uri 'none'
 form-action 'none'
-navigate-to 'none'
 require-trusted-types-for 'script'
 trusted-types deckory-web-block
+allow="camera 'none'; microphone 'none'; geolocation 'none'; display-capture 'none'; clipboard-read 'none'; clipboard-write 'none'; payment 'none'; usb 'none'; serial 'none'; hid 'none'; fullscreen 'none'; autoplay 'none'"
 ```
 
 Host behavior covered by tests:
@@ -426,11 +436,17 @@ Host behavior covered by tests:
 - the bootloader exposes a frozen `__deckoryWebBlockBridge`; only the reviewed runtime signals actual `render-complete`;
 - lifecycle messages consumed by the host are strict, bounded and reject unexpected fields;
 - accessible summary is outside the iframe;
+- host accepts only bridge protocol `1.0`; unsupported bundles fail to static fallback without iframe execution;
+- lifecycle reset is keyed by stable block/bundle content rather than caller object identity;
+- remote fallback URLs are rejected; only local, blob or reviewed image data sources are rendered;
+- explicit iframe Permissions Policy denies camera, microphone, geolocation, display capture, clipboard, payment and device APIs;
 - thumbnail mode disables pointer interaction;
 - export mode never executes the iframe and uses static fallback;
 - missing bundle, runtime error and timeout use static fallback;
 - lifecycle timeout is 1.5 seconds;
 - runtime messages must match iframe source, opaque origin, block ID and protocol version.
+
+React error boundaries do not catch descendant failures during server rendering. Coordinator-owned static export integration must render trusted custom elements in an element-scoped isolation boundary or use the component's reviewed export fallback so one SSR failure cannot abort the whole slide export.
 
 ## RED/GREEN evidence
 
@@ -540,9 +556,9 @@ pnpm --filter @deckory/renderer typecheck
 Observed results:
 
 ```text
-@deckory/sdk: 6 test files, 40 tests passed, 0 failed
+@deckory/sdk: 6 test files, 45 tests passed, 0 failed
 @deckory/sdk typecheck: passed
-@deckory/renderer: 3 test files, 17 tests passed, 0 failed
+@deckory/renderer: 3 test files, 19 tests passed, 0 failed
 @deckory/renderer typecheck: passed
 ```
 
@@ -550,24 +566,26 @@ Observed results:
 
 A final branch review added focused RED tests and fixes for:
 
-- forged scene-node provenance;
-- registry insertion that bypasses `registerDeckComponent`;
-- stable-over-prerelease SemVer resolution;
-- contradictory Inspector ranges, duplicate option/column values, scoped child paths and undeclared patches;
-- manifest payload understatement, virtual-root escape, CommonJS and dynamic imports;
-- unsafe or oversized bridge messages;
+- forged scene-node and forged primitive-function provenance;
+- registry insertion that bypasses `registerDeckComponent`, including frozen handcrafted definitions;
+- complete SemVer validation, stable-over-prerelease resolution and downgrade-migration denial;
+- serializable executable-free component props with unsafe-key, depth and node budgets;
+- contradictory Inspector ranges, duplicate option/column values, scoped child paths, undeclared patches and bounded array indexes;
+- semantic Web Block Inspector validation, framework/entry matching, safe filename characters, manifest payload understatement, virtual-root escape, CommonJS and dynamic imports;
+- unsafe or oversized bridge messages and active/external SVG export content;
 - export fail-closed behavior and component error-boundary reset keys;
-- srcdoc JSON-literal escaping, strict host lifecycle messages, lifecycle reset and explicit runtime completion.
+- srcdoc JSON-literal escaping, strict host lifecycle messages, fixed protocol `1.0`, content-stable lifecycle reset and explicit runtime completion;
+- deny-all iframe Permissions Policy, remote/backslash fallback URL denial and removal of the obsolete `navigate-to` CSP directive.
 
 Fresh pre-commit quality gate:
 
 ```text
-pnpm test: 290 passed, 0 failed
+pnpm test: 297 passed, 0 failed
 pnpm typecheck: passed
 pnpm lint: passed
 pnpm build: passed
-@deckory/sdk: 6 test files, 40 passed
-@deckory/renderer: 3 test files, 17 passed
+@deckory/sdk: 6 test files, 45 passed
+@deckory/renderer: 3 test files, 19 passed
 git diff --check: passed
 frozen shared paths: unchanged
 allow-same-origin scan: clear

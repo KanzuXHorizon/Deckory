@@ -75,11 +75,12 @@ return (
 );
 ```
 
-For `web-block`, resolve compiler output and fallback source, then render `WebBlockHost`. Do not add a default global registry inside `@deckory/renderer`.
+For `web-block`, resolve compiler output and a local reviewed fallback source, then render `WebBlockHost`. Reject any compiled bundle whose `protocolVersion` is not exactly `1.0`. Do not add a default global registry inside `@deckory/renderer`.
 
 ## Compatibility impact
 
 - Existing callers remain valid because `extensions` is optional.
 - V1 and unregistered V2 components preserve an explicit element-level fallback.
 - Presenter must seal the SDK registry before first audience render.
-- Browser security claims remain blocked until coordinator-owned E2E proves opaque-origin isolation and CSP enforcement.
+- Static export must isolate trusted components per element or use reviewed fallbacks; React error boundaries do not contain descendant SSR failures.
+- Browser security claims remain blocked until coordinator-owned E2E proves opaque-origin isolation, Permissions Policy and CSP enforcement.

@@ -7,11 +7,13 @@ import {
 } from "react";
 import type { SceneRenderMode } from "./element-renderer";
 
+export const WEB_BLOCK_HOST_PROTOCOL_VERSION = "1.0" as const;
 export const WEB_BLOCK_RENDER_TIMEOUT_MS = 1500;
 
 export interface WebBlockSandboxPolicy {
   sandbox: "allow-scripts";
   csp: string;
+  permissions: string;
 }
 
 export interface WebBlockHostManifest {
@@ -88,9 +90,22 @@ export function createWebBlockSandboxPolicy(): WebBlockSandboxPolicy {
       "worker-src 'none'",
       "base-uri 'none'",
       "form-action 'none'",
-      "navigate-to 'none'",
       "require-trusted-types-for 'script'",
       "trusted-types deckory-web-block"
+    ].join("; "),
+    permissions: [
+      "camera 'none'",
+      "microphone 'none'",
+      "geolocation 'none'",
+      "display-capture 'none'",
+      "clipboard-read 'none'",
+      "clipboard-write 'none'",
+      "payment 'none'",
+      "usb 'none'",
+      "serial 'none'",
+      "hid 'none'",
+      "fullscreen 'none'",
+      "autoplay 'none'"
     ].join("; ")
   });
 }
@@ -128,6 +143,9 @@ export function createWebBlockSrcDoc(
   bundle: CompiledWebBlockBundle,
   manifest: WebBlockHostManifest
 ): string {
+  if (bundle.protocolVersion !== WEB_BLOCK_HOST_PROTOCOL_VERSION) {
+    throw new TypeError(`Unsupported Web Block protocol: ${bundle.protocolVersion}.`);
+  }
   const policy = createWebBlockSandboxPolicy();
   const blockId = safeInlineJson(manifest.id);
   const protocolVersion = safeInlineJson(bundle.protocolVersion);
@@ -204,6 +222,14 @@ const visuallyHiddenStyle: CSSProperties = {
   border: 0
 };
 
+function safeFallbackSource(source: string | undefined): string | undefined {
+  if (!source || source.includes("\\") || /[\u0000-\u001F\u007F]/.test(source)) return undefined;
+  if (/^\/\//.test(source)) return undefined;
+  if (/^(?:data:image\/(?:svg\+xml|png|webp);|blob:)/i.test(source)) return source;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(source)) return undefined;
+  return source;
+}
+
 function WebBlockFallback({
   element,
   fallbackSrc,
@@ -211,9 +237,10 @@ function WebBlockFallback({
 }: {
   element: WebBlockHostElement;
   fallbackSrc: string | undefined;
-  status: "static-export" | "bundle-missing" | "error" | "timed-out";
+  status: "static-export" | "bundle-missing" | "protocol-unsupported" | "error" | "timed-out";
 }) {
   const summary = element.manifest.accessibleSummary;
+  const resolvedFallbackSrc = safeFallbackSource(fallbackSrc);
   return (
     <div
       data-web-block-host={element.id}
@@ -221,8 +248,8 @@ function WebBlockFallback({
       role="img"
       aria-label={summary}
     >
-      {fallbackSrc
-        ? <img src={fallbackSrc} alt={summary} draggable={false} />
+      {resolvedFallbackSrc
+        ? <img src={resolvedFallbackSrc} alt={summary} draggable={false} />
         : <span>{summary}</span>}
     </div>
   );
@@ -306,6 +333,30 @@ export function parseWebBlockHostMessage(
   return undefined;
 }
 
+function hashLifecycleText(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+export function createWebBlockLifecycleKey(
+  element: WebBlockHostElement,
+  bundle: CompiledWebBlockBundle
+): string {
+  const content = [
+    element.id,
+    element.manifest.id,
+    element.manifest.version,
+    bundle.protocolVersion,
+    bundle.code,
+    bundle.css ?? ""
+  ].join("\u0000");
+  return `${content.length}:${hashLifecycleText(content)}`;
+}
+
 function validHostMessage(
   event: MessageEvent,
   iframe: HTMLIFrameElement,
@@ -335,6 +386,7 @@ function InteractiveWebBlockHost({
   const [state, setState] = useState<WebBlockLifecycleState>({ status: "booting" });
   const srcDoc = useMemo(() => createWebBlockSrcDoc(bundle, element.manifest), [bundle, element.manifest]);
   const policy = useMemo(() => createWebBlockSandboxPolicy(), []);
+  const lifecycleKey = createWebBlockLifecycleKey(element, bundle);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -367,7 +419,7 @@ function InteractiveWebBlockHost({
       hostWindow.clearTimeout(timer);
       hostWindow.removeEventListener("message", onMessage);
     };
-  }, [bundle, element]);
+  }, [lifecycleKey]);
 
   if (shouldUseWebBlockFallback(state)) {
     return <WebBlockFallback element={element} fallbackSrc={fallbackSrc} status={state.status} />;
@@ -382,6 +434,7 @@ function InteractiveWebBlockHost({
       <iframe
         ref={iframeRef}
         sandbox={policy.sandbox}
+        allow={policy.permissions}
         srcDoc={srcDoc}
         title={element.manifest.accessibleSummary}
         referrerPolicy="no-referrer"
@@ -413,6 +466,9 @@ export function WebBlockHost({
   }
   if (!bundle) {
     return <WebBlockFallback element={element} fallbackSrc={fallbackSrc} status="bundle-missing" />;
+  }
+  if (bundle.protocolVersion !== WEB_BLOCK_HOST_PROTOCOL_VERSION) {
+    return <WebBlockFallback element={element} fallbackSrc={fallbackSrc} status="protocol-unsupported" />;
   }
   return <InteractiveWebBlockHost element={element} bundle={bundle} fallbackSrc={fallbackSrc} mode={mode} />;
 }

@@ -2,8 +2,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  WEB_BLOCK_HOST_PROTOCOL_VERSION,
   WEB_BLOCK_RENDER_TIMEOUT_MS,
   WebBlockHost,
+  createWebBlockLifecycleKey,
   createWebBlockSandboxPolicy,
   createWebBlockSrcDoc,
   parseWebBlockHostMessage,
@@ -39,13 +41,15 @@ describe("Web Block sandbox policy and host", () => {
     expect(policy.csp).toContain("img-src data: blob:");
     expect(policy.csp).toContain("object-src 'none'");
     expect(policy.csp).toContain("form-action 'none'");
-    expect(policy.csp).toContain("navigate-to 'none'");
+    expect(policy.csp).not.toContain("navigate-to");
+    expect(policy.permissions).toContain("camera 'none'");
+    expect(policy.permissions).toContain("microphone 'none'");
+    expect(policy.permissions).toContain("geolocation 'none'");
   });
 
   it("escapes bundle boundaries and embedded JSON literals instead of allowing srcdoc breakout", () => {
     const html = createWebBlockSrcDoc({
       ...bundle,
-      protocolVersion: "1.0</script><script>window.parent.document.body.remove()</script>",
       code: "document.body.dataset.safe='yes';</script><script>window.parent.document.body.remove()</script>"
     }, {
       ...element.manifest,
@@ -66,6 +70,7 @@ describe("Web Block sandbox policy and host", () => {
       mode: "studio"
     }));
     expect(html).toContain('sandbox="allow-scripts"');
+    expect(html).toContain('allow="camera &#x27;none&#x27;; microphone &#x27;none&#x27;');
     expect(html).not.toContain("allow-same-origin");
     expect(html).toContain('data-web-block-status="booting"');
     expect(html).toContain('data-web-block-accessible-summary="true"');
@@ -77,6 +82,47 @@ describe("Web Block sandbox policy and host", () => {
     expect(html).toContain("__deckoryWebBlockBridge");
     expect(html).toContain("renderComplete");
     expect(html).not.toContain(`${bundle.code}\n    post("render-complete", {});`);
+  });
+
+  it("rejects unsupported bridge versions and remote fallback sources", () => {
+    expect(WEB_BLOCK_HOST_PROTOCOL_VERSION).toBe("1.0");
+    expect(() => createWebBlockSrcDoc({ ...bundle, protocolVersion: "2.0" }, element.manifest)).toThrow(/protocol/i);
+    const protocolHtml = renderToStaticMarkup(createElement(WebBlockHost, {
+      element,
+      bundle: { ...bundle, protocolVersion: "2.0" },
+      fallbackSrc: "/assets/custom-radar.svg",
+      mode: "studio"
+    }));
+    expect(protocolHtml).toContain('data-web-block-status="protocol-unsupported"');
+    expect(protocolHtml).not.toContain("<iframe");
+
+    const remoteHtml = renderToStaticMarkup(createElement(WebBlockHost, {
+      element,
+      bundle,
+      fallbackSrc: "https://example.com/tracker.svg",
+      mode: "export"
+    }));
+    expect(remoteHtml).not.toContain("https://example.com/tracker.svg");
+    expect(remoteHtml).toContain("Biểu đồ radar tùy chỉnh");
+
+    const backslashHtml = renderToStaticMarkup(createElement(WebBlockHost, {
+      element,
+      bundle,
+      fallbackSrc: "\\\\example.com\\tracker.svg",
+      mode: "export"
+    }));
+    expect(backslashHtml).not.toContain("example.com");
+  });
+
+  it("creates a stable lifecycle key from content rather than object identity", () => {
+    expect(createWebBlockLifecycleKey(element, bundle)).toBe(createWebBlockLifecycleKey(
+      { ...element, manifest: { ...element.manifest } },
+      { ...bundle }
+    ));
+    expect(createWebBlockLifecycleKey(element, bundle)).not.toBe(createWebBlockLifecycleKey(
+      element,
+      { ...bundle, code: `${bundle.code}\nwindow.extra = true;` }
+    ));
   });
 
   it("uses the mandatory static fallback for export and failures", () => {

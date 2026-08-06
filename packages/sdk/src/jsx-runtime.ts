@@ -1,7 +1,8 @@
 import {
   approveSceneNode,
   freezeSceneValue,
-  isApprovedSceneNode
+  isApprovedSceneNode,
+  isApprovedScenePrimitive
 } from "./scene-node-internals";
 
 export type SceneTextDescription = Readonly<{
@@ -116,10 +117,6 @@ export function normalizeSceneChildren(value: unknown): readonly SceneNodeDescri
   return freezeSceneValue(output);
 }
 
-function isScenePrimitive(value: unknown): value is ScenePrimitive<any> {
-  return typeof value === "function" && (value as Partial<ScenePrimitive<any>>).__deckoryScenePrimitive === true;
-}
-
 export function jsx(
   type: ScenePrimitive<any> | typeof Fragment | string | ((props: unknown) => unknown),
   props: Record<string, unknown> | null,
@@ -139,7 +136,7 @@ export function jsx(
     } as const));
   }
 
-  if (!isScenePrimitive(type)) {
+  if (!isApprovedScenePrimitive(type)) {
     const name = typeof type === "function" && type.name ? type.name : "anonymous";
     throw new TypeError(`Component "${name}" không phải primitive Scene JSX đã được phê duyệt.`);
   }

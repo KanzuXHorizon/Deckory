@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { InspectorSchemaSchema, type InspectorSchema } from "./inspector-schema";
+import {
+  InspectorSchemaSchema,
+  createInspectorSchema,
+  type InspectorSchema
+} from "./inspector-schema";
 
 export const MAX_WEB_BLOCK_SOURCE_BYTES = 1024 * 1024;
 export const MAX_WEB_BLOCK_ASSET_BYTES = 4 * 1024 * 1024;
@@ -65,6 +69,7 @@ export type WebBlockDiagnosticCode =
   | "unsupported-file-type"
   | "entry-not-found"
   | "entry-mismatch"
+  | "framework-entry-mismatch"
   | "source-too-large"
   | "manifest-payload-understated"
   | "remote-import-denied"
@@ -97,7 +102,13 @@ function freezeDeep<T>(value: T, seen = new Set<object>()): T {
 
 function isSafeSourcePath(path: string): boolean {
   if (path.includes("\\") || path.startsWith("/") || /^[A-Za-z]:/.test(path)) return false;
-  return !path.split("/").some((segment) => segment === ".." || segment === "" || segment === ".");
+  const segments = path.split("/");
+  return segments.length > 0 && segments.every((segment) =>
+    segment !== ".." &&
+    segment !== "" &&
+    segment !== "." &&
+    /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(segment)
+  );
 }
 
 function hasSupportedExtension(path: string): boolean {
@@ -151,7 +162,11 @@ function localImportExists(files: Record<string, string>, resolved: string): boo
 }
 
 export function defineWebBlockManifest(input: WebBlockManifestInput): WebBlockManifest {
-  return freezeDeep(WebBlockManifestSchema.parse(input)) as WebBlockManifest;
+  const parsed = WebBlockManifestSchema.parse(input);
+  const normalized = parsed.inspector
+    ? { ...parsed, inspector: createInspectorSchema(parsed.inspector) }
+    : parsed;
+  return freezeDeep(normalized) as WebBlockManifest;
 }
 
 export function validateWebBlockManifest(input: WebBlockManifestInput): WebBlockManifest {
@@ -173,6 +188,16 @@ export function validateWebBlockSource(
   if (!isSafeSourcePath(source.entry)) diagnostics.push({ code: "unsafe-path", file: source.entry, message: `Entry path không an toàn: ${source.entry}.` });
   if (!(source.entry in source.files)) diagnostics.push({ code: "entry-not-found", file: source.entry, message: `Không tìm thấy Web Block entry: ${source.entry}.` });
   if (source.entry !== manifest.entry) diagnostics.push({ code: "entry-mismatch", file: source.entry, message: `Source entry ${source.entry} không khớp manifest entry ${manifest.entry}.` });
+  const entryMatchesFramework = manifest.framework === "html"
+    ? /\.html$/i.test(source.entry)
+    : /\.(?:ts|tsx|js|jsx)$/i.test(source.entry);
+  if (!entryMatchesFramework) {
+    diagnostics.push({
+      code: "framework-entry-mismatch",
+      file: source.entry,
+      message: `Entry ${source.entry} không phù hợp framework ${manifest.framework}.`
+    });
+  }
 
   const totalBytes = Object.values(source.files).reduce((total, contents) => total + byteLength(contents), 0);
   if (totalBytes > MAX_WEB_BLOCK_SOURCE_BYTES) {

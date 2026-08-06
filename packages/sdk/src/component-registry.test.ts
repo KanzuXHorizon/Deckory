@@ -40,6 +40,43 @@ describe("trusted component registry", () => {
     } as typeof scoreRing;
 
     expect(() => new ComponentRegistry().register(bypassedDefinition)).toThrow(/stable kebab-case|propsSchema.*strict/i);
+    expect(() => new ComponentRegistry().register(Object.freeze({
+      ...scoreRing,
+      id: "frozen-handcrafted"
+    }))).toThrow(/registerDeckComponent/i);
+  });
+
+  it("rejects invalid semantic versions and downgrade migrations", () => {
+    expect(() => registerDeckComponent({ ...scoreRing, version: "1.0.0-01" })).toThrow(/semantic version/i);
+    expect(() => registerDeckComponent({ ...scoreRing, version: "1.0.0-alpha..1" })).toThrow(/semantic version/i);
+
+    const registry = new ComponentRegistry([
+      registerDeckComponent({
+        ...scoreRing,
+        version: "1.2.0",
+        migrateProps: ({ props }) => props
+      })
+    ]);
+    expect(registry.resolveInstance("score-ring", "1.9.0", { value: 72 })).toMatchObject({
+      status: "missing",
+      requestedVersion: "1.9.0"
+    });
+  });
+
+  it("requires parsed component props to remain serializable data", () => {
+    const executable = registerDeckComponent({
+      ...scoreRing,
+      id: "executable-props",
+      propsSchema: z.object({ value: z.unknown() }).strict(),
+      renderer: () => null,
+      accessibleSummary: () => "Executable props"
+    });
+    const registry = new ComponentRegistry([executable]);
+
+    expect(() => registry.parseProps("executable-props", "1.0.0", { value: () => 1 })).toThrow(/tuần tự|function/i);
+    expect(() => registry.resolveInstance("executable-props", "1.0.0", {
+      value: JSON.parse('{"__proto__":{"polluted":true}}')
+    })).toThrow(/không an toàn|__proto__/i);
   });
 
   it("requires strict Zod object props schemas", () => {

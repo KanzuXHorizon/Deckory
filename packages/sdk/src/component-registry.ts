@@ -5,8 +5,12 @@ import { createInspectorSchema } from "./inspector-schema";
 import type { ExportCapability } from "./primitives";
 
 const stableIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const semanticVersionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$/;
+const semanticVersionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 const allowedExportCapabilities = new Set<ExportCapability>(["html", "svg", "png", "pdf", "pptx"]);
+const approvedComponentDefinitions = new WeakSet<object>();
+const unsafeDataKeys = new Set(["__proto__", "prototype", "constructor"]);
+const MAX_COMPONENT_PROP_DEPTH = 64;
+const MAX_COMPONENT_PROP_NODES = 100_000;
 
 type StrictObjectSchema = z.ZodObject<any>;
 
@@ -60,9 +64,13 @@ interface ParsedSemanticVersion {
 function parseVersion(version: string): ParsedSemanticVersion {
   const match = semanticVersionPattern.exec(version);
   if (!match) throw new TypeError(`Phiên bản component "${version}" không phải semantic version hợp lệ.`);
+  const prerelease = match[4] ? match[4].split(".") : [];
+  if (prerelease.some((identifier) => /^\d+$/.test(identifier) && identifier.length > 1 && identifier.startsWith("0"))) {
+    throw new TypeError(`Phiên bản component "${version}" không phải semantic version hợp lệ.`);
+  }
   return {
     core: [Number(match[1]), Number(match[2]), Number(match[3])],
-    prerelease: match[4] ? match[4].split(".") : []
+    prerelease
   };
 }
 
@@ -147,6 +155,52 @@ function assertDefinitionMetadata(definition: {
   }
 }
 
+function isPlainObject(value: object): boolean {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function assertSerializableComponentProps(
+  value: unknown,
+  path = "props",
+  seen = new Set<object>(),
+  depth = 0,
+  budget = { nodes: 0 }
+): void {
+  if (depth > MAX_COMPONENT_PROP_DEPTH) throw new TypeError(`Component props tại ${path} vượt giới hạn độ sâu.`);
+  budget.nodes += 1;
+  if (budget.nodes > MAX_COMPONENT_PROP_NODES) throw new TypeError("Component props vượt giới hạn số node.");
+  if (value === undefined) throw new TypeError(`Component props tại ${path} chứa undefined và không thể tuần tự.`);
+  if (value === null) return;
+  const valueType = typeof value;
+  if (valueType === "function" || valueType === "symbol" || valueType === "bigint") {
+    throw new TypeError(`Component props tại ${path} chứa ${valueType} và không thể tuần tự.`);
+  }
+  if (valueType === "number" && !Number.isFinite(value as number)) {
+    throw new TypeError(`Component props tại ${path} chứa số không hữu hạn.`);
+  }
+  if (valueType !== "object") return;
+  const objectValue = value as object;
+  if (seen.has(objectValue)) throw new TypeError(`Component props tại ${path} chứa tham chiếu vòng.`);
+  seen.add(objectValue);
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertSerializableComponentProps(item, `${path}[${index}]`, seen, depth + 1, budget));
+  } else {
+    if (!isPlainObject(objectValue)) throw new TypeError(`Component props tại ${path} phải là dữ liệu thuần có thể tuần tự.`);
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      if (unsafeDataKeys.has(key)) throw new TypeError(`Component props tại ${path} chứa key không an toàn: ${key}.`);
+      assertSerializableComponentProps(child, `${path}.${key}`, seen, depth + 1, budget);
+    }
+  }
+  seen.delete(objectValue);
+}
+
+function parseSerializableProps<Props>(definition: DeckComponentDefinition<Props>, props: unknown): Props {
+  const parsed = definition.propsSchema.parse(props) as Props;
+  assertSerializableComponentProps(parsed);
+  return parsed;
+}
+
 export function registerDeckComponent<Schema extends StrictObjectSchema>(
   definition: RegisterDeckComponentInput<Schema>
 ): DeckComponentDefinition<z.output<Schema>, Schema> {
@@ -164,7 +218,9 @@ export function registerDeckComponent<Schema extends StrictObjectSchema>(
     exportCapabilities: Object.freeze([...new Set(definition.exportCapabilities)]),
     ...(definition.migrateProps ? { migrateProps: definition.migrateProps } : {})
   };
-  return Object.freeze(normalized);
+  const frozen = Object.freeze(normalized);
+  approvedComponentDefinitions.add(frozen);
+  return frozen;
 }
 
 export type ResolvedComponentInstance<Props = unknown> =
@@ -196,7 +252,7 @@ export class ComponentRegistry {
     if (this.#sealed) throw new Error("ComponentRegistry đã khóa cho Presenter và không nhận đăng ký mới.");
     assertDefinitionMetadata(definition);
     createInspectorSchema(definition.inspector);
-    if (!Object.isFrozen(definition)) {
+    if (!approvedComponentDefinitions.has(definition as object)) {
       throw new TypeError(`Component ${definition.id}@${definition.version} phải được tạo bằng registerDeckComponent.`);
     }
     const key = `${definition.id}@${definition.version}`;
@@ -220,7 +276,7 @@ export class ComponentRegistry {
   parseProps<Props = unknown>(id: string, version: string, props: unknown): Props {
     const definition = this.resolve<Props>(id, version);
     if (!definition) throw new Error(`Không tìm thấy component ${id}@${version}.`);
-    return definition.propsSchema.parse(props) as Props;
+    return parseSerializableProps(definition, props);
   }
 
   resolveInstance(id: string, requestedVersion: string, props: unknown): ResolvedComponentInstance<any> {
@@ -233,13 +289,18 @@ export class ComponentRegistry {
         resolvedVersion: requestedVersion,
         migrated: false,
         definition: exact,
-        props: exact.propsSchema.parse(props)
+        props: parseSerializableProps(exact, props)
       };
     }
 
     const requestedMajor = majorVersion(requestedVersion);
     const candidates = [...this.#definitions.values()]
-      .filter((definition) => definition.id === id && majorVersion(definition.version) === requestedMajor && definition.migrateProps)
+      .filter((definition) =>
+        definition.id === id &&
+        majorVersion(definition.version) === requestedMajor &&
+        compareVersions(definition.version, requestedVersion) > 0 &&
+        definition.migrateProps
+      )
       .sort((left, right) => compareVersions(right.version, left.version));
 
     for (const definition of candidates) {
@@ -256,7 +317,7 @@ export class ComponentRegistry {
         resolvedVersion: definition.version,
         migrated: true,
         definition,
-        props: definition.propsSchema.parse(migrated)
+        props: parseSerializableProps(definition, migrated)
       };
     }
 

@@ -66,10 +66,14 @@ export type InspectorField =
   | InspectorObjectGroupField;
 
 export type InspectorSchema = readonly InspectorField[];
+export const MAX_INSPECTOR_ARRAY_INDEX = 10_000;
 
 const stableId = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const nonEmpty = z.string().trim().min(1);
-const pathSchema = z.array(z.union([nonEmpty, z.number().int().nonnegative()])).min(1).max(32);
+const pathSchema = z.array(z.union([
+  nonEmpty,
+  z.number().int().nonnegative().max(MAX_INSPECTOR_ARRAY_INDEX)
+])).min(1).max(32);
 const common = {
   id: stableId,
   label: nonEmpty.max(160),
@@ -104,6 +108,9 @@ function assertSafePath(path: InspectorPath): void {
   for (const segment of path) {
     if (typeof segment === "string" && unsafePathSegments.has(segment)) {
       throw new TypeError(`Inspector path chứa segment không an toàn: ${segment}.`);
+    }
+    if (typeof segment === "number" && (!Number.isInteger(segment) || segment < 0 || segment > MAX_INSPECTOR_ARRAY_INDEX)) {
+      throw new TypeError(`Inspector array index ${segment} vượt giới hạn ${MAX_INSPECTOR_ARRAY_INDEX}.`);
     }
   }
 }
