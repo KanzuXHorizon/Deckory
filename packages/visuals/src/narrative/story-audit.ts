@@ -12,6 +12,7 @@ export type NarrativeDiagnosticCode =
   | "evidence-without-interpretation"
   | "abrupt-transition"
   | "duplicate-slide"
+  | "repeated-conclusion"
   | "weak-conclusion-heading"
   | "weak-closing"
   | "appendix-leakage"
@@ -73,6 +74,14 @@ function hasInterpretation(slide: NarrativeSlide): boolean {
   return Boolean(slide.interpretation?.trim() || slide.conclusion.trim());
 }
 
+function normalizeConclusion(value: string): string {
+  return value
+    .toLocaleLowerCase("vi-VN")
+    .replace(/[\p{P}\p{S}]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 export function auditNarrative(input: NarrativeAuditInput): NarrativeAuditResult {
   const { narrative, slides } = input;
   const diagnostics: NarrativeDiagnostic[] = [];
@@ -127,6 +136,7 @@ export function auditNarrative(input: NarrativeAuditInput): NarrativeAuditResult
   }
 
   const seenSemanticSignatures = new Map<string, string>();
+  const seenConclusions = new Map<string, string>();
   for (const slideId of index.orderedSlideIds) {
     const slide = slideById.get(slideId);
     if (!slide) continue;
@@ -145,6 +155,23 @@ export function auditNarrative(input: NarrativeAuditInput): NarrativeAuditResult
         message: "Slide có bằng chứng nhưng chưa nêu audience nên hiểu hoặc quyết định điều gì.",
         recommendation: "Bổ sung conclusion diễn giải ý nghĩa của bằng chứng, không chỉ mô tả dữ liệu."
       });
+    }
+
+    const normalizedConclusion = normalizeConclusion(slide.conclusion);
+    if (normalizedConclusion.length >= 12) {
+      const originalSlideId = seenConclusions.get(normalizedConclusion);
+      if (originalSlideId) {
+        diagnostics.push({
+          code: "repeated-conclusion",
+          severity: "warning",
+          slideId: slide.id,
+          sectionId: slide.sectionId,
+          message: `Slide lặp lại cùng audience-facing conclusion với ${originalSlideId}.`,
+          recommendation: "Đổi câu hỏi được trả lời, bổ sung insight mới hoặc gộp slide để tránh lặp lập luận."
+        });
+      } else {
+        seenConclusions.set(normalizedConclusion, slide.id);
+      }
     }
 
     if (TOPIC_HEADING_PATTERN.test(slide.heading.trim())) {
@@ -187,6 +214,7 @@ export function auditNarrative(input: NarrativeAuditInput): NarrativeAuditResult
   }
 
   const mainSections = narrative.sections.filter((section) => section.role !== "appendix");
+  const abruptTransitionSlideIds = new Set<string>();
   for (let indexValue = 1; indexValue < mainSections.length; indexValue += 1) {
     const previous = mainSections[indexValue - 1];
     const current = mainSections[indexValue];
@@ -202,6 +230,25 @@ export function auditNarrative(input: NarrativeAuditInput): NarrativeAuditResult
         message: `Transition từ ${previous.role} sang ${current.role} bỏ qua bước lập luận trung gian.`,
         recommendation: "Thêm transition, evidence hoặc proof để giải thích bước nhảy trong story."
       });
+      if (slideId) abruptTransitionSlideIds.add(slideId);
+    }
+
+    const firstCurrentSlideId = current.slideIds[0];
+    const firstCurrentSlide = firstCurrentSlideId ? slideById.get(firstCurrentSlideId) : undefined;
+    if (
+      firstCurrentSlide &&
+      !firstCurrentSlide.transitionFromPrevious?.trim() &&
+      !abruptTransitionSlideIds.has(firstCurrentSlide.id)
+    ) {
+      diagnostics.push({
+        code: "abrupt-transition",
+        severity: "warning",
+        slideId: firstCurrentSlide.id,
+        sectionId: current.id,
+        message: `Section ${current.id} bắt đầu mà chưa có narrative bridge từ ${previous.id}.`,
+        recommendation: "Khai báo transitionFromPrevious để giải thích vì sao audience chuyển sang phần tiếp theo."
+      });
+      abruptTransitionSlideIds.add(firstCurrentSlide.id);
     }
   }
 
@@ -220,6 +267,13 @@ export function auditNarrative(input: NarrativeAuditInput): NarrativeAuditResult
         recommendation: "Kết thúc bằng một decision, approval request hoặc next action cụ thể."
       });
     }
+  } else {
+    diagnostics.push({
+      code: "weak-closing",
+      severity: "warning",
+      message: "Narrative chưa có closing section để chốt quyết định hoặc hành động tiếp theo.",
+      recommendation: "Thêm closing section với decision, approval request hoặc next action cụ thể."
+    });
   }
 
   for (const slideId of index.unassignedSlideIds) {

@@ -4,7 +4,7 @@ export type NumericClaimChange = {
 };
 
 export type SemanticClaimChange = {
-  kind: "direction" | "certainty" | "limitation";
+  kind: "direction" | "certainty" | "limitation" | "polarity" | "temporal-scope";
   value: string;
   change: "introduced" | "removed";
 };
@@ -17,6 +17,8 @@ export type ClaimPreservationReport = {
   numericChanges: NumericClaimChange[];
   certaintyChanges: SemanticClaimChange[];
   limitationChanges: SemanticClaimChange[];
+  polarityChanges: SemanticClaimChange[];
+  temporalScopeChanges: SemanticClaimChange[];
   removedPhrases: string[];
   warnings: string[];
   preserved: boolean;
@@ -54,6 +56,24 @@ const CERTAINTY_TERMS = [
   "may",
   "might",
   "estimated"
+] as const;
+
+const POLARITY_GROUPS: ReadonlyArray<{ key: string; pattern: RegExp }> = [
+  {
+    key: "positive",
+    pattern: /(?:^|[^\p{L}\p{N}_])(?:thích|hài lòng|tốt|hiệu quả|positive|satisfied|like)(?=$|[^\p{L}\p{N}_])/giu
+  },
+  {
+    key: "negative",
+    pattern: /(?:^|[^\p{L}\p{N}_])(?:ghét|không hài lòng|kém|xấu|negative|dissatisfied|dislike)(?=$|[^\p{L}\p{N}_])/giu
+  }
+];
+
+const TEMPORAL_SCOPE_TERMS = [
+  "hiện tại",
+  "đến nay",
+  "currently",
+  "to date"
 ] as const;
 
 const LIMITATION_TERMS = [
@@ -106,6 +126,18 @@ function extractDirections(value: string): string[] {
   return found;
 }
 
+function extractGroupedSignals(
+  value: string,
+  groups: ReadonlyArray<{ key: string; pattern: RegExp }>
+): string[] {
+  const found: string[] = [];
+  for (const group of groups) {
+    group.pattern.lastIndex = 0;
+    if (group.pattern.test(value)) found.push(group.key);
+  }
+  return found;
+}
+
 function extractTerms(value: string, terms: readonly string[]): string[] {
   const normalized = value.toLocaleLowerCase("vi-VN");
   return terms.filter((term) => normalized.includes(term.toLocaleLowerCase("vi-VN")));
@@ -140,14 +172,46 @@ export function analyzeClaimPreservation(
   const resultingDirections = extractDirections(resultingText);
   const introducedDirections = difference(resultingDirections, originalDirections);
   const removedDirections = difference(originalDirections, resultingDirections);
-  const originalCertainty = extractTerms(originalText, CERTAINTY_TERMS);
+  const discountedCertainty = removedPhrases.flatMap((phrase) =>
+    extractTerms(phrase, CERTAINTY_TERMS)
+  );
+  const discountedLimitations = removedPhrases.flatMap((phrase) =>
+    extractTerms(phrase, LIMITATION_TERMS)
+  );
+  const discountedPolarity = removedPhrases.flatMap((phrase) =>
+    extractGroupedSignals(phrase, POLARITY_GROUPS)
+  );
+  const discountedTemporalScope = removedPhrases.flatMap((phrase) =>
+    extractTerms(phrase, TEMPORAL_SCOPE_TERMS)
+  );
+  const originalCertainty = difference(
+    extractTerms(originalText, CERTAINTY_TERMS),
+    discountedCertainty
+  );
   const resultingCertainty = extractTerms(resultingText, CERTAINTY_TERMS);
   const introducedCertainty = difference(resultingCertainty, originalCertainty);
   const removedCertainty = difference(originalCertainty, resultingCertainty);
-  const originalLimitations = extractTerms(originalText, LIMITATION_TERMS);
+  const originalLimitations = difference(
+    extractTerms(originalText, LIMITATION_TERMS),
+    discountedLimitations
+  );
   const resultingLimitations = extractTerms(resultingText, LIMITATION_TERMS);
+  const originalPolarity = difference(
+    extractGroupedSignals(originalText, POLARITY_GROUPS),
+    discountedPolarity
+  );
+  const resultingPolarity = extractGroupedSignals(resultingText, POLARITY_GROUPS);
+  const originalTemporalScope = difference(
+    extractTerms(originalText, TEMPORAL_SCOPE_TERMS),
+    discountedTemporalScope
+  );
+  const resultingTemporalScope = extractTerms(resultingText, TEMPORAL_SCOPE_TERMS);
   const introducedLimitations = difference(resultingLimitations, originalLimitations);
   const removedLimitations = difference(originalLimitations, resultingLimitations);
+  const introducedPolarity = difference(resultingPolarity, originalPolarity);
+  const removedPolarity = difference(originalPolarity, resultingPolarity);
+  const introducedTemporalScope = difference(resultingTemporalScope, originalTemporalScope);
+  const removedTemporalScope = difference(originalTemporalScope, resultingTemporalScope);
 
   const numericChanges: NumericClaimChange[] = [
     ...introducedNumbers.map((introducedValue) => ({ introducedValue })),
@@ -177,6 +241,30 @@ export function analyzeClaimPreservation(
       change: "removed" as const
     }))
   ];
+  const polarityChanges: SemanticClaimChange[] = [
+    ...introducedPolarity.map((value) => ({
+      kind: "polarity" as const,
+      value,
+      change: "introduced" as const
+    })),
+    ...removedPolarity.map((value) => ({
+      kind: "polarity" as const,
+      value,
+      change: "removed" as const
+    }))
+  ];
+  const temporalScopeChanges: SemanticClaimChange[] = [
+    ...introducedTemporalScope.map((value) => ({
+      kind: "temporal-scope" as const,
+      value,
+      change: "introduced" as const
+    })),
+    ...removedTemporalScope.map((value) => ({
+      kind: "temporal-scope" as const,
+      value,
+      change: "removed" as const
+    }))
+  ];
   const directionChanges: SemanticClaimChange[] = [
     ...introducedDirections.map((value) => ({
       kind: "direction" as const,
@@ -193,6 +281,8 @@ export function analyzeClaimPreservation(
     numericChanges.length === 0 &&
     certaintyChanges.length === 0 &&
     limitationChanges.length === 0 &&
+    polarityChanges.length === 0 &&
+    temporalScopeChanges.length === 0 &&
     directionChanges.length === 0;
   const warnings = directionChanges.map(
     (change) => `Hướng thay đổi ${change.change === "introduced" ? "được thêm" : "bị xoá"}: ${change.value}.`
@@ -206,6 +296,8 @@ export function analyzeClaimPreservation(
     numericChanges,
     certaintyChanges,
     limitationChanges,
+    polarityChanges,
+    temporalScopeChanges,
     removedPhrases: [...removedPhrases],
     warnings,
     preserved
@@ -325,7 +417,6 @@ export function removeTechnicalFiller(text: string): CopyTransformSuccess {
 export function shortenCopy(text: string): CopyTransformResult {
   const transformed = removePhrasesConservatively(text, [
     /^\s*về cơ bản\s*,?\s*/iu,
-    /(?:^|\s)hiện tại(?=\s|[,.;:!?]|$)\s*/giu,
     /(?:^|\s)thực sự(?=\s|[,.;:!?]|$)\s*/giu,
     /(?:^|\s)có thể nói rằng(?=\s|[,.;:!?]|$)\s*/giu,
     /^\s*in summary\s*,?\s*/iu

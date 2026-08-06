@@ -74,6 +74,79 @@ describe("auditNarrative", () => {
     );
   });
 
+  it("detects a missing closing and repeated audience-facing conclusions", () => {
+    const slides: NarrativeSlide[] = [
+      {
+        id: "evidence-a",
+        heading: "Automation removes manual handoffs",
+        purpose: "show-evidence",
+        conclusion: "Automation removes manual handoffs.",
+        evidenceStatus: "supported",
+        interpretation: "The workflow becomes easier to audit.",
+        sectionId: "evidence"
+      },
+      {
+        id: "proof-a",
+        heading: "Automation removes manual handoffs",
+        purpose: "show-proof",
+        conclusion: "Automation removes manual handoffs!",
+        evidenceStatus: "supported",
+        interpretation: "The same conclusion is repeated without a new question.",
+        sectionId: "proof",
+        transitionFromPrevious: "The proof confirms the earlier evidence."
+      }
+    ];
+
+    const result = auditNarrative({
+      narrative: narrative([
+        { id: "evidence", role: "evidence", objective: "Show evidence", slideIds: ["evidence-a"] },
+        { id: "proof", role: "proof", objective: "Show proof", slideIds: ["proof-a"] }
+      ]),
+      slides
+    });
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "repeated-conclusion", slideId: "proof-a" })
+    );
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "weak-closing" })
+    );
+  });
+
+  it("detects a section transition that has no narrative bridge", () => {
+    const slides: NarrativeSlide[] = [
+      {
+        id: "context-a",
+        heading: "The current workflow has four handoffs",
+        purpose: "context",
+        conclusion: "Four handoffs increase review effort.",
+        evidenceStatus: "supported",
+        sectionId: "context"
+      },
+      {
+        id: "tension-a",
+        heading: "Review effort grows with every handoff",
+        purpose: "tension",
+        conclusion: "The workflow becomes harder to defend.",
+        evidenceStatus: "supported",
+        sectionId: "tension"
+      }
+    ];
+
+    const result = auditNarrative({
+      narrative: narrative([
+        { id: "context", role: "context", objective: "Explain context", slideIds: ["context-a"] },
+        { id: "tension", role: "tension", objective: "Create tension", slideIds: ["tension-a"] },
+        { id: "closing", role: "closing", objective: "Close", slideIds: [] }
+      ]),
+      slides
+    });
+
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "abrupt-transition", slideId: "tension-a" })
+    );
+  });
+
   it("detects abrupt transitions, duplicate slides and a closing without action", () => {
     const slides: NarrativeSlide[] = [
       {

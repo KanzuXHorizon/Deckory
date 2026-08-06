@@ -58,6 +58,22 @@ describe("constrained copy transforms", () => {
     }
   });
 
+  it("rejects a proposed rewrite that reverses semantic polarity", () => {
+    const result = rewriteConclusionHeading({
+      heading: "Phản hồi người dùng",
+      evidenceText: "Người dùng thích giao diện mới.",
+      proposedText: "Người dùng ghét giao diện mới."
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("claim-preservation-failed");
+      expect(result.report.polarityChanges).toContainEqual(
+        expect.objectContaining({ kind: "polarity" })
+      );
+    }
+  });
+
   it("removes technical filler while preserving explicit values and limitations", () => {
     const result = removeTechnicalFiller(
       "Theo như implementation hiện tại, hệ thống đạt 84 điểm nhưng chưa kiểm thử trên thiết bị cũ."
@@ -81,11 +97,20 @@ describe("constrained copy transforms", () => {
     expect(shortened.ok).toBe(true);
     if (!shortened.ok) throw new Error(shortened.message);
     expect(shortened.text).toBe(
-      "Hệ thống hỗ trợ quy trình kiểm tra dữ liệu có cấu trúc."
+      "Hệ thống hiện tại hỗ trợ quy trình kiểm tra dữ liệu có cấu trúc."
     );
     expect(shortened.report.introducedClaims).toEqual([]);
     expect(split.blocks).toHaveLength(3);
     expect(split.report.preserved).toBe(true);
+  });
+
+  it("does not remove a temporal qualifier while shortening copy", () => {
+    const result = shortenCopy("Hiện tại, hệ thống hỗ trợ 3 định dạng xuất.");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
+    expect(result.text).toContain("Hiện tại");
+    expect(result.report.preserved).toBe(true);
   });
 
   it("drafts speaker notes only from supplied claims", () => {
