@@ -18,10 +18,10 @@
     "@deckory/templates": "workspace:*",
     "@deckory/visual-lab-v2": "workspace:*",
     "@deckory/visuals": "workspace:*",
-    "lucide-react": "1.28.0",
-    "motion": "13.0.0",
-    "next": "16.3.0",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "lucide-react": "1.44.0",
+    "motion": "13.2.0",
+    "next": "16.3.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   }
 }
